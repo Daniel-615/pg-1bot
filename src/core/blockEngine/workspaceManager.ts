@@ -1,7 +1,9 @@
 import * as Blockly from "blockly";
 import "blockly/blocks";
-
+import {ArduinoSemanticAnalyzer} from "./arduinoSemanticAnalyzer";
 export function createWorkspace(container: HTMLDivElement) {
+  //importar el analizador de errores
+  const analyzer= new ArduinoSemanticAnalyzer();
   const workspace = Blockly.inject(container, {
     toolbox: {
       kind: "categoryToolbox",
@@ -69,7 +71,20 @@ export function createWorkspace(container: HTMLDivElement) {
       ],
     },
   });
-
+  workspace.addChangeListener((event)=>{
+    /* 
+      Se ejecuta el análisis semántico cada vez que se crea, borra,
+      cambia o mueve un bloque, para detectar errores en tiempo real.
+    */
+    if(
+      event.type=== Blockly.Events.BLOCK_CREATE ||
+      event.type=== Blockly.Events.BLOCK_DELETE ||
+      event.type=== Blockly.Events.BLOCK_CHANGE ||
+      event.type=== Blockly.Events.BLOCK_MOVE
+    ){
+      analyzer.analyze(workspace)
+    }
+  })
   setTimeout(() => {
     Blockly.svgResize(workspace);
   }, 100);
