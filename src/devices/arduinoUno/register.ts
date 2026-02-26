@@ -1,7 +1,10 @@
-import { defineArduinoBlocks } from "./blocks";
-import { defineArduinoGenerator } from "./generator";
+import type { Board } from "../../boards/Board";
+import { ArduinoUnoGenerator } from "./generator";
 
-export function registerArduinoUno() {
-  defineArduinoBlocks();
-  defineArduinoGenerator();
+export class ArduinoUnoBoard implements Board<ArduinoUnoGenerator> {
+  type = "uno";
+
+  getGenerator(): ArduinoUnoGenerator {
+    return new ArduinoUnoGenerator();
+  }
 }

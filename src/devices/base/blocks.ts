@@ -4,35 +4,6 @@ export function defineArduinoBlocks() {
 
     Blockly.common.defineBlocksWithJsonArray([
     {
-      "type": "arduino_setup",
-      "message0": "cuando inicia",
-      "message1": "%1",
-      "args1": [
-        {
-          "type": "input_statement",
-          "name": "SETUP_BODY"
-        }
-      ],
-      "colour": 230,
-      "tooltip": "",
-      "helpUrl": ""
-    },
-
-    {
-      "type": "arduino_loop",
-      "message0": "por siempre",
-      "message1": "%1",
-      "args1": [
-        {
-          "type": "input_statement",
-          "name": "LOOP_BODY"
-        }
-      ],
-      "colour": 230,
-      "tooltip": "",
-      "helpUrl": ""
-    },
-    {
         "type": "led_set",
         "message0": "poner LED en pin %1 a %2",
         "args0":[
@@ -121,6 +92,28 @@ export function defineArduinoBlocks() {
       "inputsInline": false
     },
     {
+      "type": "do_while",
+      "message0": "hacer %1",
+      "args0":[
+        {
+          "type": "input_statement",
+          "name": "BODY"
+        }
+      ],
+      "message1": "mientras %1",
+      "args1":[
+        {
+          "type": "input_value",
+          "name": "CONDITION",
+          "check": "Boolean"
+        }
+      ],
+      "previousStatement": null,
+      "nextStatement": null,
+      "colour": 120,
+      "inputsInline": false
+    },
+    {
       "type": "while",
       "message0": "mientras %1",
       "args0":[
@@ -141,6 +134,65 @@ export function defineArduinoBlocks() {
       "nextStatement": null,
       "colour": 120,
       "inputsInline": false
+    },
+    {
+      "type": "for",
+      "message0": "para %1 desde %2 hasta %3",
+      "args0":[
+        {
+          "type": "field_variable",
+          "name": "VAR",
+          "variable": "i"
+        },
+        {
+          "type": "input_value",
+          "name": "FROM",
+          "check": "Number"
+        },
+        {
+          "type": "input_value",
+          "name": "TO",
+          "check": "Number"
+        }
+      ],
+      "message1": "hacer %1",
+      "args1":[
+        {
+          "type": "input_statement",
+          "name": "BODY"
+        }
+      ],
+      "previousStatement": null,
+      "nextStatement": null,
+      "colour": 120,
+      "inputsInline": false
+    },
+    {
+      "type": "break",
+      "message0": "romper",
+      "previousStatement":null,
+      "nextStatement":null,
+      "colour":230
+    },
+    {
+      "type": "continue",
+      "message0": "continuar",
+      "previousStatement":null,
+      "nextStatement": null,
+      "colour":230
+    },
+    {
+      "type": "number",
+      "message0": "%1",
+      "args0":[
+        {
+          "type":"field_number",
+          "name":"NUM",
+          "value":0
+        }
+      ],
+      "output": "Number",
+      "colour": 230
     }
   ]);
 

@@ -1,38 +1,16 @@
 import * as Blockly from "blockly";
-import { arduinoGenerator } from "../../devices/arduinoUno/generator";
-export function compileArduino(workspace: Blockly.Workspace) {
+import { BoardFactory } from "../../boards/BoardFactory";
 
-  arduinoGenerator.init(workspace);
+export function compileArduino(
+  workspace: Blockly.Workspace,
+  boardType: string
+) {
+  const board = BoardFactory.create(boardType);
+  const generator = board.getGenerator();
 
-  const topBlocks = workspace.getTopBlocks(true);
+  generator.init(workspace);
 
-  let setupCode = "";
-  let loopCode = "";
+  const code = generator.workspaceToCode(workspace);
 
-  topBlocks.forEach(block => {
-
-    if (block.type === "arduino_setup") {
-      setupCode += arduinoGenerator.blockToCode(block);
-    }
-
-    if (block.type === "arduino_loop") {
-      loopCode += arduinoGenerator.blockToCode(block);
-    }
-
-  });
-
-  const setupDefinitions = arduinoGenerator.setupDefinitions
-    ? Array.from(arduinoGenerator.setupDefinitions).join("\n")
-    : "";
-
-  return `
-void setup() {
-${setupDefinitions}
-${setupCode}
-}
-
-void loop() {
-${loopCode}
-}
-`;
-}
+  return code;
+} 
