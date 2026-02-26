@@ -12,7 +12,9 @@ export function createWorkspace(container: HTMLDivElement) {
         { kind: "block", type: "arduino_loop" },
         { kind: "block", type: "led_set"},
         { kind: "block", type: "delay_ms"},
+        { kind: "block", type: "if"},
         { kind: "block", type: "if_else"},
+        { kind: "block", type: "while"}
       ],
     },
   });

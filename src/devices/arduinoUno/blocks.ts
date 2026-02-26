@@ -76,10 +76,36 @@ export function defineArduinoBlocks() {
         "helpUrl": ""
     },
     {
+      "type": "if",
+      "message0": "si %1",
+      "args0":[
+        {
+          "type": "input_value", 
+          "name": "CONDITION", 
+          "check": "Boolean"
+        }
+      ],
+      "message1": "%1",
+      "args1":[
+        {
+          "type": "input_statement",
+          "name": "IF_BODY"
+        }
+      ],
+      "previousStatement": null,
+      "nextStatement": null,
+      "colour": 210,
+      "inputsInline": false
+    },
+    {
       "type": "if_else",
       "message0": "si %1 entonces",
       "args0": [
-        { "type": "input_value", "name": "CONDITION", "check": "Boolean" }
+        { 
+          "type": "input_value", 
+          "name": "CONDITION", 
+          "check": "Boolean" 
+        }
       ],
       "message1": "%1",
       "args1": [
@@ -91,7 +117,30 @@ export function defineArduinoBlocks() {
       ],
       "previousStatement": null,
       "nextStatement": null,
-      "colour": 210
+      "colour": 210,
+      "inputsInline": false
+    },
+    {
+      "type": "while",
+      "message0": "mientras %1",
+      "args0":[
+        {
+          "type": "input_value",
+          "name": "CONDITION",
+          "check": "Boolean"
+        }
+      ],
+      "message1": "hacer %1",
+      "args1":[
+        {
+          "type": "input_statement",
+          "name": "BODY"
+        }
+      ],
+      "previousStatement": null,
+      "nextStatement": null,
+      "colour": 120,
+      "inputsInline": false
     }
   ]);
 

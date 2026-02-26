@@ -37,6 +37,12 @@ export function defineArduinoGenerator() {
         const time= block.getFieldValue("TIME");
         return `delay(${time});\n`;
     }
+    arduinoGenerator.forBlock["if"]=function(block){
+      const condition=arduinoGenerator.valueToCode(block,"CONDITION",99) || "false";
+      const ifCode=arduinoGenerator.statementToCode(block,"IF_BODY");
+      const code= `if(${condition}) {\n${ifCode}}\n`;
+      return code;
+    }
     arduinoGenerator.forBlock["if_else"] = function(block) {
       const condition = arduinoGenerator.valueToCode(block, "CONDITION", 99) || "false";
       const ifCode = arduinoGenerator.statementToCode(block, "IF_BODY");
@@ -48,4 +54,10 @@ export function defineArduinoGenerator() {
       }
       return code;
     };
+    arduinoGenerator.forBlock["while"]=function(block){
+      const condition= arduinoGenerator.valueToCode(block,"CONDITION",99) || "false";
+      const bodyCode= arduinoGenerator.statementToCode(block, "BODY");
+      const code= `while(${condition}) {\n${bodyCode}}\n`;
+      return code;
+    }
 }
