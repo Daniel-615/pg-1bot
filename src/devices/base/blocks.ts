@@ -182,6 +182,22 @@ export function defineArduinoBlocks() {
       "colour":230
     },
     {
+      "type": "print",
+      "message0": "imprimir %1",
+      "args0": [
+        {
+          "type": "input_value",
+          "name": "TEXT",
+          "check": "String"
+        }
+      ],
+      "previousStatement": null,
+      "nextStatement": null,
+      "colour": 160,
+      "tooltip": "Imprime un string por Serial",
+      "helpUrl": ""
+    },
+    {
       "type": "number",
       "message0": "%1",
       "args0":[
@@ -193,7 +209,21 @@ export function defineArduinoBlocks() {
       ],
       "output": "Number",
       "colour": 230
+    },
+    {
+      "type": "string",
+      "message0": "'%1'",
+      "args0": [
+        {
+          "type": "field_input",
+          "name": "STRING",
+          "text": "Hola"
+        }
+      ],
+      "output": "String",
+      "colour": 230,
+      "tooltip": "Bloque literal de texto (STRING).",
+      "helpUrl": ""
     }
   ]);
-
 }

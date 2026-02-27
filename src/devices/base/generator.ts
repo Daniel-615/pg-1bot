@@ -46,7 +46,14 @@ ${code}
   }
 
   private defineBlocks() {
-
+    this.forBlock["string"] = (block) => {
+      const text = block.getFieldValue("STRING") || "";
+      return [`"${text}"`, ORDER_ATOMIC];
+    };
+    this.forBlock["print"]= (block)=>{
+      const value = this.valueToCode(block, "TEXT", ORDER_NONE) || '""';
+      return `Serial.println(${value});\n`;
+    }
     this.forBlock["variables_get"] = (block) => {
       const variable = this.nameDB_!.getName(
         block.getFieldValue("VAR"),
@@ -54,6 +61,7 @@ ${code}
       );
       return [variable, ORDER_ATOMIC];
     };
+    
     this.forBlock["variables_set"] = (block) => {
       const variable = this.nameDB_!.getName(
         block.getFieldValue("VAR"),

@@ -16,11 +16,14 @@ export class ArduinoSemanticAnalyzer {
 
     workspace.getAllBlocks(false).forEach((block) => {
       block.setWarningText(null);
+      this.checkInvalidTypeOperation(block,addError); 
     });
 
     this.checkUninitializedVariables(workspace, addError);
     this.checkTypeConsistency(workspace, addError);
+    this.checkDuplicateVariables(workspace,addError);
 
+    this.checkBodyControl(workspace,addError)
     workspace.getAllBlocks(false).forEach((block) => {
       this.checkDivisionByZero(block, addError);
       this.checkBooleanCondition(block, addError);
@@ -34,10 +37,32 @@ export class ArduinoSemanticAnalyzer {
       }
     });
   }
-
+  private checkDuplicateVariables(
+    workspace: Blockly.Workspace,
+    addError: (block: Blockly.Block, message: string)=> void
+  ){
+    const topBlocks=workspace.getTopBlocks(true);
+    const visitBlock=(block:Blockly.Block | null, declared: Set<string>)=>{
+      while(block){
+        if(block.type==="variables_set"){
+          const varName=block.getFieldValue("VAR");
+          if(declared.has(varName)){
+            addError(block, `Variable duplicada: ${varName}`);
+          }else{
+            declared.add(varName)
+          }
+        }
+        block.inputList.forEach((input)=>{
+          visitBlock(input.connection?.targetBlock() || null , declared);
+        });
+        block=block.getNextBlock();
+      }
+    }
+    topBlocks.forEach((block)=> visitBlock(block,new Set()));
+  }
   private checkUninitializedVariables(
     workspace: Blockly.Workspace,
-    addError: (block: Blockly.Block, message: string) => void,
+    addError: (block: Blockly.Block, message: string) => void
   ) {
     const assignedVars = new Set<string>();
     const topBlocks = workspace.getTopBlocks(true);
@@ -154,7 +179,67 @@ export class ArduinoSemanticAnalyzer {
       }
     }
   }
+    //estructuras de control como if, while, for
+    private checkBodyControl(
+    workspace: Blockly.Workspace,
+    addError: (block: Blockly.Block, message: string) => void
+  ) {
+    const controlBlocks = ["controls_if", "controls_repeat_ext", "controls_whileUntil", "controls_for"];
+    
+    workspace.getAllBlocks(false).forEach((block) => {
+      if (!controlBlocks.includes(block.type)) return;
 
+      // Revisión de cada entrada de ejecución
+      block.inputList.forEach((input) => {
+        if (input.connection && input.connection.getCheck()?.includes("Statement")) {
+          const childBlock = input.connection.targetBlock();
+          if (!childBlock) {
+            addError(block, "El cuerpo del bloque de control está vacío.");
+          }
+        }
+      });
+    });
+  }
+      
+  private checkInvalidTypeOperation(
+    block: Blockly.Block,
+    addError: (block: Blockly.Block, message: string) => void,
+  ) {
+    if (block.type !== "math_arithmetic") return;
+
+    const getType = (b: Blockly.Block | null): string | null => {
+      if (!b) return null;
+      switch (b.type) {
+        case "math_number":
+        case "math_arithmetic":
+          return "number";
+        case "text":
+          return "string";
+        case "variables_get":
+          return null; // opcional: consultar mapa de tipos
+        default:
+          return null;
+      }
+    };
+
+    const inputA = block.getInputTargetBlock("A");
+    const inputB = block.getInputTargetBlock("B");
+    const typeA = getType(inputA);
+    const typeB = getType(inputB);
+
+    if (!typeA || !typeB) return; 
+
+    const operator = block.getFieldValue("OP"); 
+
+    if (operator === "ADD") {
+      if (
+        (typeA === "string" && typeB === "number") ||
+        (typeA === "number" && typeB === "string")
+      ) {
+        addError(block, "Operación inválida: no se puede sumar String + Number");
+      }
+    }
+  }
   private checkBooleanCondition(
     block: Blockly.Block,
     addError: (block: Blockly.Block, message: string) => void,

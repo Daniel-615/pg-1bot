@@ -48,6 +48,14 @@ export function createWorkspace(container: HTMLDivElement) {
             },
             {
               "kind": "block",
+              "type": "string"
+            },
+            {
+              "kind": "block",
+              "type": "print"
+            },
+            {
+              "kind": "block",
               "type": "math_arithmetic"
             },
             {
