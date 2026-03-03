@@ -1,7 +1,8 @@
 import * as Blockly from "blockly";
 import { SymbolTable } from "./symbolTable";
 import type { VarType } from "./symbolTable";
-
+import { Variables } from "./variables/variables";
+import { Conditions } from "./conditions/conditions";
 type Severity = "error" | "warning" | "suggestion";
 
 interface Issue {
@@ -12,6 +13,8 @@ interface Issue {
 export class ArduinoSemanticAnalyzer {
 
   private symbolTable!: SymbolTable;
+  private variables!: Variables
+  private conditions!: Conditions
   private errors!: Map<string, Issue[]>;
 
   private debugMode = false;
@@ -24,8 +27,9 @@ export class ArduinoSemanticAnalyzer {
     this.debugMode = false;
 
     this.symbolTable = new SymbolTable();
+    this.variables= new Variables(this.symbolTable,this);
+    this.conditions= new Conditions(this.symbolTable,this);
     this.errors = new Map();
-
     const topBlocks = workspace.getTopBlocks(true);
 
     for (const block of topBlocks) {
@@ -41,8 +45,8 @@ export class ArduinoSemanticAnalyzer {
     this.debugMode = true;
 
     this.symbolTable = new SymbolTable();
+    this.variables= new Variables(this.symbolTable,this);
     this.errors = new Map();
-
     this.blocksQueue = [];
     this.history = [];
     this.currentIndex = 0;
@@ -54,7 +58,7 @@ export class ArduinoSemanticAnalyzer {
   step(workspace: Blockly.Workspace) {
 
     if (this.currentIndex >= this.blocksQueue.length) {
-      console.log("✅ Fin del análisis");
+      console.log("Fin del análisis");
       this.checkUnusedVariables(workspace);
       this.renderWarnings(workspace);
       return;
@@ -72,7 +76,7 @@ export class ArduinoSemanticAnalyzer {
 
     this.currentIndex++;
   }
-
+  //gets
   getHistory() {
     return this.history;
   }
@@ -80,8 +84,15 @@ export class ArduinoSemanticAnalyzer {
   getCurrentSymbolState() {
     return this.symbolTable.getFinalState();
   }
-
-
+  getVariables(){
+    return this.variables;
+  }
+  getConditions(){
+    return this.conditions;
+  }
+  public visitPublic(block: Blockly.Block | null){
+    this.visit(block);
+  }
   private visit(block: Blockly.Block | null) {
     if (!block) return;
 
@@ -98,7 +109,8 @@ export class ArduinoSemanticAnalyzer {
         break;
 
       case "if":
-        this.handleIf(block);
+        const ok=this.handleIf(block);
+        if(!ok) return;
         break;
 
       case "if_else":
@@ -143,103 +155,33 @@ export class ArduinoSemanticAnalyzer {
 
 
   private handleAssignment(block: Blockly.Block) {
-
     const name = block.getFieldValue("VAR");
     const valueBlock = block.getInputTargetBlock("VALUE");
-
     const inferred = this.inferType(valueBlock);
-    const symbol = this.symbolTable.lookup(name);
-
-    if (!symbol) {
-
-      const success = this.symbolTable.declare(name, inferred);
-
-      if (!success) {
-        this.addIssue(block, `Variable duplicada: ${name}`, "error");
-        return;
-      }
-
-    } else {
-
-      if (symbol.type && inferred && symbol.type !== inferred) {
-        this.addIssue(
-          block,
-          `Tipo incompatible. Esperado: ${symbol.type}, recibido: ${inferred}`,
-          "error"
-        );
-      }
-    }
-
-    this.symbolTable.assign(name, inferred);
+    if(!inferred) return;
+    this.getVariables().checkOrDeclareVariable(name,inferred,block);
   }
   private checkUnusedVariables(workspace: Blockly.Workspace) {
-
-    const scopes = this.symbolTable.getFinalState();
-
-    scopes.forEach(scope => {
-      scope.forEach(symbol => {
-
-        if (!symbol.used) {
-
-          const block = workspace.getAllBlocks(false).find(
-            b =>
-              b.type === "variables_set" &&
-              b.getFieldValue("VAR") === symbol.name
-          );
-
-          if (block) {
-            this.addIssue(
-              block,
-              `Variable declarada pero no utilizada: ${symbol.name}`,
-              "warning"
-            );
-          }
-        }
-      });
-    });
+    this.getVariables().checkUnusedVariables(workspace);
   }
   private handleVariableUse(block: Blockly.Block) {
-
-    const name = block.getFieldValue("VAR");
-    const symbol = this.symbolTable.use(name);
-
-    if (!symbol) {
-      this.addIssue(block, `Variable no declarada: ${name}`, "error");
-    } else if (!symbol.initialized) {
-      this.addIssue(block, `Variable no inicializada: ${name}`, "error");
-    }
+    this.getVariables().handleVariableUse(block);
   }
 
   private handleIf(block: Blockly.Block) {
 
     const condition = block.getInputTargetBlock("IF0");
     const type = this.inferType(condition);
-
-    if (type !== "boolean") {
-      this.addIssue(block, "La condición del IF debe ser booleana", "error");
-    }
-
-    this.symbolTable.enterScope();
-    this.visit(block.getInputTargetBlock("DO0"));
-    this.symbolTable.exitScope();
+    const ok=this.getConditions().handleIf(block,type);
+    return ok ?? false;
   }
 
   private handleIfElse(block: Blockly.Block) {
 
     const condition = block.getInputTargetBlock("IF0");
     const type = this.inferType(condition);
-
-    if (type !== "boolean") {
-      this.addIssue(block, "La condición del IF debe ser booleana", "error");
-    }
-
-    this.symbolTable.enterScope();
-    this.visit(block.getInputTargetBlock("DO0"));
-    this.symbolTable.exitScope();
-
-    this.symbolTable.enterScope();
-    this.visit(block.getInputTargetBlock("ELSE"));
-    this.symbolTable.exitScope();
+    const ok=this.getConditions().handleIfElse(block, type);
+    if(!ok) return;
   }
 
   private handleWhile(block: Blockly.Block) {
@@ -247,21 +189,15 @@ export class ArduinoSemanticAnalyzer {
     const condition = block.getInputTargetBlock("BOOL");
     const type = this.inferType(condition);
 
-    if (type !== "boolean") {
-      this.addIssue(block, "La condición del WHILE debe ser booleana", "error");
-    }
-
-    this.symbolTable.enterScope();
-    this.visit(block.getInputTargetBlock("DO"));
-    this.symbolTable.exitScope();
+    const val=this.getConditions().handleWhile(block,type)
+    if(!val) return;
   }
 
   private handleDoWhile(block: Blockly.Block) {
-
-    this.symbolTable.enterScope();
-    this.visit(block.getInputTargetBlock("DO"));
-    this.symbolTable.exitScope();
-
+    const val=this.getConditions().handleDoWhile(block)
+    if(!val){
+      return;
+    }
     const condition = block.getInputTargetBlock("BOOL");
     const type = this.inferType(condition);
 
@@ -281,19 +217,7 @@ export class ArduinoSemanticAnalyzer {
       this.addIssue(block, "Los valores del FOR deben ser numéricos", "error");
     }
 
-    this.symbolTable.enterScope();
-
-    const declared = this.symbolTable.declare(varName, "number");
-
-    if (!declared) {
-      this.addIssue(block, `Variable duplicada en FOR: ${varName}`, "error");
-    }
-
-    this.symbolTable.assign(varName, "number");
-
-    this.visit(block.getInputTargetBlock("DO"));
-
-    this.symbolTable.exitScope();
+    this.getConditions().handleForRange(block,varName)
   }
 
 
@@ -342,7 +266,9 @@ export class ArduinoSemanticAnalyzer {
       }
     }
   }
-
+  public addIssuePublic(block: Blockly.Block, message: string, severity: Severity){
+    this.addIssue(block,message,severity);
+  }
   private addIssue(block: Blockly.Block, message: string, severity: Severity = "error") {
 
     if (!this.errors.has(block.id)) {
