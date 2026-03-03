@@ -1,6 +1,6 @@
 import * as Blockly from "blockly";
 import "blockly/blocks";
-import {ArduinoSemanticAnalyzer} from "./arduinoSemanticAnalyzer";
+import {ArduinoSemanticAnalyzer} from "./semantic/arduinoSemanticAnalyzer";
 export function createWorkspace(container: HTMLDivElement) {
   //importar el analizador de errores
   const analyzer= new ArduinoSemanticAnalyzer();
@@ -15,11 +15,13 @@ export function createWorkspace(container: HTMLDivElement) {
           contents: [
             { kind: "block", type: "if" },
             { kind: "block", type: "if_else" },
-            { kind: "block", type: "while" },
+            { kind: "block", type: "while_repeat" },
             { kind: "block", type: "do_while" },
-            { kind: "block", type: "for" },
+            { kind: "block", type: "for_range" },
             { kind: "block", type: "break" },
             { kind: "block", type: "continue" },
+            { kind: "block", type: "delay_ms" },
+            { kind: "block", type: "repeat_until"},
           ],
         },
         {
@@ -34,7 +36,6 @@ export function createWorkspace(container: HTMLDivElement) {
           colour: "#FF6680",
           contents: [
             { kind: "block", type: "led_set" },
-            { kind: "block", type: "delay_ms" },
           ],
         },
         {
@@ -91,6 +92,8 @@ export function createWorkspace(container: HTMLDivElement) {
       event.type=== Blockly.Events.BLOCK_MOVE
     ){
       analyzer.analyze(workspace)
+      analyzer.startDebug(workspace);
+      analyzer.step(workspace)
     }
   })
   setTimeout(() => {

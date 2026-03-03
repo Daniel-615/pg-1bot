@@ -141,7 +141,7 @@ ${code}
     };
 
 
-    this.forBlock["while"] = (block) => {
+    this.forBlock["while_repeat"] = (block) => {
       const condition =
         this.valueToCode(block, "CONDITION", ORDER_NONE) || "false";
 
@@ -151,7 +151,11 @@ ${code}
       return `while(${condition}) {\n${bodyCode}}\n`;
     };
 
-
+    this.forBlock["repeat_until"]= function(block,generator){
+      const condition= generator.valueToCode(block, "CONDITION", ORDER_NONE) || "false";
+      const body= generator.statementToCode(block, "BODY");
+      return `while (!(${condition})) {\n${body}}\n`;
+    }
     this.forBlock["do_while"] = (block) => {
       const condition =
         this.valueToCode(block, "CONDITION", ORDER_NONE) || "false";
@@ -197,7 +201,7 @@ ${code}
       const code= `${left} ${operator} ${right}`;
       return [code, ORDER_ATOMIC];
     }
-    this.forBlock["for"] = (block) => {
+    this.forBlock["for_range"] = (block) => {
       const variable = this.nameDB_!.getName(
         block.getFieldValue("VAR"),
         Blockly.VARIABLE_CATEGORY_NAME
@@ -208,11 +212,14 @@ ${code}
 
       const to =
         this.valueToCode(block, "TO", ORDER_NONE) || "0";
+      
+      const step = block.getFieldValue("STEP") || "1";
 
       const body =
         this.statementToCode(block, "BODY");
 
-      return `for (int ${variable} = ${from}; ${variable} <= ${to}; ${variable}++) {\n${body}}\n`;
+      const comparator = Number(step) >= 0 ? "<=" : ">=";
+      return `for (int ${variable} = ${from}; ${variable} ${comparator} ${to}; ${variable} += ${step}) {\n${body}}\n`;
     };
   }
 }

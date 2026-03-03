@@ -114,8 +114,8 @@ export function defineArduinoBlocks() {
       "inputsInline": false
     },
     {
-      "type": "while",
-      "message0": "mientras %1",
+      "type": "while_repeat",
+      "message0": "mientras se repite %1",
       "args0":[
         {
           "type": "input_value",
@@ -136,8 +136,31 @@ export function defineArduinoBlocks() {
       "inputsInline": false
     },
     {
-      "type": "for",
-      "message0": "para %1 desde %2 hasta %3",
+      "type": "repeat_until",
+      "message0": "repite hasta que %1",
+      "args0": [
+        {
+          "type": "input_value",
+          "name": "CONDITION",
+          "check": "BOOLEAN",
+
+        }
+      ],
+      "message1": "%1",
+      "args1":[
+        {
+          "type": "input_statement",
+          "name": "BODY"
+        }
+      ],
+      "previousStatement": null,
+      "nextStatement": null,
+      "colour": 120
+    },
+
+    {
+      "type": "for_range",
+      "message0": "contar con %1 de %2 a %3 por paso %4",
       "args0":[
         {
           "type": "field_variable",
@@ -153,6 +176,12 @@ export function defineArduinoBlocks() {
           "type": "input_value",
           "name": "TO",
           "check": "Number"
+        },
+        {
+          "type": "field_number",
+          "name": "STEP",
+          "value": 1,
+          "min": 1
         }
       ],
       "message1": "hacer %1",
