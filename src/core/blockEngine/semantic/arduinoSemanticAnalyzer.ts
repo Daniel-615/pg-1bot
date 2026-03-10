@@ -169,16 +169,19 @@ export class ArduinoSemanticAnalyzer {
   }
 
   private handleIf(block: Blockly.Block) {
-
-    const condition = block.getInputTargetBlock("IF0");
-    const type = this.inferType(condition);
-    const ok=this.getConditions().handleIf(block,type);
-    return ok ?? false;
+    try{
+      const condition = block.getInputTargetBlock("CONDITION");
+      const type = this.inferType(condition);
+      const ok=this.getConditions().handleIf(block,type);
+      return ok ?? false;
+    }catch(err){
+      console.log("Error en handleIf",err)
+    }
   }
 
   private handleIfElse(block: Blockly.Block) {
 
-    const condition = block.getInputTargetBlock("IF0");
+    const condition = block.getInputTargetBlock("CONDITION");
     const type = this.inferType(condition);
     const ok=this.getConditions().handleIfElse(block, type);
     if(!ok) return;
@@ -186,7 +189,7 @@ export class ArduinoSemanticAnalyzer {
 
   private handleWhile(block: Blockly.Block) {
 
-    const condition = block.getInputTargetBlock("BOOL");
+    const condition = block.getInputTargetBlock("BOOLEAN") || block.getInputTargetBlock("BOOL");
     const type = this.inferType(condition);
 
     const val=this.getConditions().handleWhile(block,type)
@@ -202,7 +205,7 @@ export class ArduinoSemanticAnalyzer {
     const type = this.inferType(condition);
 
     if (type !== "boolean") {
-      this.addIssue(block, "La condición del DO-WHILE debe ser booleana", "error");
+      this.addIssue(block, "La condición del mientras debe ser true/false", "error");
     }
   }
 
@@ -214,12 +217,11 @@ export class ArduinoSemanticAnalyzer {
     const toType = this.inferType(block.getInputTargetBlock("TO"));
 
     if (fromType !== "number" || toType !== "number") {
-      this.addIssue(block, "Los valores del FOR deben ser numéricos", "error");
+      this.addIssue(block, "Los valores del 'mientras' deben ser numéricos", "error");
     }
 
     this.getConditions().handleForRange(block,varName)
   }
-
 
   private inferType(block: Blockly.Block | null): VarType {
 

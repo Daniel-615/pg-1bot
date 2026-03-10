@@ -11,7 +11,7 @@ export function createWorkspace(container: HTMLDivElement) {
         {
           kind: "category",
           name: "CONTROL",
-          colour: "#FFAB19",
+          colour: "#ffaa00",
           contents: [
             { kind: "block", type: "if" },
             { kind: "block", type: "if_else" },
@@ -27,7 +27,7 @@ export function createWorkspace(container: HTMLDivElement) {
         {
           "kind": "category",
           "name": "VARIABLES",
-          "colour": "#A65CFF",
+          "colour": "#fb8e3b",
           "custom": "VARIABLE"
         },
         {
@@ -40,44 +40,87 @@ export function createWorkspace(container: HTMLDivElement) {
         },
         {
           "kind": "category",
-          "name": "MATH",
-          "colour":"#5C81A6",
+          "name": "OPERADORES",
+          "colour":"#1a840a",
           "contents":[
-            {
-              "kind": "block",
-              "type": "math_number"
+            { "kind": "block", "type": "number" },
+            { "kind": "block", "type": "string" },
+            { "kind": "block", "type": "math_add" },
+            { "kind": "block", "type": "math_subtract" },
+            { "kind": "block", "type": "math_multiply" },
+            { "kind": "block", "type": "math_divide" },
+            { 
+              "kind": "block", 
+              "type": "logic_greater",
+              "inputs": {
+                "B":{
+                  "shadow": {
+                    "type": "math_number",
+                    "fields":{
+                      "NUM": 50
+                    }
+                  }
+                }
+              }
             },
-            {
+            { 
               "kind": "block",
-              "type": "string"
+              "type": "logic_less",
+              "inputs": {
+                "B":{
+                  "shadow": {
+                    "type": "math_number",
+                    "fields":{
+                      "NUM": 50
+                    }
+                  }
+                }
+              }
             },
-            {
-              "kind": "block",
-              "type": "print"
+            { 
+              "kind": "block", 
+              "type": "logic_equal",
+              "inputs": {
+                "B":{
+                  "shadow": {
+                    "type": "math_number",
+                    "fields":{
+                      "NUM": 50
+                    }
+                  }
+                }
+              }
             },
-            {
-              "kind": "block",
-              "type": "math_arithmetic"
-            },
-            {
-              "kind": "block",
-              "type": "logic_boolean"
-            },
-            {
-              "kind": "block",
-              "type": "logic_compare"
-            },
-            {
-              "kind": "block",
-              "type": "logic_operation"
-            },
-            {
-              "kind": "block",
-              "type": "logic_negate"
+            { "kind": "block", "type": "logic_and" },
+            { "kind": "block", "type": "logic_or" },
+            { "kind": "block", "type": "logic_not" },
+            { "kind": "block", "type": "print" },
+            
+            { 
+              "kind": "block", 
+              "type": "math_random",
+              "inputs": {
+                "MIN": {
+                  "shadow": {
+                    "type": "number",
+                    "fields":{
+                      "NUM": 1
+                    }
+                  }
+                },
+                "MAX":{
+                  "shadow": {
+                    "type": "number",
+                    "fields":{
+                      "NUM": 10
+                    }
+                  }
+                }
+              }
             }
           ]
         }
-      ],
+      ], 
     },
   });
   workspace.addChangeListener((event)=>{
@@ -85,20 +128,19 @@ export function createWorkspace(container: HTMLDivElement) {
       Se ejecuta el análisis semántico cada vez que se crea, borra,
       cambia o mueve un bloque, para detectar errores en tiempo real.
     */
+    if(event.isUiEvent) return;
     if(
       event.type=== Blockly.Events.BLOCK_CREATE ||
       event.type=== Blockly.Events.BLOCK_DELETE ||
       event.type=== Blockly.Events.BLOCK_CHANGE ||
       event.type=== Blockly.Events.BLOCK_MOVE
     ){
-      analyzer.analyze(workspace)
-      analyzer.startDebug(workspace);
-      analyzer.step(workspace)
+      setTimeout(()=>{
+        analyzer.analyze(workspace)
+        //analyzer.startDebug(workspace);
+        //analyzer.step(workspace)
+      },0)
     }
   })
-  setTimeout(() => {
-    Blockly.svgResize(workspace);
-  }, 100);
-
   return workspace;
 }

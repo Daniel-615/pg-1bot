@@ -74,25 +74,6 @@ ${code}
       return `${variable} = ${value};\n`;
     };
 
-    this.forBlock["math_arithmetic"] = (block) => {
-      const OPERATORS: any = {
-        ADD: "+",
-        MINUS: "-",
-        MULTIPLY: "*",
-        DIVIDE: "/",
-      };
-
-      const operator = OPERATORS[block.getFieldValue("OP")];
-
-      const left =
-        this.valueToCode(block, "A", ORDER_ATOMIC) || "0";
-
-      const right =
-        this.valueToCode(block, "B", ORDER_ATOMIC) || "0";
-
-      const code = `${left} ${operator} ${right}`;
-      return [code, ORDER_ATOMIC];
-    };
     this.forBlock["led_set"] = (block) => {
       const pin = block.getFieldValue("PIN");
       const state = block.getFieldValue("STATE");
@@ -186,21 +167,7 @@ ${code}
       const bool= block.getFieldValue("BOOL");
       return [bool.toLowerCase(), ORDER_ATOMIC]
     }
-    this.forBlock["logic_compare"] = (block) =>{
-      const OPERATORS: any={
-        EQ: "==",
-        NEQ: "!=",
-        LT: "<",
-        LTE: "<=",
-        GT: ">",
-        GTE: ">=",
-      };
-      const operator= OPERATORS[block.getFieldValue("OP")];
-      const left= this.valueToCode(block, "A", ORDER_ATOMIC) || "0";
-      const right= this.valueToCode(block, "B", ORDER_ATOMIC) || "0";
-      const code= `${left} ${operator} ${right}`;
-      return [code, ORDER_ATOMIC];
-    }
+    
     this.forBlock["for_range"] = (block) => {
       const variable = this.nameDB_!.getName(
         block.getFieldValue("VAR"),
@@ -221,5 +188,60 @@ ${code}
       const comparator = Number(step) >= 0 ? "<=" : ">=";
       return `for (int ${variable} = ${from}; ${variable} ${comparator} ${to}; ${variable} += ${step}) {\n${body}}\n`;
     };
+    this.forBlock["math_add"] =(block)=>{
+      const A=this.valueToCode(block,"A", ORDER_ATOMIC) || "0";
+      const B= this.valueToCode(block,"B", ORDER_ATOMIC) || "0";
+      return [`${A} + ${B}`, ORDER_ATOMIC];
+    }
+    this.forBlock["math_subtract"]= (block) =>{
+      const A= this.valueToCode(block, "A",ORDER_ATOMIC) || "0";
+      const B= this.valueToCode(block, "B",ORDER_ATOMIC) || "0";
+      return [`${A} - ${B}`, ORDER_ATOMIC];
+    }
+    this.forBlock["math_multiply"]= (block) =>{
+      const A= this.valueToCode(block, "A",ORDER_ATOMIC) || "0";
+      const B= this.valueToCode(block, "B",ORDER_ATOMIC) || "0";
+      return [`${A} * ${B}`, ORDER_ATOMIC];
+    }
+    this.forBlock["math_divide"]= (block) =>{
+      const A= this.valueToCode(block, "A",ORDER_ATOMIC) || "0";
+      const B= this.valueToCode(block, "B",ORDER_ATOMIC) || "0";
+      return [`${A} / ${B}`, ORDER_ATOMIC];
+    }
+    this.forBlock["logic_greater"]= (block) =>{
+      const A= this.valueToCode(block, "A",ORDER_ATOMIC) || "0";
+      const B= this.valueToCode(block, "B",ORDER_ATOMIC) || "0";
+      return [`${A} > ${B}`, ORDER_ATOMIC];
+    }
+    this.forBlock["logic_less"]= (block) =>{
+      const A= this.valueToCode(block, "A",ORDER_ATOMIC) || "0";
+      const B= this.valueToCode(block, "B",ORDER_ATOMIC) || "0";
+      return [`${A} < ${B}`, ORDER_ATOMIC];
+    }
+    this.forBlock["logic_equal"] = (block) => {
+      const A = this.valueToCode(block, "A", ORDER_ATOMIC) || "0";
+      const B = this.valueToCode(block, "B", ORDER_ATOMIC) || "0";
+      return [`${A} == ${B}`, ORDER_ATOMIC];
+    };
+    this.forBlock["math_random"] = (block) => {
+      const min = this.valueToCode(block, "MIN", ORDER_NONE) || "0";
+      const max = this.valueToCode(block, "MAX", ORDER_NONE) || "10";
+
+      return [`random(${min}, ${max})`, ORDER_ATOMIC];
+    };
+    this.forBlock["logic_and"]= (block)=>{
+      const A= this.valueToCode(block, "A", ORDER_ATOMIC) || "true";
+      const B= this.valueToCode(block, "B", ORDER_ATOMIC) || "false";
+      return [`${A} && ${B}`, ORDER_ATOMIC];
+    }
+    this.forBlock["logic_or"]= (block)=>{
+      const A= this.valueToCode(block, "A", ORDER_ATOMIC) || "false";
+      const B= this.valueToCode(block, "B", ORDER_ATOMIC) || "false";
+      return [`${A} || ${B}`, ORDER_ATOMIC];
+    }
+    this.forBlock["logic_not"]= (block)=>{
+      const value= this.valueToCode(block, "BOOL", ORDER_ATOMIC) || "false";
+      return [`!${value}`, ORDER_ATOMIC];
+    }
   }
 }

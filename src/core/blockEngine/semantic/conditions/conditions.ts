@@ -15,34 +15,34 @@ export class Conditions{
         return this.arduinoSemantic;
     }
     public handleIf(block:Blockly.Block,type: VarType){
-        const conditionBlock=block.getInputTargetBlock("IF0");
+        const conditionBlock=block.getInputTargetBlock("CONDITION");
         if(!conditionBlock){
             this.getArduinoSemantic().addIssuePublic(
                 block,
-                "La condición del IF está vacía",
+                "La condición del si está vacía",
                 "warning"
             )
         }else{
             if(type!=="boolean"){
                 this.arduinoSemantic.addIssuePublic(
                     block,
-                    "La condición del IF debe ser booleana",
+                    "La condición del si debe ser booleana",
                     "error"
                 )
-            }    // 
+            }    
         }
-        const doBlock=block.getInputTargetBlock("DO0") || block.getInputTargetBlock("DO");
-        if(!doBlock){
+        const ifBody=block.getInputTargetBlock("IF_BODY")
+        if(!ifBody){
             this.getArduinoSemantic().addIssuePublic(
                 block,
-                "El cuerpo del IF está vacío",
+                "El cuerpo del si está vacío",
                 "error"
             )
             return false;
         }; 
         try{
             this.getSymbolTable().enterScope();
-            this.getArduinoSemantic().visitPublic(doBlock);
+            this.getArduinoSemantic().visitPublic(ifBody);
             return true;
             
         }catch(err){
@@ -53,17 +53,40 @@ export class Conditions{
         }
     }
     public handleIfElse(block: Blockly.Block,type: VarType){
-        if(type!=="boolean"){
+        const conditionBlock=block.getInputTargetBlock("CONDITION");
+        if(!conditionBlock){
             this.getArduinoSemantic().addIssuePublic(
                 block,
-                "La condición del IF debe ser booleana",
+                "La condición del si está vacía",
+                "warning"
+            )
+        }else{
+            if(type!=="boolean"){
+            this.getArduinoSemantic().addIssuePublic(
+                block,
+                "La condición del si debe ser booleana",
                 "error"
             )
             return false;
+            }
         }
         try{
-            const doBlock=block.getInputTargetBlock("DO0")
-            const doElse=block.getInputTargetBlock("ELSE")
+            const doBlock=block.getInputTargetBlock("IF_BODY")
+            if(!doBlock){
+                this.getArduinoSemantic().addIssuePublic(
+                block,
+                "El cuerpo del entonces está vacío.",
+                "error"
+                )
+            }
+            const doElse=block.getInputTargetBlock("ELSE_BODY")
+            if(!doElse){
+                this.getArduinoSemantic().addIssuePublic(
+                    block,
+                    "El cuerpo del sino está vacío",
+                    "warning"
+                )
+            }
             if(!doBlock && doElse) return false;
             if(doBlock){
                 this.getSymbolTable().enterScope();
@@ -82,14 +105,30 @@ export class Conditions{
 
     }
     public handleWhile(block:Blockly.Block,type: VarType){
-        if(type!=="boolean"){
+        const condition=block.getInputTargetBlock("CONDITION")
+        if(!condition){
             this.getArduinoSemantic().addIssuePublic(
                 block,
-                "La condición del WHILE debe ser booleana",
+                "La condición del mientras está vacía.",
+                "error"
+            )
+        }else{
+            if(type!=="boolean"){
+                this.getArduinoSemantic().addIssuePublic(
+                    block,
+                    "La condición del mientras debe ser booleana",
+                    "error"
+                )
+            }
+        }
+        const doBlock=block.getInputTargetBlock("BODY")
+        if(!doBlock){
+            this.getArduinoSemantic().addIssuePublic(
+                block,
+                "El cuerpo del mientras está vacío",
                 "error"
             )
         }
-        const doBlock=block.getInputTargetBlock("DO")
         if(!doBlock) return false;
         try{
 
@@ -104,8 +143,23 @@ export class Conditions{
         }
     }
     public handleDoWhile(block:Blockly.Block){
-        const doBlock=block.getInputTargetBlock("DO")
-        if(!doBlock) return false;
+        const doBlock=block.getInputTargetBlock("BODY")
+        if(!doBlock){
+            this.getArduinoSemantic().addIssuePublic(
+                block,
+                "El cuerpo de hacer no debe estar vacío.",
+                "error"
+            )
+        }
+        const condition=block.getInputTargetBlock("CONDITION")
+        if(!condition){
+            this.getArduinoSemantic().addIssuePublic(
+                block,
+                "La condición de mientras no debe estar vacía.",
+                "error"
+            )
+        }
+        if(!doBlock || !condition) return false;
         try{
             this.getSymbolTable().enterScope();
             this.getArduinoSemantic().visitPublic(doBlock);
@@ -118,6 +172,22 @@ export class Conditions{
         }
     }
     public handleForRange(block:Blockly.Block,varName: string){
+        const from=block.getInputTargetBlock("FROM");
+        if(!from){
+            this.getArduinoSemantic().addIssuePublic(
+                block,
+                "'de' debe llevar un entero",
+                "warning"
+            )
+        }
+        const to=block.getInputTargetBlock("TO");
+        if(!to){
+            this.getArduinoSemantic().addIssuePublic(
+                block,
+                "'to' debe llevar un entero",
+                "warning"
+            )
+        }
         try{
             this.getSymbolTable().enterScope();
             const declared=this.getSymbolTable().declare(varName,"number");
@@ -129,8 +199,15 @@ export class Conditions{
                 )
             }
             this.getSymbolTable().assign(varName,"number");
-            const doBlock=block.getInputTargetBlock("DO")
-            if(!doBlock) return;
+            const doBlock=block.getInputTargetBlock("BODY")
+            if(!doBlock){
+                this.getArduinoSemantic().addIssuePublic(
+                    block,
+                    "el cuerpo de 'hacer' no debe estar vacío.",
+                    "error"
+                )
+                return;  
+            } 
             this.getArduinoSemantic().visitPublic(doBlock);
             this.getSymbolTable().exitScope();
         }catch(err){
