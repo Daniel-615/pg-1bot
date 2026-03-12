@@ -20,8 +20,16 @@ export class SymbolTable{
     constructor(){
         this.scopeStack.push(this.globalScope);
     }
+    
+    reset(){
+        this.globalScope = new Map();
+        this.scopeStack = [this.globalScope];
+        this.snapshots = [];
+        this.stepCounter = 0;
+    }
     public cloneState() {
-    return this.scopeStack.map(scope => new Map(scope));
+        /*Makes a copy of the symbol table state */
+        return this.scopeStack.map(scope => new Map(scope));
     }
     enterScope(){
         const newScope= new Map<string,SymbolInfo>();
@@ -52,11 +60,12 @@ export class SymbolTable{
         return true;
     }
 
-    assign(name: string, value: any): boolean{
+    assign(name: string, value: any, type:VarType): boolean{
         const symbol=this.lookup(name);
         if(!symbol) return false;
 
         symbol.value=value;
+        symbol.type=type;
         symbol.initialized=true;
 
         this.saveSnapshot();

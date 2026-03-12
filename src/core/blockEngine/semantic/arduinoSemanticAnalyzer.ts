@@ -24,10 +24,8 @@ export class ArduinoSemanticAnalyzer {
   private history: any[] = [];
   private currentIndex = 0;
 
-
   analyze(workspace: Blockly.Workspace) {
     this.debugMode = false;
-
     this.symbolTable = new SymbolTable();
     this.variables= new Variables(this.symbolTable,this);
     this.conditions= new Conditions(this.symbolTable,this);

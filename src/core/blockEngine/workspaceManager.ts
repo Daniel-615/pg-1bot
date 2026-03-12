@@ -4,7 +4,7 @@ import {ArduinoSemanticAnalyzer} from "./semantic/arduinoSemanticAnalyzer";
 export function createWorkspace(container: HTMLDivElement) {
   //importar el analizador de errores
   const analyzer= new ArduinoSemanticAnalyzer();
-  const workspace = Blockly.inject(container, {
+  const workspace = Blockly.inject(container, {  
     toolbox: {
       kind: "categoryToolbox",
       contents: [
@@ -177,7 +177,7 @@ export function createWorkspace(container: HTMLDivElement) {
   const startBlock=workspace.newBlock("program_start");
   startBlock.initSvg();
   startBlock.render();
-  startBlock.moveBy(500,20);
+  startBlock.moveBy(50,20);
   startBlock.setDeletable(false);
   startBlock.setMovable(false);
   workspace.addChangeListener((event)=>{
