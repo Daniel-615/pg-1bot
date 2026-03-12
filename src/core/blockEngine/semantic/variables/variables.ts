@@ -26,9 +26,9 @@ export class Variables {
 
         const symbol = this.getSymbolTable().use(name);
         if (!symbol) {
-            this.getArduinoSemantic().addIssuePublic(block, `Variable no declarada: ${name}`, "error");
+            this.getArduinoSemantic().addIssuePublic(block, `Variable no declarada`, "error");
         } else if (!symbol.initialized) {
-            this.getArduinoSemantic().addIssuePublic(block, `Variable no inicializada: ${name}`, "error");
+            this.getArduinoSemantic().addIssuePublic(block, `Variable no inicializada`, "error");
         }
     }
 
@@ -66,7 +66,7 @@ export class Variables {
                     if (block) {
                         this.getArduinoSemantic().addIssuePublic(
                             block,
-                            `Variable declarada pero no utilizada: ${symbol.name}`,
+                            `Variable declarada pero no utilizada`,
                             "warning"
                         );
                     }

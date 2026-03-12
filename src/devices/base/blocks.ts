@@ -32,19 +32,32 @@ export function defineArduinoBlocks() {
         "helpUrl": ""
     },
     {
+      "type": "program_start",
+      "message0": "🤖 1bot-start %1",
+      "args0": [
+        {
+          "type": "input_statement",
+          "name": "DO"
+        } 
+      ],
+      "colour": "#7fe1f5",
+      "tooltip": "Bloque principal por donde comienza el programa",
+      "helpUrl": ""
+    },
+    {
       "type": "print",
       "message0": "imprimir %1",
       "args0": [
         {
           "type": "input_value",
           "name": "TEXT",
-          "check": "String"
+          "check": ["String", "Number", "Boolean"]
         }
       ],
       "previousStatement": null,
       "nextStatement": null,
       "colour": 160,
-      "tooltip": "Imprime un string por Serial",
+      "tooltip": "Imprime un valor por Serial",
       "helpUrl": ""
     },
     {

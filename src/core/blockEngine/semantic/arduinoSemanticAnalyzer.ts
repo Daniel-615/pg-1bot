@@ -3,6 +3,7 @@ import { SymbolTable } from "./symbolTable";
 import type { VarType } from "./symbolTable";
 import { Variables } from "./variables/variables";
 import { Conditions } from "./conditions/conditions";
+import { Operators } from "./operators/operators";
 type Severity = "error" | "warning" | "suggestion";
 
 interface Issue {
@@ -13,8 +14,9 @@ interface Issue {
 export class ArduinoSemanticAnalyzer {
 
   private symbolTable!: SymbolTable;
-  private variables!: Variables
-  private conditions!: Conditions
+  private variables!: Variables;
+  private conditions!: Conditions;
+  private operators!: Operators;
   private errors!: Map<string, Issue[]>;
 
   private debugMode = false;
@@ -29,7 +31,12 @@ export class ArduinoSemanticAnalyzer {
     this.symbolTable = new SymbolTable();
     this.variables= new Variables(this.symbolTable,this);
     this.conditions= new Conditions(this.symbolTable,this);
+    this.operators= new Operators(this);
     this.errors = new Map();
+
+    workspace.getAllBlocks(false).forEach(block=>{
+      block.setWarningText(null);
+    })
     const topBlocks = workspace.getTopBlocks(true);
 
     for (const block of topBlocks) {
@@ -128,9 +135,38 @@ export class ArduinoSemanticAnalyzer {
       case "for_range":
         this.handleForRange(block);
         break;
+
+      //math operators
+      case "math_add":
+      case "math_subtract":
+      case "math_multiply":
+      case "math_divide": 
+        this.handleOperatorMath(block);
+        this.handleCheckUnusedExpression(block);
+      if(block.type==="math_add"){
+        this.handleVariablePlusZero(block);
+      }
+      if(block.type==="math_subtract"){
+        this.handleSubtractOperator(block);
+        this.handleVariableSubtractZero(block);
+      }
+      if(block.type==="math_multiply"){
+        this.handleMultiply(block);
+      }
+      if(block.type==="math_divide"){
+        this.handleDivide(block);
+      }
+      break;
+      //logic operators
+      case "logic_and":
+      case "logic_or":
+      case "logic_not":
+      case "logic_less":
+      case "logic_equals":
+        this.handleOperatorLogic(block);
+        break;
     }
 
-    this.checkDivisionByZero(block);
 
     if (this.debugMode) {
 
@@ -152,8 +188,21 @@ export class ArduinoSemanticAnalyzer {
       this.visit(block.getNextBlock());
     }
   }
-
-
+  private handleVariableSubtractZero(block:Blockly.Block){
+    const A=block.getInputTargetBlock("A");
+    const B=block.getInputTargetBlock("B");
+    if(!A || !B) return;
+    this.operators.handleVariableSubtractZero(block,A,B);
+  }
+  private handleSubtractOperator(block:Blockly.Block){
+    const A=block.getInputTargetBlock("A");
+    const B=block.getInputTargetBlock("B");
+    if(!A || !B){
+      console.log("HandleSubtractOperator A o B se encuentran vacíos.")
+      return;
+    }
+    this.operators.handleSubtract(block,A, B)
+  }
   private handleAssignment(block: Blockly.Block) {
     const name = block.getFieldValue("VAR");
     const valueBlock = block.getInputTargetBlock("VALUE");
@@ -221,25 +270,131 @@ export class ArduinoSemanticAnalyzer {
     }
 
     this.getConditions().handleForRange(block,varName)
+  } 
+  private handleMultiply(block:Blockly.Block){
+    const A=block.getInputTargetBlock("A");
+    const B= block.getInputTargetBlock("B");
+    if(!A||!B) return;
+    this.operators.handleMultiply(block,A,B);
   }
+  private handleDivide(block:Blockly.Block){
+    const B= block.getInputTargetBlock("B");
+    const A= block.getInputTargetBlock("A");
+    if(!A||!B) return;
+    this.operators.handleDivide(block,A,B)
+  }
+  private handleVariablePlusZero(block:Blockly.Block){
+    const A=block.getInputTargetBlock("A");
+    const B=block.getInputTargetBlock("B");
+    if(!A || !B) return;
+    this.operators.handleVariablePlusZero(block,A,B);
+  }
+  private handleCheckUnusedExpression(block:Blockly.Block){
+    this.operators.checkUnusedExpression(block);
+  }
+  private handleOperatorMath(block: Blockly.Block){
+    const A= block.getInputTargetBlock("A");
+    const B= block.getInputTargetBlock("B");
+    if(!A || !B) return;
+    const typeA=this.inferType(A);
+    const typeB=this.inferType(B);
 
+    switch(block.type){
+      case "math_add":
+      case "math_subtract":
+      case "math_multiply":
+      case "math_divide":
+        if(typeA!=="number" || typeB !== "number"){
+          this.addIssue(
+            block,
+            "Los operadores matemáticos requieren valores numéricos",
+            "warning"
+          )
+        }
+        if(block.type === "math_divide"){
+          if(B?.type === "math_number"){
+            const value = Number(B.getFieldValue("NUM"));
+            if(value === 0){
+              this.addIssue(
+                block,
+                "No se puede realizar una división por cero",
+                "error"
+              );
+            }
+          }
+        }
+        break;
+    }
+  }
+  private handleOperatorLogic(block: Blockly.Block){
+    const A=block.getInputTargetBlock("A");
+    const B=block.getInputTargetBlock("B");
+
+    const typeA= this.inferType(A);
+    const typeB= this.inferType(B);
+    switch(block.type){
+      case "logic_and":
+      case "logic_or":
+        if(typeA!=="boolean" || typeB!=="boolean"){
+          this.addIssue(block,
+            "Los operadores AND/OR deben usar valores booleanos",
+            "error"
+          )
+        }
+        break;
+      case "logic_not":
+        if(typeA!=="boolean"){
+          this.addIssue(
+            block,
+            "El operador NOT solo funciona con booleanos",
+            "error"
+          )
+        }
+        break;
+      case "logic_greater":
+      case "logic_less":
+        if(typeA!=="number" || typeB !=="number"){
+          this.addIssue(
+            block,
+            "Las comparaciones < y > deben usar números ",
+            "warning"
+          );
+        }
+        break;
+      case "logic_equals":
+        if(typeA!==typeB){
+          this.addIssue(block,
+            "Estás comparando valores de distinto tipo",
+            "suggestion"
+          )
+        }
+        break;
+    }
+    
+  }
   private inferType(block: Blockly.Block | null): VarType {
 
     if (!block) return null;
 
     switch (block.type) {
-
+      case "number":
       case "math_number":
-      case "math_arithmetic":
+      case "math_add":
+      case "math_subtract":
+      case "math_multiply":
+      case "math_divide":
         return "number";
 
       case "logic_boolean":
-      case "logic_compare":
-      case "logic_operation":
-      case "logic_negate":
+      case "logic_and":
+      case "logic_or":
+      case "logic_not":
+      case "logic_less":
+      case "logic_equals":
+      case "logic_greater":
         return "boolean";
 
-      case "text":
+      case "string":
         return "string";
 
       case "variables_get":
@@ -252,22 +407,7 @@ export class ArduinoSemanticAnalyzer {
   }
 
 
-  private checkDivisionByZero(block: Blockly.Block) {
-
-    if (block.type !== "math_arithmetic") return;
-
-    if (block.getFieldValue("OP") === "DIVIDE") {
-
-      const divisor = block.getInputTargetBlock("B");
-
-      if (
-        divisor?.type === "math_number" &&
-        divisor.getFieldValue("NUM") === "0"
-      ) {
-        this.addIssue(block, "División por cero", "error");
-      }
-    }
-  }
+  
   public addIssuePublic(block: Blockly.Block, message: string, severity: Severity){
     this.addIssue(block,message,severity);
   }

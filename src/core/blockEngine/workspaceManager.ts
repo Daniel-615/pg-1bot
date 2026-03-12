@@ -13,50 +13,96 @@ export function createWorkspace(container: HTMLDivElement) {
           name: "CONTROL",
           colour: "#ffaa00",
           contents: [
-            { kind: "block", type: "if" },
-            { kind: "block", type: "if_else" },
-            { kind: "block", type: "while_repeat" },
-            { kind: "block", type: "do_while" },
-            { kind: "block", type: "for_range" },
-            { kind: "block", type: "break" },
-            { kind: "block", type: "continue" },
-            { kind: "block", type: "delay_ms" },
-            { kind: "block", type: "repeat_until"},
+            { kind: "block",
+              type: "if" 
+            },
+            { kind: "block",
+              type: "if_else" 
+            },
+            { kind: "block",
+              type: "while_repeat" 
+            },
+            { kind: "block",
+              type: "do_while" 
+            },
+            { kind: "block",
+              type: "for_range" 
+            },
+            { kind: "block",
+              type: "break" 
+            },
+            { kind: "block",
+              type: "continue" 
+            },
+            { kind: "block",
+              type: "delay_ms" 
+            },
+            { kind: "block",
+              type: "repeat_until"
+            },
           ],
         },
         {
           "kind": "category",
           "name": "VARIABLES",
           "colour": "#fb8e3b",
-          "custom": "VARIABLE"
+          "custom": "VARIABLE",
+        },
+        {
+          kind: "category",
+          name: "TIPOS",
+          colour: "#c54040",
+          contents: [
+            { 
+              kind: "block",
+              type: "number" 
+            },
+            {
+              kind: "block",
+              type: "string" 
+            }
+          ]
         },
         {
           kind: "category",
           name: "HARDWARE",
           colour: "#FF6680",
           contents: [
-            { kind: "block", type: "led_set" },
+            { kind: "block",
+              type: "led_set" 
+            },
+            { kind: "block",
+              type: "print" 
+            },
           ],
         },
         {
-          "kind": "category",
-          "name": "OPERADORES",
-          "colour":"#1a840a",
-          "contents":[
-            { "kind": "block", "type": "number" },
-            { "kind": "block", "type": "string" },
-            { "kind": "block", "type": "math_add" },
-            { "kind": "block", "type": "math_subtract" },
-            { "kind": "block", "type": "math_multiply" },
-            { "kind": "block", "type": "math_divide" },
+          kind: "category",
+          name: "OPERADORES",
+          colour:"#1a840a",
+          contents:[
+            { kind: "block", 
+              type: "math_add" 
+            },
+            { kind: "block",
+              type: "math_subtract" 
+            },
             { 
-              "kind": "block", 
-              "type": "logic_greater",
-              "inputs": {
+              kind: "block",
+              type: "math_multiply" 
+            },
+            {
+              kind: "block",
+              type: "math_divide" 
+            },
+            { 
+              kind: "block", 
+              type: "logic_greater",
+              inputs: {
                 "B":{
-                  "shadow": {
-                    "type": "math_number",
-                    "fields":{
+                  shadow: {
+                    type: "number",
+                    fields:{
                       "NUM": 50
                     }
                   }
@@ -64,13 +110,13 @@ export function createWorkspace(container: HTMLDivElement) {
               }
             },
             { 
-              "kind": "block",
-              "type": "logic_less",
-              "inputs": {
+              kind: "block",
+              type: "logic_less",
+              inputs: {
                 "B":{
-                  "shadow": {
-                    "type": "math_number",
-                    "fields":{
+                  shadow: {
+                    type: "number",
+                    fields:{
                       "NUM": 50
                     }
                   }
@@ -78,40 +124,45 @@ export function createWorkspace(container: HTMLDivElement) {
               }
             },
             { 
-              "kind": "block", 
-              "type": "logic_equal",
-              "inputs": {
+              kind: "block", 
+              type: "logic_equal",
+              inputs: {
                 "B":{
-                  "shadow": {
-                    "type": "math_number",
-                    "fields":{
+                  shadow: {
+                    type: "number",
+                    fields:{
                       "NUM": 50
                     }
                   }
                 }
               }
             },
-            { "kind": "block", "type": "logic_and" },
-            { "kind": "block", "type": "logic_or" },
-            { "kind": "block", "type": "logic_not" },
-            { "kind": "block", "type": "print" },
+            { kind: "block",
+              type: "logic_and" 
+            },
+            { kind: "block",
+              type: "logic_or" 
+            },
+            { kind: "block",
+              type: "logic_not" 
+            },
             
             { 
-              "kind": "block", 
-              "type": "math_random",
-              "inputs": {
+              kind: "block", 
+              type: "math_random",
+              inputs: {
                 "MIN": {
-                  "shadow": {
-                    "type": "number",
-                    "fields":{
+                  shadow: {
+                    type: "number",
+                    fields:{
                       "NUM": 1
                     }
                   }
                 },
                 "MAX":{
-                  "shadow": {
-                    "type": "number",
-                    "fields":{
+                  shadow: {
+                    type: "number",
+                    fields:{
                       "NUM": 10
                     }
                   }
@@ -123,6 +174,12 @@ export function createWorkspace(container: HTMLDivElement) {
       ], 
     },
   });
+  const startBlock=workspace.newBlock("program_start");
+  startBlock.initSvg();
+  startBlock.render();
+  startBlock.moveBy(500,20);
+  startBlock.setDeletable(false);
+  startBlock.setMovable(false);
   workspace.addChangeListener((event)=>{
     /* 
       Se ejecuta el análisis semántico cada vez que se crea, borra,

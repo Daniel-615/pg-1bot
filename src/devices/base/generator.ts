@@ -33,19 +33,23 @@ export class ArduinoBaseGenerator extends Blockly.Generator {
   }
 
   finish(code: string) {
-    const setupCode = Array.from(this.setupDefinitions).join("\n");
-
-    return `void setup() {
-${setupCode}
-}
-
-void loop() {
-${code}
-}
-`;
+    return code;
   }
 
   private defineBlocks() {
+    this.forBlock["program_start"] =(block)=>{
+      const body= this.statementToCode(block, "DO");
+
+      return `
+        void setup() {
+          Serial.begin(9600);
+          ${Array.from(this.setupDefinitions).join("\n  ")}
+        }
+        void loop() {
+        ${body}
+        }
+      `;
+    };
     this.forBlock["string"] = (block) => {
       const text = block.getFieldValue("STRING") || "";
       return [`"${text}"`, ORDER_ATOMIC];
@@ -162,7 +166,10 @@ ${code}
       const num = block.getFieldValue("NUM");
       return [num, ORDER_ATOMIC];
     };
-
+    this.forBlock["number"] = (block) => {
+      const num = block.getFieldValue("NUM") || 0;
+      return [`${num}`, ORDER_ATOMIC];
+    };
     this.forBlock["logic_boolean"] = (block) =>{
       const bool= block.getFieldValue("BOOL");
       return [bool.toLowerCase(), ORDER_ATOMIC]
