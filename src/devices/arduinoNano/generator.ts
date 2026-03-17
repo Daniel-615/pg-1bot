@@ -1,19 +1,9 @@
 import * as Blockly from "blockly";
 import { ArduinoBaseGenerator } from "../base/generator/generator";
 
-const ORDER_ATOMIC = 0;
-
-export class ArduinoUnoGenerator extends ArduinoBaseGenerator {
+export class ArduinoNanoGenerator extends ArduinoBaseGenerator {
   constructor() {
-    super("uno");
-
-    this.forBlock["temporizador"] = () => {
-      return [`millis()`, ORDER_ATOMIC];
-    };
-
-    this.forBlock["reiniciar_temporizador"] = () => {
-      return `timer = millis();\n`;
-    };
+    super("ArduinoNano");
   }
 
   init(workspace: Blockly.Workspace) {

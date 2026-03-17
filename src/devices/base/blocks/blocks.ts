@@ -1,9 +1,11 @@
 import * as Blockly from "blockly";
 import { defineArduinoControlBlocks } from "./control/control";
-import { defineArduinoOperatorsBlocks } from "./operators/operators";
+import { defineArdunoOperatorMathematicBlocks } from "./operators/operatorsMathematic";
+import { defineArduinoOperatorsLogicBlocks } from "./operators/operatorsLogic";
 export function defineArduinoBlocks() {
     defineArduinoControlBlocks();
-    defineArduinoOperatorsBlocks();
+    defineArdunoOperatorMathematicBlocks();
+    defineArduinoOperatorsLogicBlocks();
     Blockly.common.defineBlocksWithJsonArray([
     {
         "type": "led_set",
