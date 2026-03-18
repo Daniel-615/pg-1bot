@@ -12,6 +12,14 @@ export interface ExecutionSnapshot{
     step: number;
     scopes: Map<string, SymbolInfo>[];
 }
+export interface SymbolTableRow{
+    name: string;
+    type: VarType;
+    value: any;
+    initialized: boolean;
+    used: boolean;
+    scopeLevel: number;
+}
 export class SymbolTable{
     private globalScope: Map <string, SymbolInfo>= new Map();
     private scopeStack: Map <string, SymbolInfo>[]= [];
@@ -111,6 +119,18 @@ export class SymbolTable{
     }
     getFinalState(): Map <string, SymbolInfo>[]{
         return this.scopeStack;
+    }
+    getRows(): SymbolTableRow[] {
+        return this.scopeStack.flatMap(scope =>
+            Array.from(scope.values()).map(symbol => ({
+                name: symbol.name,
+                type: symbol.type,
+                value: symbol.value,
+                initialized: symbol.initialized,
+                used: symbol.used,
+                scopeLevel: symbol.scopeLevel
+            }))
+        );
     }
      toFlatObject() {
     const result: any = {};

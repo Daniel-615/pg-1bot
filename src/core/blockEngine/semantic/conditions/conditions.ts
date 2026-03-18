@@ -198,7 +198,7 @@ export class Conditions{
                     "error"
                 )
             }
-            this.getSymbolTable().assign(varName,"number");
+            this.getSymbolTable().assign(varName, null, "number");
             const doBlock=block.getInputTargetBlock("BODY")
             if(!doBlock){
                 this.getArduinoSemantic().addIssuePublic(

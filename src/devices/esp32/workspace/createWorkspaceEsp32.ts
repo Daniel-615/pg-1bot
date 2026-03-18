@@ -1,5 +1,11 @@
+import type { SymbolTableRow } from "../../../core/blockEngine/semantic/symbolTable";
 import { createWorkspace } from "../../../core/blockEngine/workspaceManager";
-import { esp32Categories } from "./esp32Categories";
-export function createWorkspaceEsp32(container:HTMLDivElement){
-    return createWorkspace(container,esp32Categories)
+import { esp32WifiCategories } from "./esp32WifiCategories";
+
+type WorkspaceOptions = {
+    onSymbolTableChange?: (rows: SymbolTableRow[]) => void;
+};
+
+export function createWorkspaceEsp32(container:HTMLDivElement, options: WorkspaceOptions = {}){
+    return createWorkspace(container,esp32WifiCategories, options)
 }

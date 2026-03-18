@@ -10,6 +10,10 @@ export const typesCategories=[
         },
         {
           kind: "block",
+          type: "logic_boolean",
+        },
+        {
+          kind: "block",
           type: "string",
         },
       ],

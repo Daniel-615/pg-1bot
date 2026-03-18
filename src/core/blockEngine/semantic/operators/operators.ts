@@ -46,8 +46,8 @@ export class Operators{
                 }
             }
             if(A?.type=="variables_get" && B?.type==="variables_get"){
-                const varA=A.getFieldValue("VAR");
-                const varB=B.getFieldValue("VAR");
+                const varA=this.getArduinoSemantic().getVariableName(A);
+                const varB=this.getArduinoSemantic().getVariableName(B);
                 if(varA===varB){
                     this.getArduinoSemantic().addIssuePublic(
                         block,

@@ -21,7 +21,7 @@ export class Variables {
     }
 
     public handleVariableUse(block: Blockly.Block) {
-        const name = block.getFieldValue("VAR");
+        const name = this.getArduinoSemantic().getVariableName(block);
         if (!name) return;
 
         const symbol = this.getSymbolTable().use(name);
@@ -32,7 +32,7 @@ export class Variables {
         }
     }
 
-    public checkOrDeclareVariable(name: string | null, inferredType: VarType, block: Blockly.Block): void {
+    public checkOrDeclareVariable(name: string | null, inferredType: VarType, inferredValue: any, block: Blockly.Block): void {
         if (!name) return;
 
         const symbol = this.getSymbolTable().lookup(name);
@@ -40,7 +40,9 @@ export class Variables {
             const success = this.getSymbolTable().declare(name, inferredType);
             if (!success) {
                 this.getArduinoSemantic().addIssuePublic(block, `Variable duplicada: ${name}`, "error");
+                return;
             }
+            this.getSymbolTable().assign(name, inferredValue, inferredType);
             return;
         }
 
@@ -52,7 +54,7 @@ export class Variables {
             );
         }
 
-        this.getSymbolTable().assign(name, inferredType);
+        this.getSymbolTable().assign(name, inferredValue, inferredType);
     }
 
     public checkUnusedVariables(workspace: Blockly.Workspace) {
@@ -61,7 +63,7 @@ export class Variables {
             scope.forEach(symbol => {
                 if (!symbol.used) {
                     const block = workspace.getAllBlocks(false).find(
-                        b => b.type === "variables_set" && b.getFieldValue("VAR") === symbol.name
+                        b => b.type === "variables_set" && this.getArduinoSemantic().getVariableName(b) === symbol.name
                     );
                     if (block) {
                         this.getArduinoSemantic().addIssuePublic(

@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import * as Blockly from "blockly";
 import { createWorkspaceManager } from "./devices/base/workspace/managerWorkspace";
+import type { SymbolTableRow } from "./core/blockEngine/semantic/symbolTable";
 import { compileArduino } from "./core/codeEngine/arduinoCompiler";
 import "./App.css";
+
 function App() {
   const blocklyDiv = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<Blockly.Workspace | null>(null);
@@ -11,12 +13,14 @@ function App() {
   const [board, setBoard] = useState("esp32");
   const [projectName, setProjectName] = useState("Sin título");
   const [activeTab, setActiveTab] = useState<"blocks" | "code">("blocks");
-  const [connectionType, setConnectionType] = useState<
+  const [connectionType] = useState<
     "usb" | "bluetooth" | "wifi"
   >("usb");
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected] = useState(false);
   const [deviceMenuOpen, setDeviceMenuOpen] = useState(false);
   const [activeMode, setActiveMode] = useState<"cargar" | "envivo">("envivo");
+  const [symbolRows, setSymbolRows] = useState<SymbolTableRow[]>([]);
+  const [debugMode, setDebugMode] = useState(false);
 
   const devices = [
     { id: "esp32", name: "ESP32", img: "/devices/esp32.webp" },
@@ -25,6 +29,7 @@ function App() {
     { id: "nano", name: "Arduino Nano", img: "/devices/arduino_nano.webp" },
     { id: "codey", name: "Codey", img: "/devices/Codey.webp" },
   ];
+
   useEffect(() => {
     if (!blocklyDiv.current) return;
 
@@ -33,7 +38,9 @@ function App() {
       workspaceRef.current = null;
     }
 
-    workspaceRef.current = createWorkspaceManager(blocklyDiv.current, board);
+    workspaceRef.current = createWorkspaceManager(blocklyDiv.current, board, {
+      onSymbolTableChange: setSymbolRows,
+    });
 
     const onChange = () => {
       if (!workspaceRef.current) return;
@@ -42,7 +49,6 @@ function App() {
     };
 
     workspaceRef.current.addChangeListener(onChange);
-
     setCode(compileArduino(workspaceRef.current, board));
 
     return () => {
@@ -51,8 +57,9 @@ function App() {
         workspaceRef.current.dispose();
         workspaceRef.current = null;
       }
+      setSymbolRows([]);
     };
-  }, [board]); 
+  }, [board]);
 
   useEffect(() => {
     if (!workspaceRef.current) return;
@@ -61,6 +68,7 @@ function App() {
 
   const handleRun = () => alert("Ejecutar: Iniciando ejecución del código...");
   const handleStop = () => alert("Detener: Deteniendo la ejecución...");
+  const handleToggleDebug = () => setDebugMode((current) => !current);
   const handleUpload = () => {
     const currentDevice = devices.find((d) => d.id === board);
     alert(`Cargar: Subiendo código a ${currentDevice?.name || board}...`);
@@ -70,30 +78,39 @@ function App() {
   const handleFile = () => alert("Menú Archivo: Nuevo, Abrir, Guardar como...");
   const handleEdit = () =>
     alert("Menú Editar: Deshacer, Rehacer, Copiar, Pegar...");
-  const handleZoomIn = () => alert("Zoom +: Acercando workspace...");
-  const handleZoomOut = () => alert("Zoom -: Alejando workspace...");
-  const handleCenter = () =>
-    alert("Centrar: Centrando bloques en el workspace...");
   const handleCopyCode = () => {
     navigator.clipboard
       .writeText(code)
       .then(() => alert("Código copiado al portapapeles"))
       .catch(() => alert("Error al copiar el código"));
   };
+
   const handleDownloadCode = () => {
+    const suggestedName = projectName.trim() || "proyecto";
+    const requestedName = window.prompt(
+      "Nombre del archivo .ino",
+      suggestedName
+    );
+
+    if (requestedName === null) return;
+
+    const sanitizedName =
+      requestedName.trim().replace(/[<>:\"/\\|?*\x00-\x1F]/g, "_") || "proyecto";
+
     const blob = new Blob([code], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${projectName.replace(/\s+/g, "_")}.ino`;
+    a.download = `${sanitizedName.replace(/\s+/g, "_")}.ino`;
     a.click();
     URL.revokeObjectURL(url);
-    alert(`Descargando: ${projectName}.ino`);
   };
+
   const handleModeChange = (mode: "cargar" | "envivo") => {
     setActiveMode(mode);
     alert(`Modo cambiado a: ${mode === "cargar" ? "Cargar" : "En vivo"}`);
   };
+
   const handleFullscreen = () =>
     alert("Pantalla completa: Expandiendo vista...");
   const handleRotate = () => alert("Rotar: Rotando vista del dispositivo...");
@@ -102,11 +119,16 @@ function App() {
     <div className="app-container">
       <header className="header">
         <div className="header-left">
-          <div className="logo">
+          <div
+            className="logo"
+            onClick={() => window.open("https://1bot.org", "_blank")}
+            style={{ cursor: "pointer" }}
+          >
             <img src="logo.webp" alt="1bot-logo" />
           </div>
 
           <nav className="nav-menu">
+            |
             <button className="nav-btn" onClick={handleFile}>
               <span className="nav-text">Archivo</span>
             </button>
@@ -131,7 +153,13 @@ function App() {
 
         <div className="header-right">
           <button className="action-btn run-btn" onClick={handleRun}>
-            <span className="btn-text">Ejecutar</span>
+            <span className="btn-text">Correr</span>
+          </button>
+          <button
+            className={`action-btn debug-btn ${debugMode ? "active" : ""}`}
+            onClick={handleToggleDebug}
+          >
+            <span className="btn-text">{debugMode ? "Salir debug" : "Debug"}</span>
           </button>
           <button className="action-btn stop-btn" onClick={handleStop}>
             <span className="btn-text">Detener</span>
@@ -240,12 +268,62 @@ function App() {
             >
               Código
             </button>
+
+            {activeTab === "code" && (
+              <div className="code-actions">
+                <button className="code-btn" onClick={handleCopyCode}>
+                  Copiar
+                </button>
+                <button className="code-btn download-btn" onClick={handleDownloadCode}>
+                  Descargar .ino
+                </button>
+              </div>
+            )}
           </div>
 
           <div
             className={`workspace ${activeTab === "blocks" ? "visible" : "hidden"}`}
           >
             <div ref={blocklyDiv} className="blockly-container" />
+            {debugMode && <aside className="symbol-table-panel">
+              <div className="symbol-table-header">
+                <h3>Tabla de simbolos</h3>
+                <span>{symbolRows.length} registros</span>
+              </div>
+
+              {symbolRows.length === 0 ? (
+                <p className="symbol-table-empty">
+                  Aun no hay variables registradas en el analisis.
+                </p>
+              ) : (
+                <div className="symbol-table-scroll">
+                  <table className="symbol-table">
+                    <thead>
+                      <tr>
+                        <th>Nombre</th>
+                        <th>Tipo</th>
+                        <th>Valor</th>
+                        <th>Init</th>
+                        <th>Uso</th>
+                        <th>Scope</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {symbolRows.map((row, index) => (
+                        <tr key={`${row.name}-${row.scopeLevel}-${index}`}>
+                          <td>{row.name}</td>
+                          <td>{row.type ?? "null"}</td>
+                          <td>{row.value === null ? "null" : String(row.value)}</td>
+                          <td>{row.initialized ? "si" : "no"}</td>
+                          <td>{row.used ? "si" : "no"}</td>
+                          <td>{row.scopeLevel}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </aside>}
           </div>
 
           <div

@@ -7,44 +7,56 @@ const ORDER_NONE = 99;
 
 export class ArduinoBaseGenerator extends Blockly.Generator {
   public setupDefinitions: Set<string>;
-
+  public includes: Set <String>;
+  public globalDefinitions: Set <String>;
+  
   constructor(name: string) {
     super(name);
     this.setupDefinitions = new Set();
+    this.includes= new Set();
+    this.globalDefinitions= new Set();
     this.defineBlocks();
   }
 
   init(workspace: Blockly.Workspace) {
     this.setupDefinitions = new Set();
-
+    this.includes= new Set();
+    this.globalDefinitions= new Set();
     if (!this.nameDB_) {
       this.nameDB_ = new Blockly.Names("");
     } else {
       this.nameDB_.reset();
     }
-
     this.nameDB_.setVariableMap(workspace.getVariableMap());
   }
-
   scrub_(block: Blockly.Block, code: string) {
     const nextBlock = block.nextConnection?.targetBlock();
     const nextCode = nextBlock
-      ? this.blockToCode(nextBlock)
-      : "";
+    ? this.blockToCode(nextBlock)
+    : "";
     return code + nextCode;
   }
-
+  
   finish(code: string) {
     return code;
-  }
-
+  };
+  addInclude(code: String){
+    this.includes.add(code)
+  };
+  addGlobalDefinition(code: string){
+    this.globalDefinitions.add(code);
+  };
+  addSetupDefinition(code: string){
+    this.setupDefinitions.add(code);
+  };
+  
   private defineBlocks() {
     registerControlGenerators(this);
     registerOperatorsLogicGenerator(this);
     registerOperatorsMathematicsGenerator(this);
     this.forBlock["program_start"] =(block)=>{
       const body= this.statementToCode(block, "DO");
-
+      
       return `
         void setup() {
           Serial.begin(9600);

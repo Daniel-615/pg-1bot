@@ -1,6 +1,6 @@
 import * as Blockly from "blockly";
 import { SymbolTable } from "./symbolTable";
-import type { VarType } from "./symbolTable";
+import type { SymbolTableRow, VarType } from "./symbolTable";
 import { Variables } from "./variables/variables";
 import { Conditions } from "./conditions/conditions";
 import { Operators } from "./operators/operators";
@@ -89,6 +89,9 @@ export class ArduinoSemanticAnalyzer {
   getCurrentSymbolState() {
     return this.symbolTable.getFinalState();
   }
+  getSymbolTableRows(): SymbolTableRow[] {
+    return this.symbolTable.getRows();
+  }
   getVariables(){
     return this.variables;
   }
@@ -97,6 +100,13 @@ export class ArduinoSemanticAnalyzer {
   }
   public visitPublic(block: Blockly.Block | null){
     this.visit(block);
+  }
+  public getVariableName(block: Blockly.Block, fieldName = "VAR"): string | null {
+    const variableId = block.getFieldValue(fieldName);
+    if (!variableId) return null;
+
+    const variableModel = block.workspace?.getVariableById(variableId);
+    return variableModel?.getName() ?? variableId;
   }
   private visit(block: Blockly.Block | null) {
     if (!block) return;
@@ -202,11 +212,12 @@ export class ArduinoSemanticAnalyzer {
     this.operators.handleSubtract(block,A, B)
   }
   private handleAssignment(block: Blockly.Block) {
-    const name = block.getFieldValue("VAR");
+    const name = this.getVariableName(block);
     const valueBlock = block.getInputTargetBlock("VALUE");
-    const inferred = this.inferType(valueBlock);
-    if(!inferred) return;
-    this.getVariables().checkOrDeclareVariable(name,inferred,block);
+    const inferredType = this.inferType(valueBlock);
+    const inferredValue = this.inferValue(valueBlock);
+    if(!inferredType) return;
+    this.getVariables().checkOrDeclareVariable(name, inferredType, inferredValue, block);
   }
   private checkUnusedVariables(workspace: Blockly.Workspace) {
     this.getVariables().checkUnusedVariables(workspace);
@@ -258,7 +269,8 @@ export class ArduinoSemanticAnalyzer {
 
   private handleForRange(block: Blockly.Block) {
 
-    const varName = block.getFieldValue("VAR");
+    const varName = this.getVariableName(block);
+    if (!varName) return;
 
     const fromType = this.inferType(block.getInputTargetBlock("FROM"));
     const toType = this.inferType(block.getInputTargetBlock("TO"));
@@ -396,8 +408,93 @@ export class ArduinoSemanticAnalyzer {
         return "string";
 
       case "variables_get":
-        const symbol = this.symbolTable.lookup(block.getFieldValue("VAR"));
+        const symbol = this.symbolTable.lookup(this.getVariableName(block) ?? "");
         return symbol?.type ?? null;
+
+      default:
+        return null;
+    }
+  }
+  private inferValue(block: Blockly.Block | null): any {
+    if (!block) return null;
+
+    switch (block.type) {
+      case "number":
+      case "math_number":
+        return Number(block.getFieldValue("NUM"));
+
+      case "logic_boolean":
+        return block.getFieldValue("BOOL") === "TRUE";
+
+      case "string":
+        return block.getFieldValue("STRING");
+
+      case "variables_get": {
+        const symbol = this.symbolTable.lookup(this.getVariableName(block) ?? "");
+        return symbol?.value ?? null;
+      }
+
+      case "math_add": {
+        const left = this.inferValue(block.getInputTargetBlock("A"));
+        const right = this.inferValue(block.getInputTargetBlock("B"));
+        return typeof left === "number" && typeof right === "number" ? left + right : null;
+      }
+
+      case "math_subtract": {
+        const left = this.inferValue(block.getInputTargetBlock("A"));
+        const right = this.inferValue(block.getInputTargetBlock("B"));
+        return typeof left === "number" && typeof right === "number" ? left - right : null;
+      }
+
+      case "math_multiply": {
+        const left = this.inferValue(block.getInputTargetBlock("A"));
+        const right = this.inferValue(block.getInputTargetBlock("B"));
+        return typeof left === "number" && typeof right === "number" ? left * right : null;
+      }
+
+      case "math_divide": {
+        const left = this.inferValue(block.getInputTargetBlock("A"));
+        const right = this.inferValue(block.getInputTargetBlock("B"));
+        if (typeof left !== "number" || typeof right !== "number" || right === 0) {
+          return null;
+        }
+        return left / right;
+      }
+
+      case "logic_not": {
+        const value = this.inferValue(block.getInputTargetBlock("A"));
+        return typeof value === "boolean" ? !value : null;
+      }
+
+      case "logic_and": {
+        const left = this.inferValue(block.getInputTargetBlock("A"));
+        const right = this.inferValue(block.getInputTargetBlock("B"));
+        return typeof left === "boolean" && typeof right === "boolean" ? left && right : null;
+      }
+
+      case "logic_or": {
+        const left = this.inferValue(block.getInputTargetBlock("A"));
+        const right = this.inferValue(block.getInputTargetBlock("B"));
+        return typeof left === "boolean" && typeof right === "boolean" ? left || right : null;
+      }
+
+      case "logic_less": {
+        const left = this.inferValue(block.getInputTargetBlock("A"));
+        const right = this.inferValue(block.getInputTargetBlock("B"));
+        return typeof left === "number" && typeof right === "number" ? left < right : null;
+      }
+
+      case "logic_greater": {
+        const left = this.inferValue(block.getInputTargetBlock("A"));
+        const right = this.inferValue(block.getInputTargetBlock("B"));
+        return typeof left === "number" && typeof right === "number" ? left > right : null;
+      }
+
+      case "logic_equals": {
+        const left = this.inferValue(block.getInputTargetBlock("A"));
+        const right = this.inferValue(block.getInputTargetBlock("B"));
+        return left !== null && right !== null ? left === right : null;
+      }
 
       default:
         return null;
