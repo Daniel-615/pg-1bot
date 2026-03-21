@@ -209,9 +209,10 @@ export class Conditions{
                 return;  
             } 
             this.getArduinoSemantic().visitPublic(doBlock);
-            this.getSymbolTable().exitScope();
         }catch(err){
             console.log("Error en el handleForRange",err)
+        }finally{
+            this.getSymbolTable().exitScope();
         }
     }
 }

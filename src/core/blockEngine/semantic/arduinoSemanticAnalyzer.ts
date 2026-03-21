@@ -51,6 +51,8 @@ export class ArduinoSemanticAnalyzer {
 
     this.symbolTable = new SymbolTable();
     this.variables= new Variables(this.symbolTable,this);
+    this.conditions= new Conditions(this.symbolTable,this);
+    this.operators= new Operators(this);
     this.errors = new Map();
     this.blocksQueue = [];
     this.history = [];
@@ -170,6 +172,7 @@ export class ArduinoSemanticAnalyzer {
       case "logic_or":
       case "logic_not":
       case "logic_less":
+      case "logic_greater":
       case "logic_equals":
         this.handleOperatorLogic(block);
         break;
@@ -247,7 +250,10 @@ export class ArduinoSemanticAnalyzer {
 
   private handleWhile(block: Blockly.Block) {
 
-    const condition = block.getInputTargetBlock("BOOLEAN") || block.getInputTargetBlock("BOOL");
+    const condition =
+      block.getInputTargetBlock("CONDITION") ||
+      block.getInputTargetBlock("BOOLEAN") ||
+      block.getInputTargetBlock("BOOL");
     const type = this.inferType(condition);
 
     const val=this.getConditions().handleWhile(block,type)
@@ -259,7 +265,9 @@ export class ArduinoSemanticAnalyzer {
     if(!val){
       return;
     }
-    const condition = block.getInputTargetBlock("BOOL");
+    const condition =
+      block.getInputTargetBlock("CONDITION") ||
+      block.getInputTargetBlock("BOOL");
     const type = this.inferType(condition);
 
     if (type !== "boolean") {

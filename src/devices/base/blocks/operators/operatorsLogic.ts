@@ -2,22 +2,6 @@ import * as Blockly from "blockly";
 export function defineArduinoOperatorsLogicBlocks(){
     Blockly.common.defineBlocksWithJsonArray([
         {
-            "type": "logic_boolean",
-            "message0": "%1",
-            "args0": [
-                {
-                    "type": "field_dropdown",
-                    "name": "BOOL",
-                    "options": [
-                        ["true", "TRUE"],
-                        ["false", "FALSE"]
-                    ]
-                }
-            ],
-            "output": "Boolean",
-            "colour":"#1a840a"
-        },
-        {
             "type": "logic_greater",
             "message0": "%1 > %2",
             "args0": [
