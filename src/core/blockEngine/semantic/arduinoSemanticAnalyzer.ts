@@ -4,6 +4,7 @@ import type { SymbolTableRow, VarType } from "./symbolTable";
 import { Variables } from "./variables/variables";
 import { Conditions } from "./conditions/conditions";
 import { Operators } from "./operators/operators";
+
 type Severity = "error" | "warning" | "suggestion";
 
 interface Issue {
@@ -12,7 +13,6 @@ interface Issue {
 }
 
 export class ArduinoSemanticAnalyzer {
-
   private symbolTable!: SymbolTable;
   private variables!: Variables;
   private conditions!: Conditions;
@@ -21,22 +21,18 @@ export class ArduinoSemanticAnalyzer {
 
   private debugMode = false;
   private blocksQueue: Blockly.Block[] = [];
-  private history: any[] = [];
+  private history: Array<Map<string, unknown>[]> = [];
   private currentIndex = 0;
 
   analyze(workspace: Blockly.Workspace) {
     this.debugMode = false;
-    this.symbolTable = new SymbolTable();
-    this.variables= new Variables(this.symbolTable,this);
-    this.conditions= new Conditions(this.symbolTable,this);
-    this.operators= new Operators(this);
-    this.errors = new Map();
+    this.initializeState();
 
-    workspace.getAllBlocks(false).forEach(block=>{
+    workspace.getAllBlocks(false).forEach(block => {
       block.setWarningText(null);
-    })
-    const topBlocks = workspace.getTopBlocks(true);
+    });
 
+    const topBlocks = workspace.getTopBlocks(true);
     for (const block of topBlocks) {
       this.visit(block);
     }
@@ -45,15 +41,9 @@ export class ArduinoSemanticAnalyzer {
     this.renderWarnings(workspace);
   }
 
-
   startDebug(workspace: Blockly.Workspace) {
     this.debugMode = true;
-
-    this.symbolTable = new SymbolTable();
-    this.variables= new Variables(this.symbolTable,this);
-    this.conditions= new Conditions(this.symbolTable,this);
-    this.operators= new Operators(this);
-    this.errors = new Map();
+    this.initializeState();
     this.blocksQueue = [];
     this.history = [];
     this.currentIndex = 0;
@@ -63,7 +53,6 @@ export class ArduinoSemanticAnalyzer {
   }
 
   step(workspace: Blockly.Workspace) {
-
     if (this.currentIndex >= this.blocksQueue.length) {
       console.log("Fin del análisis");
       this.checkUnusedVariables(workspace);
@@ -72,18 +61,16 @@ export class ArduinoSemanticAnalyzer {
     }
 
     const block = this.blocksQueue[this.currentIndex];
-
-    (block as any).select?.();
+    (block as { select?: () => void }).select?.();
 
     this.visit(block);
-
-    this.history.push(this.symbolTable.cloneState());
+    this.history.push(this.symbolTable.cloneState() as Array<Map<string, unknown>>);
 
     console.log("Estado actual tabla:", this.symbolTable.getFinalState());
 
     this.currentIndex++;
   }
-  //gets
+
   getHistory() {
     return this.history;
   }
@@ -91,18 +78,23 @@ export class ArduinoSemanticAnalyzer {
   getCurrentSymbolState() {
     return this.symbolTable.getFinalState();
   }
+
   getSymbolTableRows(): SymbolTableRow[] {
     return this.symbolTable.getRows();
   }
-  getVariables(){
+
+  getVariables() {
     return this.variables;
   }
-  getConditions(){
+
+  getConditions() {
     return this.conditions;
   }
-  public visitPublic(block: Blockly.Block | null){
+
+  public visitPublic(block: Blockly.Block | null) {
     this.visit(block);
   }
+
   public getVariableName(block: Blockly.Block, fieldName = "VAR"): string | null {
     const variableId = block.getFieldValue(fieldName);
     if (!variableId) return null;
@@ -110,13 +102,63 @@ export class ArduinoSemanticAnalyzer {
     const variableModel = block.workspace?.getVariableById(variableId);
     return variableModel?.getName() ?? variableId;
   }
+
+  public addIssuePublic(block: Blockly.Block, message: string, severity: Severity) {
+    this.addIssue(block, message, severity);
+  }
+
+  private initializeState() {
+    this.symbolTable = new SymbolTable();
+    this.variables = new Variables(this.symbolTable, this);
+    this.conditions = new Conditions(this.symbolTable, this);
+    this.operators = new Operators(this);
+    this.errors = new Map();
+  }
+
+  private getConditionBlock(block: Blockly.Block) {
+    return (
+      block.getInputTargetBlock("CONDITION") ||
+      block.getInputTargetBlock("BOOLEAN") ||
+      block.getInputTargetBlock("BOOL")
+    );
+  }
+
+  private getBinaryInputs(block: Blockly.Block) {
+    return {
+      left: block.getInputTargetBlock("A"),
+      right: block.getInputTargetBlock("B"),
+    };
+  }
+
+  private traverseChildren(block: Blockly.Block) {
+    block.inputList.forEach(input => {
+      const child = input.connection?.targetBlock();
+      if (!child) return;
+
+      if (this.debugMode) {
+        this.blocksQueue.push(child);
+      } else {
+        this.visit(child);
+      }
+    });
+
+    const next = block.getNextBlock();
+    if (!next) return;
+
+    if (this.debugMode) {
+      this.blocksQueue.push(next);
+      return;
+    }
+
+    this.visit(next);
+  }
+
   private visit(block: Blockly.Block | null) {
     if (!block) return;
 
     block.setWarningText(null);
 
     switch (block.type) {
-
       case "variables_set":
         this.handleAssignment(block);
         break;
@@ -125,10 +167,11 @@ export class ArduinoSemanticAnalyzer {
         this.handleVariableUse(block);
         break;
 
-      case "if":
-        const ok=this.handleIf(block);
-        if(!ok) return;
+      case "if": {
+        const ok = this.handleIf(block);
+        if (!ok) return;
         break;
+      }
 
       case "if_else":
         this.handleIfElse(block);
@@ -146,28 +189,28 @@ export class ArduinoSemanticAnalyzer {
         this.handleForRange(block);
         break;
 
-      //math operators
       case "math_add":
       case "math_subtract":
       case "math_multiply":
-      case "math_divide": 
+      case "math_divide":
         this.handleOperatorMath(block);
         this.handleCheckUnusedExpression(block);
-      if(block.type==="math_add"){
-        this.handleVariablePlusZero(block);
-      }
-      if(block.type==="math_subtract"){
-        this.handleSubtractOperator(block);
-        this.handleVariableSubtractZero(block);
-      }
-      if(block.type==="math_multiply"){
-        this.handleMultiply(block);
-      }
-      if(block.type==="math_divide"){
-        this.handleDivide(block);
-      }
-      break;
-      //logic operators
+
+        if (block.type === "math_add") {
+          this.handleVariablePlusZero(block);
+        }
+        if (block.type === "math_subtract") {
+          this.handleSubtractOperator(block);
+          this.handleVariableSubtractZero(block);
+        }
+        if (block.type === "math_multiply") {
+          this.handleMultiply(block);
+        }
+        if (block.type === "math_divide") {
+          this.handleDivide(block);
+        }
+        break;
+
       case "logic_and":
       case "logic_or":
       case "logic_not":
@@ -178,96 +221,78 @@ export class ArduinoSemanticAnalyzer {
         break;
     }
 
-
-    if (this.debugMode) {
-
-      block.inputList.forEach(input => {
-        const child = input.connection?.targetBlock();
-        if (child) this.blocksQueue.push(child);
-      });
-
-      const next = block.getNextBlock();
-      if (next) this.blocksQueue.push(next);
-
-    } else {
-
-      block.inputList.forEach(input => {
-        const child = input.connection?.targetBlock();
-        if (child) this.visit(child);
-      });
-
-      this.visit(block.getNextBlock());
-    }
+    this.traverseChildren(block);
   }
-  private handleVariableSubtractZero(block:Blockly.Block){
-    const A=block.getInputTargetBlock("A");
-    const B=block.getInputTargetBlock("B");
-    if(!A || !B) return;
-    this.operators.handleVariableSubtractZero(block,A,B);
+
+  private handleVariableSubtractZero(block: Blockly.Block) {
+    const { left, right } = this.getBinaryInputs(block);
+    if (!left || !right) return;
+
+    this.operators.handleVariableSubtractZero(block, left, right);
   }
-  private handleSubtractOperator(block:Blockly.Block){
-    const A=block.getInputTargetBlock("A");
-    const B=block.getInputTargetBlock("B");
-    if(!A || !B){
-      console.log("HandleSubtractOperator A o B se encuentran vacíos.")
+
+  private handleSubtractOperator(block: Blockly.Block) {
+    const { left, right } = this.getBinaryInputs(block);
+    if (!left || !right) {
+      console.log("HandleSubtractOperator A o B se encuentran vacíos.");
       return;
     }
-    this.operators.handleSubtract(block,A, B)
+
+    this.operators.handleSubtract(block, left, right);
   }
+
   private handleAssignment(block: Blockly.Block) {
     const name = this.getVariableName(block);
     const valueBlock = block.getInputTargetBlock("VALUE");
     const inferredType = this.inferType(valueBlock);
     const inferredValue = this.inferValue(valueBlock);
-    if(!inferredType) return;
+
+    if (!inferredType) return;
+
     this.getVariables().checkOrDeclareVariable(name, inferredType, inferredValue, block);
   }
+
   private checkUnusedVariables(workspace: Blockly.Workspace) {
     this.getVariables().checkUnusedVariables(workspace);
   }
+
   private handleVariableUse(block: Blockly.Block) {
     this.getVariables().handleVariableUse(block);
   }
 
   private handleIf(block: Blockly.Block) {
-    try{
-      const condition = block.getInputTargetBlock("CONDITION");
+    try {
+      const condition = this.getConditionBlock(block);
       const type = this.inferType(condition);
-      const ok=this.getConditions().handleIf(block,type);
+      const ok = this.getConditions().handleIf(block, type);
       return ok ?? false;
-    }catch(err){
-      console.log("Error en handleIf",err)
+    } catch (err) {
+      console.log("Error en handleIf", err);
     }
   }
 
   private handleIfElse(block: Blockly.Block) {
-
-    const condition = block.getInputTargetBlock("CONDITION");
+    const condition = this.getConditionBlock(block);
     const type = this.inferType(condition);
-    const ok=this.getConditions().handleIfElse(block, type);
-    if(!ok) return;
+    const ok = this.getConditions().handleIfElse(block, type);
+    if (!ok) return;
   }
 
   private handleWhile(block: Blockly.Block) {
-
-    const condition =
-      block.getInputTargetBlock("CONDITION") ||
-      block.getInputTargetBlock("BOOLEAN") ||
-      block.getInputTargetBlock("BOOL");
+    const condition = this.getConditionBlock(block);
     const type = this.inferType(condition);
 
-    const val=this.getConditions().handleWhile(block,type)
-    if(!val) return;
+    const ok = this.getConditions().handleWhile(block, type);
+    if (!ok) return;
   }
 
   private handleDoWhile(block: Blockly.Block) {
-    const val=this.getConditions().handleDoWhile(block)
-    if(!val){
+    const ok = this.getConditions().handleDoWhile(block);
+    if (!ok) {
       return;
     }
-    const condition =
-      block.getInputTargetBlock("CONDITION") ||
-      block.getInputTargetBlock("BOOL");
+
+    const condition = this.getConditionBlock(block);
     const type = this.inferType(condition);
 
     if (type !== "boolean") {
@@ -276,7 +301,6 @@ export class ArduinoSemanticAnalyzer {
   }
 
   private handleForRange(block: Blockly.Block) {
-
     const varName = this.getVariableName(block);
     if (!varName) return;
 
@@ -287,111 +311,92 @@ export class ArduinoSemanticAnalyzer {
       this.addIssue(block, "Los valores del 'mientras' deben ser numéricos", "error");
     }
 
-    this.getConditions().handleForRange(block,varName)
-  } 
-  private handleMultiply(block:Blockly.Block){
-    const A=block.getInputTargetBlock("A");
-    const B= block.getInputTargetBlock("B");
-    if(!A||!B) return;
-    this.operators.handleMultiply(block,A,B);
+    this.getConditions().handleForRange(block, varName);
   }
-  private handleDivide(block:Blockly.Block){
-    const B= block.getInputTargetBlock("B");
-    const A= block.getInputTargetBlock("A");
-    if(!A||!B) return;
-    this.operators.handleDivide(block,A,B)
+
+  private handleMultiply(block: Blockly.Block) {
+    const { left, right } = this.getBinaryInputs(block);
+    if (!left || !right) return;
+
+    this.operators.handleMultiply(block, left, right);
   }
-  private handleVariablePlusZero(block:Blockly.Block){
-    const A=block.getInputTargetBlock("A");
-    const B=block.getInputTargetBlock("B");
-    if(!A || !B) return;
-    this.operators.handleVariablePlusZero(block,A,B);
+
+  private handleDivide(block: Blockly.Block) {
+    const { left, right } = this.getBinaryInputs(block);
+    if (!left || !right) return;
+
+    this.operators.handleDivide(block, left, right);
   }
-  private handleCheckUnusedExpression(block:Blockly.Block){
+
+  private handleVariablePlusZero(block: Blockly.Block) {
+    const { left, right } = this.getBinaryInputs(block);
+    if (!left || !right) return;
+
+    this.operators.handleVariablePlusZero(block, left, right);
+  }
+
+  private handleCheckUnusedExpression(block: Blockly.Block) {
     this.operators.checkUnusedExpression(block);
   }
-  private handleOperatorMath(block: Blockly.Block){
-    const A= block.getInputTargetBlock("A");
-    const B= block.getInputTargetBlock("B");
-    if(!A || !B) return;
-    const typeA=this.inferType(A);
-    const typeB=this.inferType(B);
 
-    switch(block.type){
-      case "math_add":
-      case "math_subtract":
-      case "math_multiply":
-      case "math_divide":
-        if(typeA!=="number" || typeB !== "number"){
-          this.addIssue(
-            block,
-            "Los operadores matemáticos requieren valores numéricos",
-            "warning"
-          )
-        }
-        if(block.type === "math_divide"){
-          if(B?.type === "math_number"){
-            const value = Number(B.getFieldValue("NUM"));
-            if(value === 0){
-              this.addIssue(
-                block,
-                "No se puede realizar una división por cero",
-                "error"
-              );
-            }
-          }
-        }
-        break;
+  private handleOperatorMath(block: Blockly.Block) {
+    const { left, right } = this.getBinaryInputs(block);
+    if (!left || !right) return;
+
+    const typeA = this.inferType(left);
+    const typeB = this.inferType(right);
+
+    if (typeA !== "number" || typeB !== "number") {
+      this.addIssue(
+        block,
+        "Los operadores matemáticos requieren valores numéricos",
+        "warning"
+      );
+    }
+
+    if (block.type === "math_divide" && right.type === "math_number") {
+      const value = Number(right.getFieldValue("NUM"));
+      if (value === 0) {
+        this.addIssue(block, "No se puede realizar una división por cero", "error");
+      }
     }
   }
-  private handleOperatorLogic(block: Blockly.Block){
-    const A=block.getInputTargetBlock("A");
-    const B=block.getInputTargetBlock("B");
 
-    const typeA= this.inferType(A);
-    const typeB= this.inferType(B);
-    switch(block.type){
+  private handleOperatorLogic(block: Blockly.Block) {
+    const { left, right } = this.getBinaryInputs(block);
+    const typeA = this.inferType(left);
+    const typeB = this.inferType(right);
+
+    switch (block.type) {
       case "logic_and":
       case "logic_or":
-        if(typeA!=="boolean" || typeB!=="boolean"){
-          this.addIssue(block,
-            "Los operadores AND/OR deben usar valores booleanos",
-            "error"
-          )
+        if (typeA !== "boolean" || typeB !== "boolean") {
+          this.addIssue(block, "Los operadores AND/OR deben usar valores booleanos", "error");
         }
         break;
+
       case "logic_not":
-        if(typeA!=="boolean"){
-          this.addIssue(
-            block,
-            "El operador NOT solo funciona con booleanos",
-            "error"
-          )
+        if (typeA !== "boolean") {
+          this.addIssue(block, "El operador NOT solo funciona con booleanos", "error");
         }
         break;
+
       case "logic_greater":
       case "logic_less":
-        if(typeA!=="number" || typeB !=="number"){
-          this.addIssue(
-            block,
-            "Las comparaciones < y > deben usar números ",
-            "warning"
-          );
+        if (typeA !== "number" || typeB !== "number") {
+          this.addIssue(block, "Las comparaciones < y > deben usar números ", "warning");
         }
         break;
+
       case "logic_equals":
-        if(typeA!==typeB){
-          this.addIssue(block,
-            "Estás comparando valores de distinto tipo",
-            "suggestion"
-          )
+        if (typeA !== typeB) {
+          this.addIssue(block, "Estás comparando valores de distinto tipo", "suggestion");
         }
         break;
     }
-    
   }
-  private inferType(block: Blockly.Block | null): VarType {
 
+  private inferType(block: Blockly.Block | null): VarType {
     if (!block) return null;
 
     switch (block.type) {
@@ -415,15 +420,17 @@ export class ArduinoSemanticAnalyzer {
       case "string":
         return "string";
 
-      case "variables_get":
+      case "variables_get": {
         const symbol = this.symbolTable.lookup(this.getVariableName(block) ?? "");
         return symbol?.type ?? null;
+      }
 
       default:
         return null;
     }
   }
-  private inferValue(block: Blockly.Block | null): any {
+
+  private inferValue(block: Blockly.Block | null): unknown {
     if (!block) return null;
 
     switch (block.type) {
@@ -509,13 +516,7 @@ export class ArduinoSemanticAnalyzer {
     }
   }
 
-
-  
-  public addIssuePublic(block: Blockly.Block, message: string, severity: Severity){
-    this.addIssue(block,message,severity);
-  }
   private addIssue(block: Blockly.Block, message: string, severity: Severity = "error") {
-
     if (!this.errors.has(block.id)) {
       this.errors.set(block.id, []);
     }
@@ -524,17 +525,18 @@ export class ArduinoSemanticAnalyzer {
   }
 
   private renderWarnings(workspace: Blockly.Workspace) {
-
     this.errors.forEach((issues, blockId) => {
-
       const block = workspace.getBlockById(blockId);
       if (!block) return;
 
       const formatted = issues.map(issue => {
         switch (issue.severity) {
-          case "error": return `❌ ${issue.message}`;
-          case "warning": return `⚠️ ${issue.message}`;
-          case "suggestion": return `💡 ${issue.message}`;
+          case "error":
+            return `❌ ${issue.message}`;
+          case "warning":
+            return `⚠️ ${issue.message}`;
+          case "suggestion":
+            return `💡 ${issue.message}`;
         }
       });
 
