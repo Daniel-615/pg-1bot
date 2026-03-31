@@ -1,4 +1,4 @@
-export type VarType="number" |"boolean" | "string" | null;
+export type VarType="number" |"boolean" | "string" | "array" | null;
 
 export interface SymbolInfo{
     name: string;

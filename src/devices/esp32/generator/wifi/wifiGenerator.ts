@@ -42,7 +42,14 @@ export function registerESP32WifiGenerator(generator: ESP32Generator) {
     generator.addInclude("#include <WiFi.h>");
     return ["WiFi.status() == WL_CONNECTED", ORDER_ATOMIC];
   };
-
+  generator.forBlock["wifi_disconnect"] = function () {
+    generator.addInclude("#include  <Wifi.h>");
+    return "WiFi.disconnect()";
+  };
+  generator.forBlock["wifi_scan_networks"] = function(){
+    generator.addInclude("#include <Wifi.h>")
+    return ["Wifi.scanNetworks()", ORDER_ATOMIC];
+  }
   generator.forBlock["wifi_get_rssi"] = function () {
     generator.addInclude("#include <WiFi.h>");
     return ["WiFi.RSSI()", ORDER_ATOMIC];

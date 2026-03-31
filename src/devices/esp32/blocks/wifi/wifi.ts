@@ -12,13 +12,30 @@ export function defineEsp32WifiBlocks(){
                 },
                 {
                     "type": "field_input",
-                    "name": "password"
+                    "name": "PASSWORD"
                 }
             ],
             "previousStatement": null,
             "nextStatement": null,
             "colour": "#43927a",
             "tooltip": "Conecta el ESP32 a una red Wifi",
+            "helpUrl": ""
+        },
+        {
+            "type": "wifi_disconnect",
+            "message0": "desconectar Wifi",
+            "previousStatement": null,
+            "nextStatement": null,
+            "colour": "#43927a",
+            "tooltip": "Desconecta el ESP32 de la red Wifi",
+            "helpUrl": ""
+        },
+        {
+            type: "wifi_scan_networks",
+            "message0": "escanear redes WiFi",
+            "output": "Array",
+            "colour": "#43927a",
+            "tooltip": "Devuelve un array con los SSID de las redes WiFi cercanas",
             "helpUrl": ""
         },
         {
@@ -31,7 +48,7 @@ export function defineEsp32WifiBlocks(){
                 },
                 {
                     "type": "field_input",
-                    "name": "password"
+                    "name": "PASSWORD"
                 },
                 
             ],

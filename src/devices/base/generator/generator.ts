@@ -117,5 +117,55 @@ export class ArduinoBaseGenerator extends Blockly.Generator {
       const num = block.getFieldValue("NUM") || 0;
       return [`${num}`, ORDER_ATOMIC];
     };
+    this.forBlock["lists_create_empty"] = ()=>{
+      this.addInclude("#include <vector>");
+      return ["std::vector<int>", ORDER_ATOMIC];
+    }
+    this.forBlock["lists_create_with"] = (block) => {
+      this.addInclude("#include <vector>");
+      const items: string[] = [];
+      const listBlock = block as Blockly.Block & { itemCount_?: number };
+      const itemCount = listBlock.itemCount_ ?? 0;
+
+      for (let i = 0; i < itemCount; i++) {
+        const itemCode = this.valueToCode(block, `ADD${i}`, ORDER_NONE) || "0";
+
+        items.push(itemCode);
+      }
+
+      return [`std::vector<int>{${items.join(", ")}}`, ORDER_ATOMIC];
+    };
+
+    this.forBlock["lists_length"] = (block)=>{
+      const value= this.valueToCode(block,"VALUE", ORDER_ATOMIC) || "std::vector<int>{}"; 
+      return [`${value}.size()`,ORDER_ATOMIC];
+    }
+    this.forBlock["lists_getIndex"]= (block)=>{
+      const listCode= this.valueToCode(block, "VALUE", ORDER_ATOMIC) || "std:: vector <int>{}";
+      const where= block.getFieldValue("WHERE") || "FROM START";
+      let indexCode= "0";
+      if(where ==="FIRST"){
+        indexCode= "0";
+      }else if(where ==="LAST"){
+        indexCode = `${listCode}.size() - 1`;
+      }else{
+        indexCode= this.valueToCode(block, "AT", ORDER_NONE) || "0";
+      }
+      return [`${listCode} ${indexCode}`,ORDER_ATOMIC];
+    } 
+    this.forBlock["lists_setIndex"] = (block)=>{
+      const listCode= this.valueToCode(block,"LIST",ORDER_ATOMIC) || "std::vector<int>{}";
+      const where= block.getFieldValue("WHERE") || "FROM START";
+      const valueCode= this.valueToCode(block, "TO", ORDER_NONE) || "0";
+      let indexCode="0";
+      if(where==="FIRST"){
+        indexCode="0";
+      }else if(where==="LAST"){
+        indexCode= `${listCode}.size()-1`;
+      }else{
+        indexCode= this.valueToCode(block,"AT",ORDER_NONE) || "0";
+      }
+      return `${listCode}[${indexCode}] =${valueCode};\n`;
+    }
   }
 }

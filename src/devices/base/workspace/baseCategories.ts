@@ -7,7 +7,31 @@ export const baseCategories = [
       kind: "category",
       name: "VARIABLES",
       colour: "#fb8e3b",
-      custom: "VARIABLE",
+      contents:[
+        {
+          kind:"custom",
+          custom: "VARIABLE"
+        },
+        {
+          kind: "sep"
+        },
+        {
+          kind: "block",
+          type: "lists_create_with"
+        },
+        {
+          kind: "block",
+          type: "lists_length"
+        },
+        {
+          kind: "block",
+          type: "lists_getIndex"
+        },
+        {
+          kind: "block",
+          type: "lists_setIndex"
+        }
+      ]
     },
     ...hardwareCategories,
     ...typesCategories,

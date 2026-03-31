@@ -10,6 +10,10 @@ export const esp32WifiCategories = [
       },
       {
         kind: "block",
+        type: "wifi_disconnect"
+      },
+      {
+        kind: "block",
         type: "wifi_create_ap"
       },
       {
@@ -23,6 +27,10 @@ export const esp32WifiCategories = [
       {
         kind: "block",
         type: "wifi_local_ip"
+      },
+      {
+        kind: "block",
+        type: "wifi_scan_networks",
       }
     ]
   }
