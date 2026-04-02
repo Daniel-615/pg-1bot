@@ -13,6 +13,19 @@ function createBlockMock(fields: Record<string, string> = {}): MockBlock {
 }
 
 describe("registerESP32PinGenerator", () => {
+  it("configura pinMode explicito en setup", () => {
+    const generator = new ESP32Generator();
+    registerESP32PinGenerator(generator);
+
+    const result = generator.forBlock["esp32_pin_mode"](
+      createBlockMock({ PIN: "4", MODE: "INPUT_PULLUP" }) as never,
+      generator as never
+    );
+
+    expect(result).toBe("");
+    expect(Array.from(generator.setupDefinitions)).toContain("pinMode(4, INPUT_PULLUP);");
+  });
+
   it("genera escritura digital y registra el pin como salida", () => {
     const generator = new ESP32Generator();
     registerESP32PinGenerator(generator);
@@ -51,7 +64,7 @@ describe("registerESP32PinGenerator", () => {
     expect(result).toEqual(["analogRead(32)", 0]);
   });
 
-  it("genera PWM con configuracion de canal derivada del pin", () => {
+  it("genera PWM con un canal estable asignado al pin", () => {
     const generator = new ESP32Generator();
     registerESP32PinGenerator(generator);
 
@@ -64,8 +77,64 @@ describe("registerESP32PinGenerator", () => {
       generator as never
     );
 
-    expect(result).toBe("ledcWrite(6, 200);\n");
-    expect(Array.from(generator.setupDefinitions).join("\n")).toContain("ledcSetup(6, 1000, 8);");
-    expect(Array.from(generator.setupDefinitions).join("\n")).toContain("ledcAttachPin(22, 6);");
+    expect(result).toBe("ledcWrite(0, 200);\n");
+    expect(Array.from(generator.setupDefinitions).join("\n")).toContain("ledcSetup(0, 1000, 8);");
+    expect(Array.from(generator.setupDefinitions).join("\n")).toContain("ledcAttachPin(22, 0);");
+  });
+
+  it("asigna canales distintos a pines distintos y reutiliza el canal del mismo pin", () => {
+    const generator = new ESP32Generator();
+    registerESP32PinGenerator(generator);
+
+    const firstPin = generator.forBlock["esp32_pwm_write"](
+      createBlockMock({
+        PIN: "22",
+        FREQUENCY: "1000",
+        DUTY: "200",
+      }) as never,
+      generator as never
+    );
+
+    const secondPin = generator.forBlock["esp32_pwm_write"](
+      createBlockMock({
+        PIN: "23",
+        FREQUENCY: "1000",
+        DUTY: "100",
+      }) as never,
+      generator as never
+    );
+
+    const sameFirstPin = generator.forBlock["esp32_pwm_write"](
+      createBlockMock({
+        PIN: "22",
+        FREQUENCY: "500",
+        DUTY: "50",
+      }) as never,
+      generator as never
+    );
+
+    expect(firstPin).toBe("ledcWrite(0, 200);\n");
+    expect(secondPin).toBe("ledcWrite(1, 100);\n");
+    expect(sameFirstPin).toBe("ledcWrite(0, 50);\n");
+
+    const setupCode = Array.from(generator.setupDefinitions).join("\n");
+    expect(setupCode).toContain("ledcSetup(0, 1000, 8);");
+    expect(setupCode).toContain("ledcAttachPin(22, 0);");
+    expect(setupCode).toContain("ledcSetup(1, 1000, 8);");
+    expect(setupCode).toContain("ledcAttachPin(23, 1);");
+  });
+
+  it("genera salida analoga friendly usando PWM", () => {
+    const generator = new ESP32Generator();
+    registerESP32PinGenerator(generator);
+
+    const result = generator.forBlock["esp32_analog_write"](
+      createBlockMock({ PIN: "21", VALUE: "64" }) as never,
+      generator as never
+    );
+
+    expect(result).toBe("ledcWrite(0, 64);\n");
+    expect(Array.from(generator.setupDefinitions).join("\n")).toContain("ledcSetup(0, 5000, 8);");
+    expect(Array.from(generator.setupDefinitions).join("\n")).toContain("ledcAttachPin(21, 0);");
   });
 });

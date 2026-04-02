@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { ArduinoSemanticAnalyzer } from "../src/core/blockEngine/semantic/arduinoSemanticAnalyzer";
 import { createBlock, createWorkspace } from "./helpers/semanticMocks";
+import i18n from "../src/i18n";
 
 describe("ArduinoSemanticAnalyzer", () => {
   it("analiza asignaciones y usos, y expone la tabla de símbolos", () => {
@@ -105,6 +106,23 @@ describe("ArduinoSemanticAnalyzer", () => {
     expect(equalsBlock.warningText).toContain("Estás comparando valores de distinto tipo");
   });
 
+  it("no marca error en NOT cuando recibe un booleano", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const notBlock = createBlock({
+      id: "not-1",
+      type: "logic_not",
+      inputs: {
+        BOOL: createBlock({ id: "not-bool", type: "logic_boolean", fields: { BOOL: "FALSE" } }),
+      },
+      outputConnected: true,
+    });
+    const workspace = createWorkspace([notBlock]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(notBlock.warningText).toBeNull();
+  });
+
   it("detecta división por cero y expresiones no usadas", () => {
     const analyzer = new ArduinoSemanticAnalyzer();
     const divideBlock = createBlock({
@@ -195,5 +213,359 @@ describe("ArduinoSemanticAnalyzer", () => {
     });
 
     logSpy.mockRestore();
+  });
+
+  it("reporta errores cuando se usan neopixel y display sin inicializacion", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const neopixelSet = createBlock({
+      id: "neo-set",
+      type: "esp32_neopixel_set_color",
+      fields: { INDEX: "1" },
+      inputs: {
+        COLOR: createBlock({ id: "neo-color", type: "math_number", fields: { NUM: "1" } }),
+      },
+    });
+    const displayPrint = createBlock({
+      id: "display-print",
+      type: "esp32_display_print",
+      fields: { X: "0", Y: "0" },
+      inputs: {
+        TEXT: createBlock({ id: "display-text", type: "string", fields: { STRING: "Hola" } }),
+      },
+    });
+    const workspace = createWorkspace([neopixelSet, displayPrint]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(neopixelSet.warningText).toContain("Debes inicializar la tira NeoPixel");
+    expect(displayPrint.warningText).toContain("Debes inicializar el display");
+  });
+
+  it("reporta dependencias faltantes para wifi y servidor web", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const localIp = createBlock({
+      id: "wifi-ip",
+      type: "wifi_local_ip",
+    });
+    const webEquals = createBlock({
+      id: "wifi-web-equals",
+      type: "wifi_web_response_equals",
+      inputs: {
+        VALUE: createBlock({ id: "wifi-path", type: "string", fields: { STRING: "/" } }),
+      },
+      outputConnected: true,
+    });
+    const workspace = createWorkspace([localIp, webEquals]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(localIp.warningText).toContain("Debes conectar WiFi o crear un punto de acceso");
+    expect(webEquals.warningText).toContain("Debes iniciar el servidor web");
+  });
+
+  it("advierte cuando el mismo pin se usa con modos incompatibles", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const digitalWrite = createBlock({
+      id: "pin-digital",
+      type: "esp32_digital_write",
+      fields: { PIN: "2", STATE: "HIGH" },
+    });
+    const pwmWrite = createBlock({
+      id: "pin-pwm",
+      type: "esp32_pwm_write",
+      fields: { PIN: "2", FREQUENCY: "1000", DUTY: "128" },
+    });
+    digitalWrite.getNextBlock = () => pwmWrite;
+    const workspace = createWorkspace([digitalWrite]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(pwmWrite.warningText).toContain("El pin 2 ya se usa como digital_output");
+  });
+
+  it("advierte cuando ultrasonido usa el mismo pin para trig y echo", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const ultrasonic = createBlock({
+      id: "ultra-1",
+      type: "esp32_ultrasonic_distance",
+      fields: { TRIG: "5", ECHO: "5" },
+      outputConnected: true,
+    });
+    const workspace = createWorkspace([ultrasonic]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(ultrasonic.warningText).toContain("TRIG y ECHO no deberían usar el mismo pin");
+  });
+
+  it("reporta error si se intenta desconectar WiFi sin conexion previa", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const disconnect = createBlock({
+      id: "wifi-disconnect",
+      type: "wifi_disconnect",
+    });
+    const workspace = createWorkspace([disconnect]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(disconnect.warningText).toContain(
+      "No puedes desconectar WiFi si antes no conectaste o creaste un punto de acceso"
+    );
+  });
+
+  it("advierte si se mezclan modo cliente y punto de acceso en el mismo flujo", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const connect = createBlock({
+      id: "wifi-connect",
+      type: "wifi_connect",
+      fields: { SSID: "red", PASSWORD: "12345678" },
+    });
+    const createAp = createBlock({
+      id: "wifi-ap",
+      type: "wifi_create_ap",
+      fields: { SSID: "mi-ap", PASSWORD: "12345678" },
+    });
+    connect.getNextBlock = () => createAp;
+    const workspace = createWorkspace([connect]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(createAp.warningText).toContain(
+      "Ya configuraste una conexion WiFi cliente"
+    );
+  });
+
+  it("sugiere completar SSID y contraseña en bloques WiFi vacios", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const connect = createBlock({
+      id: "wifi-connect-empty",
+      type: "wifi_connect",
+      fields: { SSID: "", PASSWORD: "" },
+    });
+    const createAp = createBlock({
+      id: "wifi-ap-empty",
+      type: "wifi_create_ap",
+      fields: { SSID: "", PASSWORD: "123" },
+    });
+    const workspace = createWorkspace([connect, createAp]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(connect.warningText).toContain("El SSID no debería estar vacío");
+    expect(connect.warningText).toContain("La contraseña WiFi no debería estar vacía");
+    expect(createAp.warningText).toContain("El SSID del punto de acceso no debería estar vacío");
+    expect(createAp.warningText).toContain("La contraseña del punto de acceso debería tener al menos 8 caracteres");
+  });
+
+  it("valida restricciones reales de pines ESP32", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const digitalWrite = createBlock({
+      id: "esp32-out-invalid",
+      type: "esp32_digital_write",
+      fields: { PIN: "34", STATE: "HIGH" },
+    });
+    const pwmWrite = createBlock({
+      id: "esp32-pwm-invalid",
+      type: "esp32_pwm_write",
+      fields: { PIN: "35", FREQUENCY: "1000", DUTY: "128" },
+    });
+    const analogRead = createBlock({
+      id: "esp32-analog-invalid",
+      type: "esp32_analog_read",
+      fields: { PIN: "23" },
+      outputConnected: true,
+    });
+    const touchRead = createBlock({
+      id: "esp32-touch-invalid",
+      type: "esp32_touch_read",
+      fields: { PIN: "26" },
+      outputConnected: true,
+    });
+    const workspace = createWorkspace([digitalWrite, pwmWrite, analogRead, touchRead]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(digitalWrite.warningText).toContain("es solo de entrada y no sirve como salida digital");
+    expect(pwmWrite.warningText).toContain("es solo de entrada y no sirve para PWM");
+    expect(analogRead.warningText).toContain("no suele ser valido para lectura analogica");
+    expect(touchRead.warningText).toContain("no tiene capacidad touch en ESP32");
+  });
+
+  it("reporta dependencias faltantes para DHT, servo y HTTP", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const dhtTemp = createBlock({
+      id: "dht-temp",
+      type: "esp32_dht_temperature",
+      outputConnected: true,
+    });
+    const servoWrite = createBlock({
+      id: "servo-write",
+      type: "esp32_servo_write",
+      fields: { PIN: "18", ANGLE: "90" },
+    });
+    const httpGet = createBlock({
+      id: "http-get",
+      type: "wifi_http_get_text",
+      inputs: {
+        URL: createBlock({ id: "http-url", type: "string", fields: { STRING: "https://example.com" } }),
+      },
+      outputConnected: true,
+    });
+    const workspace = createWorkspace([dhtTemp, servoWrite, httpGet]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(dhtTemp.warningText).toContain("Debes inicializar el sensor DHT");
+    expect(servoWrite.warningText).toContain("Debes conectar o inicializar el servo");
+    expect(httpGet.warningText).toContain("antes de hacer peticiones HTTP");
+  });
+
+  it("valida restricciones de pin en pinMode, analog write y buzzer", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const pinMode = createBlock({
+      id: "pin-mode-invalid",
+      type: "esp32_pin_mode",
+      fields: { PIN: "34", MODE: "OUTPUT" },
+    });
+    const analogWrite = createBlock({
+      id: "analog-write-invalid",
+      type: "esp32_analog_write",
+      fields: { PIN: "35", VALUE: "120" },
+    });
+    const tonePlay = createBlock({
+      id: "tone-invalid",
+      type: "esp32_tone_play",
+      fields: { PIN: "36", FREQUENCY: "440", DURATION: "200" },
+    });
+    const workspace = createWorkspace([pinMode, analogWrite, tonePlay]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(pinMode.warningText).toContain("no puede configurarse como OUTPUT");
+    expect(analogWrite.warningText).toContain("no sirve para salida analoga por PWM");
+    expect(tonePlay.warningText).toContain("no sirve para buzzer");
+  });
+
+  it("sugiere el content-type correcto para HTTP POST", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const connect = createBlock({
+      id: "wifi-connect-http",
+      type: "wifi_connect",
+      fields: { SSID: "red", PASSWORD: "12345678" },
+    });
+    const httpPost = createBlock({
+      id: "http-post-invalid-type",
+      type: "wifi_http_post_text",
+      inputs: {
+        URL: createBlock({ id: "http-url-post", type: "string", fields: { STRING: "https://example.com" } }),
+        CONTENT_TYPE: createBlock({ id: "http-type-post", type: "string", fields: { STRING: "POST" } }),
+        BODY: createBlock({ id: "http-body-post", type: "string", fields: { STRING: "{\"ok\":true}" } }),
+      },
+      outputConnected: true,
+    });
+    connect.getNextBlock = () => httpPost;
+    const workspace = createWorkspace([connect]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(httpPost.warningText).toContain("En content-type no va el metodo HTTP");
+  });
+
+  it("registra en tabla de simbolos una variable asignada desde HTTP POST", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const connect = createBlock({
+      id: "wifi-connect-http-var",
+      type: "wifi_connect",
+      fields: { SSID: "red", PASSWORD: "12345678" },
+    });
+    const setBlock = createBlock({
+      id: "set-http-response",
+      type: "variables_set",
+      fields: { VAR: "var-http-response" },
+      inputs: {
+        VALUE: createBlock({
+          id: "http-post-value",
+          type: "wifi_http_post_text",
+          inputs: {
+            URL: createBlock({ id: "http-url-value", type: "string", fields: { STRING: "https://example.com" } }),
+            CONTENT_TYPE: createBlock({ id: "http-type-value", type: "string", fields: { STRING: "application/json" } }),
+            BODY: createBlock({ id: "http-body-value", type: "string", fields: { STRING: "{\"ok\":true}" } }),
+          },
+          outputConnected: true,
+        }),
+      },
+    });
+    connect.getNextBlock = () => setBlock;
+    const workspace = createWorkspace([connect], { "var-http-response": "respuesta_http" });
+
+    analyzer.analyze(workspace as never);
+
+    expect(analyzer.getSymbolTableRows()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "respuesta_http",
+          type: "string",
+          initialized: true,
+        }),
+      ])
+    );
+  });
+
+  it("registra variables desde variables_set_dynamic cuando el valor viene de HTTP", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const connect = createBlock({
+      id: "wifi-connect-http-dynamic",
+      type: "wifi_connect",
+      fields: { SSID: "red", PASSWORD: "12345678" },
+    });
+    const setBlock = createBlock({
+      id: "set-http-response-dynamic",
+      type: "variables_set_dynamic",
+      fields: { VAR: "var-http-response-dynamic" },
+      inputs: {
+        VALUE: createBlock({
+          id: "http-get-value-dynamic",
+          type: "wifi_http_get_text",
+          inputs: {
+            URL: createBlock({ id: "http-url-dynamic", type: "string", fields: { STRING: "https://example.com" } }),
+          },
+          outputConnected: true,
+        }),
+      },
+    });
+    connect.getNextBlock = () => setBlock;
+    const workspace = createWorkspace([connect], { "var-http-response-dynamic": "respuesta_http" });
+
+    analyzer.analyze(workspace as never);
+
+    expect(analyzer.getSymbolTableRows()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "respuesta_http",
+          type: "string",
+          initialized: true,
+        }),
+      ])
+    );
+  });
+
+  it("traduce los mensajes semanticos segun el idioma activo", async () => {
+    await i18n.changeLanguage("en");
+
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const localIp = createBlock({
+      id: "wifi-ip-en",
+      type: "wifi_local_ip",
+      outputConnected: true,
+    });
+    const workspace = createWorkspace([localIp]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(localIp.warningText).toContain(
+      "You must connect WiFi or create an access point before querying this data"
+    );
+
+    await i18n.changeLanguage("es");
   });
 });

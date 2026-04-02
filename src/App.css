@@ -908,6 +908,8 @@ body {
   flex-direction: column;
   background: var(--bg-darker);
   position: relative;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .code-panel.hidden {
@@ -1000,11 +1002,20 @@ body {
   background: linear-gradient(135deg, rgba(0, 184, 212, 0.42), rgba(0, 151, 167, 0.6));
 }
 
-.code-content {
+.code-scroll {
   flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: auto;
+  scrollbar-color: rgba(148, 163, 184, 0.85) rgba(15, 23, 42, 0.35);
+}
+
+.code-content {
   padding: 16px 16px 16px 60px;
   margin: 0;
-  overflow: auto;
+  min-width: max-content;
+  min-height: 100%;
   font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
   font-size: 13px;
   line-height: 1.7;
@@ -1015,6 +1026,25 @@ body {
 .code-content code {
   display: block;
   white-space: pre;
+}
+
+.code-scroll::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.code-scroll::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.4);
+}
+
+.code-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.75);
+  border-radius: 999px;
+  border: 3px solid rgba(15, 23, 42, 0.4);
+}
+
+.code-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(186, 230, 253, 0.9);
 }
 
 .line-numbers {

@@ -131,6 +131,46 @@ export function defineEsp32WifiBlocks(){
             "colour": "#43927a",
             "tooltip": "Compara la ultima ruta solicitada con un valor",
             "helpUrl": ""
+        },
+        {
+            "type": "wifi_http_get_text",
+            "message0": "%{BKY_1BOT_ESP32_WIFI_HTTP_GET}",
+            "args0": [
+                {
+                    "type": "input_value",
+                    "name": "URL",
+                    "check": "String"
+                }
+            ],
+            "output": "String",
+            "colour": "#43927a",
+            "tooltip": "Realiza una peticion HTTP GET y devuelve el texto de respuesta",
+            "helpUrl": ""
+        },
+        {
+            "type": "wifi_http_post_text",
+            "message0": "%{BKY_1BOT_ESP32_WIFI_HTTP_POST}",
+            "args0": [
+                {
+                    "type": "input_value",
+                    "name": "URL",
+                    "check": "String"
+                },
+                {
+                    "type": "input_value",
+                    "name": "CONTENT_TYPE",
+                    "check": "String"
+                },
+                {
+                    "type": "input_value",
+                    "name": "BODY",
+                    "check": "String"
+                }
+            ],
+            "output": "String",
+            "colour": "#43927a",
+            "tooltip": "Realiza una peticion HTTP POST y devuelve el texto de respuesta. En content-type usa valores como application/json o text/plain",
+            "helpUrl": ""
         }
     ])
 }

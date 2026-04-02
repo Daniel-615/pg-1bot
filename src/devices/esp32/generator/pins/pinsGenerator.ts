@@ -3,17 +3,15 @@ import { ESP32Generator } from "../generator";
 
 const ORDER_ATOMIC = 0;
 
-function getPwmChannel(pin: string) {
-  const numericPin = Number(pin);
-
-  if (Number.isNaN(numericPin)) {
-    return 0;
-  }
-
-  return Math.abs(numericPin) % 16;
-}
-
 export function registerESP32PinGenerator(generator: ESP32Generator) {
+  generator.forBlock["esp32_pin_mode"] = (block: Blockly.Block) => {
+    const pin = block.getFieldValue("PIN") || "2";
+    const mode = block.getFieldValue("MODE") || "OUTPUT";
+
+    generator.addSetupDefinition(`pinMode(${pin}, ${mode});`);
+    return "";
+  };
+
   generator.forBlock["esp32_digital_write"] = (block: Blockly.Block) => {
     const pin = block.getFieldValue("PIN") || "2";
     const state = block.getFieldValue("STATE") || "LOW";
@@ -39,7 +37,7 @@ export function registerESP32PinGenerator(generator: ESP32Generator) {
     const pin = block.getFieldValue("PIN") || "22";
     const frequency = block.getFieldValue("FREQUENCY") || "1000";
     const duty = block.getFieldValue("DUTY") || "128";
-    const channel = getPwmChannel(pin);
+    const channel = generator.getPwmChannelForPin(pin);
 
     generator.addSetupDefinition(`
       ledcSetup(${channel}, ${frequency}, 8);
@@ -47,5 +45,18 @@ export function registerESP32PinGenerator(generator: ESP32Generator) {
     `);
 
     return `ledcWrite(${channel}, ${duty});\n`;
+  };
+
+  generator.forBlock["esp32_analog_write"] = (block: Blockly.Block) => {
+    const pin = block.getFieldValue("PIN") || "22";
+    const value = block.getFieldValue("VALUE") || "128";
+    const channel = generator.getPwmChannelForPin(pin);
+
+    generator.addSetupDefinition(`
+      ledcSetup(${channel}, 5000, 8);
+      ledcAttachPin(${pin}, ${channel});
+    `);
+
+    return `ledcWrite(${channel}, ${value});\n`;
   };
 }

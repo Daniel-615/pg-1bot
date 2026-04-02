@@ -9,12 +9,16 @@ export class ArduinoBaseGenerator extends Blockly.Generator {
   public setupDefinitions: Set<string>;
   public includes: Set<String>;
   public globalDefinitions: Set<String>;
+  protected serialBaudRate: number;
+  protected serialStartupDelayMs: number | null;
 
   constructor(name: string) {
     super(name);
     this.setupDefinitions = new Set();
     this.includes = new Set();
     this.globalDefinitions = new Set();
+    this.serialBaudRate = 9600;
+    this.serialStartupDelayMs = null;
     this.defineBlocks();
   }
 
@@ -49,6 +53,13 @@ export class ArduinoBaseGenerator extends Blockly.Generator {
   addSetupDefinition(code: string) {
     this.setupDefinitions.add(code);
   };
+  ensureSerial() {
+    this.addSetupDefinition(`Serial.begin(${this.serialBaudRate});`);
+
+    if (this.serialStartupDelayMs !== null) {
+      this.addSetupDefinition(`delay(${this.serialStartupDelayMs});`);
+    }
+  }
 
   private defineBlocks() {
     registerControlGenerators(this);
@@ -59,7 +70,6 @@ export class ArduinoBaseGenerator extends Blockly.Generator {
 
       return `
         void setup() {
-          Serial.begin(9600);
           ${Array.from(this.setupDefinitions).join("\n  ")}
         }
         void loop() {
@@ -73,6 +83,7 @@ export class ArduinoBaseGenerator extends Blockly.Generator {
     };
     this.forBlock["print"] = (block) => {
       const value = this.valueToCode(block, "TEXT", ORDER_NONE) || '""';
+      this.ensureSerial();
       return `Serial.println(${value});\n`;
     }
     this.forBlock["variables_get"] = (block) => {

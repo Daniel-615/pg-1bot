@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ArduinoBaseGenerator } from "../src/devices/base/generator/generator";
+import { formatArduinoCode } from "../src/core/codeEngine/arduinoCompiler";
 
 type MockBlock = {
   getFieldValue: (name: string) => string;
@@ -146,5 +147,18 @@ describe("ArduinoBaseGenerator", () => {
     const result = generator.forBlock["list_var_set_index"](block as never, generator as never);
 
     expect(result).toBe("numeros[2] = 42;\n");
+  });
+
+  it("formatea el codigo generado quitando indentacion sobrante", () => {
+    const result = formatArduinoCode(`
+        #include <WiFi.h>
+
+
+            void setup() {
+                Serial.begin(115200);
+            }
+    `);
+
+    expect(result).toBe("#include <WiFi.h>\n\nvoid setup() {\n    Serial.begin(115200);\n}");
   });
 });

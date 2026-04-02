@@ -45,6 +45,14 @@ return [
       {
         kind: "block",
         type: "wifi_web_response_equals",
+      },
+      {
+        kind: "block",
+        type: "wifi_http_get_text",
+      },
+      {
+        kind: "block",
+        type: "wifi_http_post_text",
       }
     ]
   }

@@ -14,6 +14,34 @@ return [
         kind: "block",
         type: "esp32_ultrasonic_distance",
       },
+      {
+        kind: "block",
+        type: "esp32_dht_init",
+      },
+      {
+        kind: "block",
+        type: "esp32_dht_temperature",
+      },
+      {
+        kind: "block",
+        type: "esp32_dht_humidity",
+      },
+      {
+        kind: "block",
+        type: "esp32_servo_attach",
+      },
+      {
+        kind: "block",
+        type: "esp32_servo_write",
+      },
+      {
+        kind: "block",
+        type: "esp32_tone_play",
+      },
+      {
+        kind: "block",
+        type: "esp32_tone_stop",
+      },
     ],
   },
 ];

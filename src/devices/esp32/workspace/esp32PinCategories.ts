@@ -8,6 +8,10 @@ return [
     contents: [
       {
         kind: "block",
+        type: "esp32_pin_mode",
+      },
+      {
+        kind: "block",
         type: "esp32_digital_write",
       },
       {
@@ -21,6 +25,10 @@ return [
       {
         kind: "block",
         type: "esp32_pwm_write",
+      },
+      {
+        kind: "block",
+        type: "esp32_analog_write",
       },
     ],
   },

@@ -8,6 +8,7 @@ export function registerESP32WifiGenerator(generator: ESP32Generator) {
     const password = JSON.stringify(block.getFieldValue("PASSWORD") || "12345678");
 
     generator.addInclude("#include <WiFi.h>");
+    generator.ensureSerial();
     generator.addSetupDefinition(`
       WiFi.mode(WIFI_STA);
       WiFi.begin(${ssid}, ${password});
@@ -28,6 +29,7 @@ export function registerESP32WifiGenerator(generator: ESP32Generator) {
     const password = JSON.stringify(block.getFieldValue("PASSWORD") || "12345678");
 
     generator.addInclude("#include <WiFi.h>");
+    generator.ensureSerial();
     generator.addSetupDefinition(`
       WiFi.mode(WIFI_AP);
       WiFi.softAP(${ssid}, ${password});
@@ -44,11 +46,23 @@ export function registerESP32WifiGenerator(generator: ESP32Generator) {
   };
   generator.forBlock["wifi_disconnect"] = function () {
     generator.addInclude("#include <WiFi.h>");
-    return "WiFi.disconnect();\n";
+    return "WiFi.disconnect(true);\nWiFi.softAPdisconnect(true);\nWiFi.mode(WIFI_OFF);\n";
   };
   generator.forBlock["wifi_scan_networks"] = function () {
     generator.addInclude("#include <WiFi.h>");
-    return ["WiFi.scanNetworks()", ORDER_ATOMIC];
+    generator.addInclude("#include <vector>");
+    return [
+      `([]() {
+        std::vector<String> _1botNetworks;
+        int _1botNetworkCount = WiFi.scanNetworks();
+        for (int _1botIndex = 0; _1botIndex < _1botNetworkCount; ++_1botIndex) {
+          _1botNetworks.push_back(WiFi.SSID(_1botIndex));
+        }
+        WiFi.scanDelete();
+        return _1botNetworks;
+      })()`,
+      ORDER_ATOMIC,
+    ];
   };
   generator.forBlock["wifi_get_rssi"] = function () {
     generator.addInclude("#include <WiFi.h>");
@@ -71,8 +85,12 @@ export function registerESP32WifiGenerator(generator: ESP32Generator) {
     generator.addGlobalDefinition(`String _1botLastWebPath = "None";`);
     generator.addSetupDefinition(`
       _1botWebServer.on(${path}, []() {
-        _1botLastWebPath = ${path};
+        _1botLastWebPath = _1botWebServer.uri();
         _1botWebServer.send(200, "text/plain", ${content});
+      });
+      _1botWebServer.onNotFound([]() {
+        _1botLastWebPath = _1botWebServer.uri();
+        _1botWebServer.send(404, "text/plain", "Not Found");
       });
       _1botWebServer.begin();
     `);
@@ -92,5 +110,50 @@ export function registerESP32WifiGenerator(generator: ESP32Generator) {
     generator.addInclude("#include <WebServer.h>");
     generator.addGlobalDefinition(`String _1botLastWebPath = "None";`);
     return [`_1botLastWebPath == ${value}`, ORDER_ATOMIC];
+  };
+
+  generator.forBlock["wifi_http_get_text"] = function (block: Blockly.Block) {
+    const url = generator.valueToCode(block, "URL", ORDER_ATOMIC) || "\"\"";
+
+    generator.addInclude("#include <WiFi.h>");
+    generator.addInclude("#include <HTTPClient.h>");
+    return [
+      `([]() {
+        HTTPClient _1botHttp;
+        String _1botResponse = "";
+        _1botHttp.begin(${url});
+        int _1botStatus = _1botHttp.GET();
+        if (_1botStatus > 0) {
+          _1botResponse = _1botHttp.getString();
+        }
+        _1botHttp.end();
+        return _1botResponse;
+      })()`,
+      ORDER_ATOMIC,
+    ];
+  };
+
+  generator.forBlock["wifi_http_post_text"] = function (block: Blockly.Block) {
+    const url = generator.valueToCode(block, "URL", ORDER_ATOMIC) || "\"\"";
+    const contentType = generator.valueToCode(block, "CONTENT_TYPE", ORDER_ATOMIC) || "\"application/json\"";
+    const body = generator.valueToCode(block, "BODY", ORDER_ATOMIC) || "\"\"";
+
+    generator.addInclude("#include <WiFi.h>");
+    generator.addInclude("#include <HTTPClient.h>");
+    return [
+      `([]() {
+        HTTPClient _1botHttp;
+        String _1botResponse = "";
+        _1botHttp.begin(${url});
+        _1botHttp.addHeader("Content-Type", ${contentType});
+        int _1botStatus = _1botHttp.POST(${body});
+        if (_1botStatus > 0) {
+          _1botResponse = _1botHttp.getString();
+        }
+        _1botHttp.end();
+        return _1botResponse;
+      })()`,
+      ORDER_ATOMIC,
+    ];
   };
 }

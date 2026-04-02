@@ -13,7 +13,9 @@ type EditorRuntime = {
   createWorkspaceManager: (
     container: HTMLDivElement,
     board: string,
-    options?: { onSymbolTableChange?: (rows: SymbolTableRow[]) => void }
+    options?: {
+      onSymbolTableChange?: (rows: SymbolTableRow[]) => void;
+    }
   ) => Promise<Blockly.Workspace>;
 };
 
@@ -536,9 +538,11 @@ function App() {
           </div>
 
           <div className={`code-panel ${activeTab === "code" ? "visible" : "hidden"}`}>
-            <pre className="code-content">
-              <code>{code}</code>
-            </pre>
+            <div className="code-scroll">
+              <pre className="code-content">
+                <code>{code}</code>
+              </pre>
+            </div>
           </div>
         </main>
       </div>
