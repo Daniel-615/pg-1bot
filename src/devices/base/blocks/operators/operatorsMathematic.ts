@@ -79,7 +79,7 @@ export function defineArdunoOperatorMathematicBlocks(){
         },
         {
             "type": "math_random",
-            "message0": "número al azar entre %1 y %2",
+            "message0": "%{BKY_1BOT_MATH_RANDOM}",
             "args0":[
                 {
                     "type": "input_value",

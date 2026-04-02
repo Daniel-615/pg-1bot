@@ -144,6 +144,39 @@ body {
   max-width: 200px;
 }
 
+.language-switcher {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.language-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.language-btn:hover {
+  color: var(--text-primary);
+}
+
+.language-btn.active {
+  background: var(--primary);
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+
 .project-name-input {
   width: 100%;
   padding: 8px 12px;
@@ -1024,6 +1057,10 @@ body {
     padding: 10px;
   }
 
+  .language-btn {
+    padding: 6px 8px;
+  }
+
   .project-name-container {
     max-width: 150px;
   }
@@ -1089,6 +1126,10 @@ body {
     flex: 1;
     max-width: none;
     min-width: 80px;
+  }
+
+  .language-switcher {
+    padding: 2px;
   }
 
   .project-name-input {

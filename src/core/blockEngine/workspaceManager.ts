@@ -2,7 +2,7 @@ import * as Blockly from "blockly";
 import "blockly/blocks";
 import { ArduinoSemanticAnalyzer } from "./semantic/arduinoSemanticAnalyzer";
 import type { SymbolTableRow } from "./semantic/symbolTable";
-import { baseCategories } from "../../devices/base/workspace/baseCategories";
+import { getBaseCategories } from "../../devices/base/workspace/baseCategories";
 
 type CreateWorkspaceOptions = {
   onSymbolTableChange?: (rows: SymbolTableRow[]) => void;
@@ -19,7 +19,7 @@ export function createWorkspace(
     toolbox: {
       kind: "categoryToolbox",
       contents: [
-        ...baseCategories,
+        ...getBaseCategories(),
         ...extraCategories
       ],
     },

@@ -3,7 +3,7 @@ export function defineArduinoControlBlocks(){
     Blockly.common.defineBlocksWithJsonArray([
     {
       "type": "if",
-      "message0": "si %1",
+      "message0": "%{BKY_1BOT_CONTROL_IF}",
       "args0":[
         {
           "type": "input_value", 
@@ -25,7 +25,7 @@ export function defineArduinoControlBlocks(){
     },
     {
       "type": "if_else",
-      "message0": "si %1 entonces",
+      "message0": "%{BKY_1BOT_CONTROL_IF_THEN}",
       "args0": [
         { 
           "type": "input_value", 
@@ -37,7 +37,7 @@ export function defineArduinoControlBlocks(){
       "args1": [
         { "type": "input_statement", "name": "IF_BODY" }
       ],
-      "message2": "sino %1",
+      "message2": "%{BKY_1BOT_CONTROL_ELSE}",
       "args2": [
         { "type": "input_statement", "name": "ELSE_BODY" }
       ],
@@ -48,14 +48,14 @@ export function defineArduinoControlBlocks(){
     },
     {
       "type": "do_while",
-      "message0": "hacer %1",
+      "message0": "%{BKY_1BOT_CONTROL_DO}",
       "args0":[
         {
           "type": "input_statement",
           "name": "BODY"
         }
       ],
-      "message1": "mientras %1",
+      "message1": "%{BKY_1BOT_CONTROL_WHILE}",
       "args1":[
         {
           "type": "input_value",
@@ -70,7 +70,7 @@ export function defineArduinoControlBlocks(){
     },
     {
       "type": "while_repeat",
-      "message0": "mientras se repite %1",
+      "message0": "%{BKY_1BOT_CONTROL_WHILE_REPEAT}",
       "args0":[
         {
           "type": "input_value",
@@ -78,7 +78,7 @@ export function defineArduinoControlBlocks(){
           "check": "Boolean"
         }
       ],
-      "message1": "hacer %1",
+      "message1": "%{BKY_1BOT_CONTROL_DO}",
       "args1":[
         {
           "type": "input_statement",
@@ -92,7 +92,7 @@ export function defineArduinoControlBlocks(){
     },
     {
       "type": "repeat_until",
-      "message0": "repite hasta que %1",
+      "message0": "%{BKY_1BOT_CONTROL_REPEAT_UNTIL}",
       "args0": [
         {
           "type": "input_value",
@@ -115,7 +115,7 @@ export function defineArduinoControlBlocks(){
 
     {
       "type": "for_range",
-      "message0": "contar con %1 de %2 a %3 por paso %4",
+      "message0": "%{BKY_1BOT_CONTROL_FOR_RANGE}",
       "args0":[
         {
           "type": "field_variable",
@@ -139,7 +139,7 @@ export function defineArduinoControlBlocks(){
           "min": 1
         }
       ],
-      "message1": "hacer %1",
+      "message1": "%{BKY_1BOT_CONTROL_DO}",
       "args1":[
         {
           "type": "input_statement",
@@ -153,21 +153,21 @@ export function defineArduinoControlBlocks(){
     },
      {
       "type": "break",
-      "message0": "romper",
+      "message0": "%{BKY_1BOT_CONTROL_BREAK}",
       "previousStatement":null,
       "nextStatement":null,
       "colour": "#ffaa00",
     },
     {
       "type": "continue",
-      "message0": "continuar",
+      "message0": "%{BKY_1BOT_CONTROL_CONTINUE}",
       "previousStatement":null,
       "nextStatement": null,
       "colour": "#ffaa00",
     },
     {
         "type": "delay_ms",
-        "message0": "esperar %1 milisegundos",
+        "message0": "%{BKY_1BOT_CONTROL_DELAY}",
         "args0":[
             {
                 "type": "field_number",

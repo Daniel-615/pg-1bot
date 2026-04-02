@@ -1,11 +1,13 @@
-import { hardwareCategories } from "./hardware/hardwareCategories";
-import { operatorsCategory } from "./operators/operatorsCategory";
-import { typesCategories } from "./types/typesCategories";
-import { controlCategories } from "./control/controlCategories";
-export const baseCategories = [
+import { blocklyText } from "../../../blockly/messages";
+import { getHardwareCategories } from "./hardware/hardwareCategories";
+import { getOperatorsCategory } from "./operators/operatorsCategory";
+import { getTypesCategories } from "./types/typesCategories";
+import { getControlCategories } from "./control/controlCategories";
+export function getBaseCategories() {
+return [
     {
       kind: "category",
-      name: "VARIABLES",
+      name: blocklyText("1BOT_CAT_VARIABLES"),
       colour: "#fb8e3b",
       contents:[
         {
@@ -25,16 +27,17 @@ export const baseCategories = [
         },
         {
           kind: "block",
-          type: "lists_getIndex"
+          type: "list_var_get_index"
         },
         {
           kind: "block",
-          type: "lists_setIndex"
+          type: "list_var_set_index"
         }
       ]
     },
-    ...hardwareCategories,
-    ...typesCategories,
-    ...controlCategories,
-    operatorsCategory
+    ...getHardwareCategories(),
+    ...getTypesCategories(),
+    ...getControlCategories(),
+    getOperatorsCategory()
   ];
+}

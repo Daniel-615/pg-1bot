@@ -3,7 +3,7 @@ export function defineEsp32WifiBlocks(){
     Blockly.defineBlocksWithJsonArray([
         {
             "type": "wifi_connect",
-            "message0": "conectar Wifi SSID %1 contraseña %2",
+            "message0": "%{BKY_1BOT_ESP32_WIFI_CONNECT}",
             "args0":[
                 {
                     "type": "field_input",
@@ -23,7 +23,7 @@ export function defineEsp32WifiBlocks(){
         },
         {
             "type": "wifi_disconnect",
-            "message0": "desconectar Wifi",
+            "message0": "%{BKY_1BOT_ESP32_WIFI_DISCONNECT}",
             "previousStatement": null,
             "nextStatement": null,
             "colour": "#43927a",
@@ -32,7 +32,7 @@ export function defineEsp32WifiBlocks(){
         },
         {
             type: "wifi_scan_networks",
-            "message0": "escanear redes WiFi",
+            "message0": "%{BKY_1BOT_ESP32_WIFI_SCAN}",
             "output": "Array",
             "colour": "#43927a",
             "tooltip": "Devuelve un array con los SSID de las redes WiFi cercanas",
@@ -40,7 +40,7 @@ export function defineEsp32WifiBlocks(){
         },
         {
             "type": "wifi_create_ap",
-            "message0": "crear punto de acceso SSID %1 contraseña %2",
+            "message0": "%{BKY_1BOT_ESP32_WIFI_AP}",
             "args0":[
                 {
                     "type": "field_input",
@@ -60,7 +60,7 @@ export function defineEsp32WifiBlocks(){
         },
         {
             "type": "wifi_is_connected",
-            "message0": "¿Wifi conectado?",
+            "message0": "%{BKY_1BOT_ESP32_WIFI_IS_CONNECTED}",
             "output": "Boolean",
             "colour": "#43927a",
             "tooltip": "Devuelve verdadero si el ESP32 está conectado",
@@ -68,7 +68,7 @@ export function defineEsp32WifiBlocks(){
         },
         {
             "type": "wifi_get_rssi",
-            "message0": "fuerza de señal wifi",
+            "message0": "%{BKY_1BOT_ESP32_WIFI_RSSI}",
             "output": "Number",
             "colour": "#43927a",
             "tooltip": "Devuelve el RSSI de la red actual",
@@ -76,10 +76,60 @@ export function defineEsp32WifiBlocks(){
         },
         {
             "type": "wifi_local_ip",
-            "message0": "IP local wifi",
+            "message0": "%{BKY_1BOT_ESP32_WIFI_LOCAL_IP}",
             "output": "String",
             "colour": "#43927a",
             "tooltip": "Devuelve la IP local",
+            "helpUrl": ""
+        },
+        {
+            "type": "wifi_start_web_server",
+            "message0": "%{BKY_1BOT_ESP32_WIFI_START_WEB}",
+            "args0": [
+                {
+                    "type": "field_number",
+                    "name": "PORT",
+                    "value": 80,
+                    "min": 1
+                },
+                {
+                    "type": "field_input",
+                    "name": "PATH",
+                    "text": "/"
+                },
+                {
+                    "type": "input_value",
+                    "name": "CONTENT",
+                    "check": "String"
+                }
+            ],
+            "previousStatement": null,
+            "nextStatement": null,
+            "colour": "#43927a",
+            "tooltip": "Inicia un servidor web simple en el ESP32",
+            "helpUrl": ""
+        },
+        {
+            "type": "wifi_web_file_name",
+            "message0": "%{BKY_1BOT_ESP32_WIFI_WEB_FILE}",
+            "output": "String",
+            "colour": "#43927a",
+            "tooltip": "Devuelve la ultima ruta solicitada al servidor web",
+            "helpUrl": ""
+        },
+        {
+            "type": "wifi_web_response_equals",
+            "message0": "%{BKY_1BOT_ESP32_WIFI_WEB_EQUALS}",
+            "args0": [
+                {
+                    "type": "input_value",
+                    "name": "VALUE",
+                    "check": "String"
+                }
+            ],
+            "output": "Boolean",
+            "colour": "#43927a",
+            "tooltip": "Compara la ultima ruta solicitada con un valor",
             "helpUrl": ""
         }
     ])

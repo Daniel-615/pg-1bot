@@ -1,7 +1,9 @@
-export const typesCategories=[
+import { blocklyText } from "../../../../blockly/messages";
+export function getTypesCategories() {
+return [
     {
       kind: "category",
-      name: "TIPOS",
+      name: blocklyText("1BOT_CAT_TYPES"),
       colour: "#c54040",
       contents: [
         {
@@ -18,4 +20,5 @@ export const typesCategories=[
         },
       ],
     },
-]
+];
+}

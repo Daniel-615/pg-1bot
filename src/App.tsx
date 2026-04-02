@@ -1,26 +1,32 @@
 import { useEffect, useRef, useState } from "react";
 import * as Blockly from "blockly";
+import { applyBlocklyLocale } from "./blockly/messages";
 import { createWorkspaceManager } from "./devices/base/workspace/managerWorkspace";
 import type { SymbolTableRow } from "./core/blockEngine/semantic/symbolTable";
 import { compileArduino } from "./core/codeEngine/arduinoCompiler";
+import i18n, { persistLanguage, type Language } from "./i18n";
 import "./App.css";
 
 function App() {
   const blocklyDiv = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<Blockly.Workspace | null>(null);
-
+  const [language, setLanguage] = useState<Language>(
+    () => (i18n.language === "en" ? "en" : "es")
+  );
   const [code, setCode] = useState("");
   const [board, setBoard] = useState("esp32");
-  const [projectName, setProjectName] = useState("Sin título");
+  const [projectName, setProjectName] = useState(() => i18n.t("projectUntitled"));
   const [activeTab, setActiveTab] = useState<"blocks" | "code">("blocks");
-  const [connectionType] = useState<
-    "usb" | "bluetooth" | "wifi"
-  >("usb");
+  const [connectionType] = useState<"usb" | "bluetooth" | "wifi">("usb");
   const [isConnected] = useState(false);
   const [deviceMenuOpen, setDeviceMenuOpen] = useState(false);
   const [activeMode, setActiveMode] = useState<"cargar" | "envivo">("envivo");
   const [symbolRows, setSymbolRows] = useState<SymbolTableRow[]>([]);
   const [debugMode, setDebugMode] = useState(false);
+  const [, setLanguageVersion] = useState(0);
+
+  const t = (key: string, options?: Record<string, string | number>) =>
+    i18n.t(key, options);
 
   const devices = [
     { id: "esp32", name: "ESP32", img: "/devices/esp32.webp" },
@@ -31,7 +37,36 @@ function App() {
   ];
 
   useEffect(() => {
+    void i18n.changeLanguage(language).then(() => {
+      setLanguageVersion((current) => current + 1);
+    });
+    persistLanguage(language);
+  }, [language]);
+
+  useEffect(() => {
+    const syncLanguage = (nextLanguage: string) => {
+      setLanguage(nextLanguage === "en" ? "en" : "es");
+      setLanguageVersion((current) => current + 1);
+    };
+
+    i18n.on("languageChanged", syncLanguage);
+
+    return () => {
+      i18n.off("languageChanged", syncLanguage);
+    };
+  }, []);
+
+  useEffect(() => {
+    const defaultNames = new Set(["Sin titulo", "Untitled"]);
+
+    if (defaultNames.has(projectName)) {
+      setProjectName(t("projectUntitled"));
+    }
+  }, [language, projectName]);
+
+  useEffect(() => {
     if (!blocklyDiv.current) return;
+    applyBlocklyLocale(language);
 
     if (workspaceRef.current) {
       workspaceRef.current.dispose();
@@ -59,61 +94,65 @@ function App() {
       }
       setSymbolRows([]);
     };
-  }, [board]);
+  }, [board, language]);
 
   useEffect(() => {
     if (!workspaceRef.current) return;
     setCode(compileArduino(workspaceRef.current, board));
   }, [board]);
 
-  const handleRun = () => alert("Ejecutar: Iniciando ejecución del código...");
-  const handleStop = () => alert("Detener: Deteniendo la ejecución...");
+  const handleRun = () => alert(t("alertRun"));
+  const handleStop = () => alert(t("alertStop"));
   const handleToggleDebug = () => setDebugMode((current) => !current);
   const handleUpload = () => {
-    const currentDevice = devices.find((d) => d.id === board);
-    alert(`Cargar: Subiendo código a ${currentDevice?.name || board}...`);
+    const currentDevice = devices.find((device) => device.id === board);
+    alert(
+      t("alertUpload", {
+        device: currentDevice?.name || board,
+      })
+    );
   };
-  const handleSave = () =>
-    alert(`Guardar: Guardando proyecto "${projectName}"...`);
-  const handleFile = () => alert("Menú Archivo: Nuevo, Abrir, Guardar como...");
-  const handleEdit = () =>
-    alert("Menú Editar: Deshacer, Rehacer, Copiar, Pegar...");
+  const handleSave = () => alert(t("alertSave", { projectName }));
+  const handleFile = () => alert(t("alertFile"));
+  const handleEdit = () => alert(t("alertEdit"));
+
   const handleCopyCode = () => {
     navigator.clipboard
       .writeText(code)
-      .then(() => alert("Código copiado al portapapeles"))
-      .catch(() => alert("Error al copiar el código"));
+      .then(() => alert(t("alertCopySuccess")))
+      .catch(() => alert(t("alertCopyError")));
   };
 
   const handleDownloadCode = () => {
-    const suggestedName = projectName.trim() || "proyecto";
-    const requestedName = window.prompt(
-      "Nombre del archivo .ino",
-      suggestedName
-    );
+    const suggestedName = projectName.trim() || t("fallbackProjectName");
+    const requestedName = window.prompt(t("promptFileName"), suggestedName);
 
     if (requestedName === null) return;
 
     const sanitizedName =
-      requestedName.trim().replace(/[<>:\"/\\|?*\x00-\x1F]/g, "_") || "proyecto";
+      requestedName.trim().replace(/[<>:\"/\\|?*\x00-\x1F]/g, "_") ||
+      t("fallbackProjectName");
 
     const blob = new Blob([code], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${sanitizedName.replace(/\s+/g, "_")}.ino`;
-    a.click();
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${sanitizedName.replace(/\s+/g, "_")}.ino`;
+    link.click();
     URL.revokeObjectURL(url);
   };
 
   const handleModeChange = (mode: "cargar" | "envivo") => {
     setActiveMode(mode);
-    alert(`Modo cambiado a: ${mode === "cargar" ? "Cargar" : "En vivo"}`);
+    alert(
+      t("modeChanged", {
+        mode: mode === "cargar" ? t("modeUpload") : t("modeLive"),
+      })
+    );
   };
 
-  const handleFullscreen = () =>
-    alert("Pantalla completa: Expandiendo vista...");
-  const handleRotate = () => alert("Rotar: Rotando vista del dispositivo...");
+  const handleFullscreen = () => alert(t("alertFullscreen"));
+  const handleRotate = () => alert(t("alertRotate"));
 
   return (
     <div className="app-container">
@@ -130,10 +169,10 @@ function App() {
           <nav className="nav-menu">
             |
             <button className="nav-btn" onClick={handleFile}>
-              <span className="nav-text">Archivo</span>
+              <span className="nav-text">{t("navFile")}</span>
             </button>
             <button className="nav-btn" onClick={handleEdit}>
-              <span className="nav-text">Editar</span>
+              <span className="nav-text">{t("navEdit")}</span>
             </button>
           </nav>
 
@@ -142,30 +181,47 @@ function App() {
               type="text"
               className="project-name-input"
               value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
+              onChange={(event) => setProjectName(event.target.value)}
             />
           </div>
 
+          <div className="language-switcher" aria-label={t("language")}>
+            <button
+              className={`language-btn ${language === "es" ? "active" : ""}`}
+              onClick={() => setLanguage("es")}
+            >
+              {t("languageSpanish")}
+            </button>
+            <button
+              className={`language-btn ${language === "en" ? "active" : ""}`}
+              onClick={() => setLanguage("en")}
+            >
+              {t("languageEnglish")}
+            </button>
+          </div>
+
           <button className="save-btn" onClick={handleSave}>
-            <span className="btn-text">Guardar</span>
+            <span className="btn-text">{t("save")}</span>
           </button>
         </div>
 
         <div className="header-right">
           <button className="action-btn run-btn" onClick={handleRun}>
-            <span className="btn-text">Correr</span>
+            <span className="btn-text">{t("run")}</span>
           </button>
           <button
             className={`action-btn debug-btn ${debugMode ? "active" : ""}`}
             onClick={handleToggleDebug}
           >
-            <span className="btn-text">{debugMode ? "Salir debug" : "Debug"}</span>
+            <span className="btn-text">
+              {debugMode ? t("exitDebug") : t("debug")}
+            </span>
           </button>
           <button className="action-btn stop-btn" onClick={handleStop}>
-            <span className="btn-text">Detener</span>
+            <span className="btn-text">{t("stop")}</span>
           </button>
           <button className="action-btn upload-btn" onClick={handleUpload}>
-            <span className="btn-text">Cargar</span>
+            <span className="btn-text">{t("upload")}</span>
           </button>
         </div>
       </header>
@@ -187,21 +243,21 @@ function App() {
           <div className="sidebar-controls">
             <button
               className="control-btn"
-              title="Pantalla completa"
+              title={t("fullscreen")}
               onClick={handleFullscreen}
             ></button>
             <button
               className="control-btn"
-              title="Rotar"
+              title={t("rotate")}
               onClick={handleRotate}
             ></button>
           </div>
 
           <div className="tabs-container">
             <div className="tabs">
-              <button className="tab active">Dispositivos</button>
-              <button className="tab">Objetos</button>
-              <button className="tab">Fondo</button>
+              <button className="tab active">{t("devices")}</button>
+              <button className="tab">{t("objects")}</button>
+              <button className="tab">{t("background")}</button>
             </div>
             <div className="tab-content">
               <div className="device-selector">
@@ -210,7 +266,7 @@ function App() {
                   onClick={() => setDeviceMenuOpen(!deviceMenuOpen)}
                 >
                   <span className="device-name">
-                    {devices.find((d) => d.id === board)?.name}
+                    {devices.find((device) => device.id === board)?.name}
                   </span>
                 </div>
 
@@ -236,19 +292,19 @@ function App() {
           </div>
 
           <div className="mode-section">
-            <span className="mode-label">Modo:</span>
+            <span className="mode-label">{t("mode")}</span>
             <div className="mode-toggle">
               <button
                 className={`mode-btn ${activeMode === "cargar" ? "active" : ""}`}
                 onClick={() => handleModeChange("cargar")}
               >
-                Cargar
+                {t("modeUpload")}
               </button>
               <button
                 className={`mode-btn ${activeMode === "envivo" ? "active" : ""}`}
                 onClick={() => handleModeChange("envivo")}
               >
-                En vivo
+                {t("modeLive")}
               </button>
             </div>
           </div>
@@ -260,22 +316,22 @@ function App() {
               className={`workspace-tab ${activeTab === "blocks" ? "active" : ""}`}
               onClick={() => setActiveTab("blocks")}
             >
-              Bloques
+              {t("blocks")}
             </button>
             <button
               className={`workspace-tab ${activeTab === "code" ? "active" : ""}`}
               onClick={() => setActiveTab("code")}
             >
-              Código
+              {t("code")}
             </button>
 
             {activeTab === "code" && (
               <div className="code-actions">
                 <button className="code-btn" onClick={handleCopyCode}>
-                  Copiar
+                  {t("copy")}
                 </button>
                 <button className="code-btn download-btn" onClick={handleDownloadCode}>
-                  Descargar .ino
+                  {t("downloadIno")}
                 </button>
               </div>
             )}
@@ -285,50 +341,50 @@ function App() {
             className={`workspace ${activeTab === "blocks" ? "visible" : "hidden"}`}
           >
             <div ref={blocklyDiv} className="blockly-container" />
-            {debugMode && <aside className="symbol-table-panel">
-              <div className="symbol-table-header">
-                <h3>Tabla de simbolos</h3>
-                <span>{symbolRows.length} registros</span>
-              </div>
-
-              {symbolRows.length === 0 ? (
-                <p className="symbol-table-empty">
-                  Aun no hay variables registradas en el analisis.
-                </p>
-              ) : (
-                <div className="symbol-table-scroll">
-                  <table className="symbol-table">
-                    <thead>
-                      <tr>
-                        <th>Nombre</th>
-                        <th>Tipo</th>
-                        <th>Valor</th>
-                        <th>Init</th>
-                        <th>Uso</th>
-                        <th>Scope</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {symbolRows.map((row, index) => (
-                        <tr key={`${row.name}-${row.scopeLevel}-${index}`}>
-                          <td>{row.name}</td>
-                          <td>{row.type ?? "null"}</td>
-                          <td>{row.value === null ? "null" : String(row.value)}</td>
-                          <td>{row.initialized ? "si" : "no"}</td>
-                          <td>{row.used ? "si" : "no"}</td>
-                          <td>{row.scopeLevel}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            {debugMode && (
+              <aside className="symbol-table-panel">
+                <div className="symbol-table-header">
+                  <h3>{t("symbolTable")}</h3>
+                  <span>
+                    {symbolRows.length} {t("records")}
+                  </span>
                 </div>
-              )}
-            </aside>}
+
+                {symbolRows.length === 0 ? (
+                  <p className="symbol-table-empty">{t("noVariables")}</p>
+                ) : (
+                  <div className="symbol-table-scroll">
+                    <table className="symbol-table">
+                      <thead>
+                        <tr>
+                          <th>{t("name")}</th>
+                          <th>{t("type")}</th>
+                          <th>{t("value")}</th>
+                          <th>{t("init")}</th>
+                          <th>{t("usage")}</th>
+                          <th>{t("scope")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {symbolRows.map((row, index) => (
+                          <tr key={`${row.name}-${row.scopeLevel}-${index}`}>
+                            <td>{row.name}</td>
+                            <td>{row.type ?? "null"}</td>
+                            <td>{row.value === null ? "null" : String(row.value)}</td>
+                            <td>{row.initialized ? t("yes") : t("no")}</td>
+                            <td>{row.used ? t("yes") : t("no")}</td>
+                            <td>{row.scopeLevel}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </aside>
+            )}
           </div>
 
-          <div
-            className={`code-panel ${activeTab === "code" ? "visible" : "hidden"}`}
-          >
+          <div className={`code-panel ${activeTab === "code" ? "visible" : "hidden"}`}>
             <pre className="code-content">
               <code>{code}</code>
             </pre>
@@ -343,12 +399,15 @@ function App() {
           ></span>
           <span className="status-text">
             {isConnected
-              ? `Conectado a ${board.toUpperCase()} via ${connectionType.toUpperCase()}`
-              : "Sin conexión"}
+              ? t("connectedStatus", {
+                  board: board.toUpperCase(),
+                  connection: connectionType.toUpperCase(),
+                })
+              : t("noConnection")}
           </span>
         </div>
         <div className="status-right">
-          <span>1bot IDE v1.0</span>
+          <span>{t("appTitle")}</span>
         </div>
       </footer>
     </div>

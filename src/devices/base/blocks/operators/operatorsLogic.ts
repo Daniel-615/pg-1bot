@@ -60,7 +60,7 @@ export function defineArduinoOperatorsLogicBlocks(){
         },
         {
             "type": "logic_and",
-            "message0": "%1 y %2",
+            "message0": "%{BKY_1BOT_LOGIC_AND}",
             "args0":[
                 {
                     "type": "input_value",
@@ -79,7 +79,7 @@ export function defineArduinoOperatorsLogicBlocks(){
         },
         {
             "type": "logic_or",
-            "message0": "%1 o %2",
+            "message0": "%{BKY_1BOT_LOGIC_OR}",
             "args0": [
                 {
                 "type": "input_value",
@@ -98,7 +98,7 @@ export function defineArduinoOperatorsLogicBlocks(){
         },
         {
             "type": "logic_not",
-            "message0": "no %1",
+            "message0": "%{BKY_1BOT_LOGIC_NOT}",
             "args0": [
                 {
                 "type": "input_value",

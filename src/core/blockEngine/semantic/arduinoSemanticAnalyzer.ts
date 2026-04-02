@@ -164,7 +164,12 @@ export class ArduinoSemanticAnalyzer {
         break;
 
       case "variables_get":
+      case "list_var_get_index":
         this.handleVariableUse(block);
+        break;
+
+      case "list_var_set_index":
+        this.handleListSetIndex(block);
         break;
 
       case "if": {
@@ -258,6 +263,36 @@ export class ArduinoSemanticAnalyzer {
 
   private handleVariableUse(block: Blockly.Block) {
     this.getVariables().handleVariableUse(block);
+  }
+
+  private handleListSetIndex(block: Blockly.Block) {
+    this.getVariables().handleVariableUse(block);
+
+    const name = this.getVariableName(block);
+    if (!name) return;
+
+    const symbol = this.symbolTable.lookup(name);
+    if (!symbol || !Array.isArray(symbol.value)) return;
+
+    const nextValue = [...symbol.value];
+    const where = block.getFieldValue("WHERE") || "FROM_START";
+    const valueToAssign = this.inferValue(block.getInputTargetBlock("TO"));
+
+    let index = 0;
+    if (where === "FIRST") {
+      index = 0;
+    } else if (where === "LAST") {
+      index = nextValue.length - 1;
+    } else {
+      const atValue = this.inferValue(block.getInputTargetBlock("AT"));
+      if (typeof atValue !== "number") return;
+      index = atValue;
+    }
+
+    if (index < 0 || index >= nextValue.length) return;
+
+    nextValue[index] = valueToAssign;
+    this.symbolTable.assign(name, nextValue, "array");
   }
 
   private handleIf(block: Blockly.Block) {
@@ -444,6 +479,12 @@ export class ArduinoSemanticAnalyzer {
         return "number";
       }
 
+      case "list_var_get_index": {
+        const symbol = this.symbolTable.lookup(this.getVariableName(block) ?? "");
+        if (!symbol) return null;
+        return symbol.type === "array" ? "number" : symbol.type;
+      }
+
       case "variables_get": {
         const symbol = this.symbolTable.lookup(this.getVariableName(block) ?? "");
         return symbol?.type ?? null;
@@ -498,6 +539,21 @@ export class ArduinoSemanticAnalyzer {
           if (where === "FIRST") return listValue[0] ?? null;
           if (where === "LAST") return listValue[listValue.length - 1] ?? null;
         }
+
+        if (!Array.isArray(listValue)) return null;
+
+        if (where === "FIRST") return listValue[0] ?? null;
+        if (where === "LAST") return listValue[listValue.length - 1] ?? null;
+
+        const atBlock = block.getInputTargetBlock("AT");
+        const index = this.inferValue(atBlock);
+        return typeof index === "number" ? listValue[index] ?? null : null;
+      }
+
+      case "list_var_get_index": {
+        const symbol = this.symbolTable.lookup(this.getVariableName(block) ?? "");
+        const listValue = symbol?.value;
+        const where = block.getFieldValue("WHERE") || "FROM_START";
 
         if (!Array.isArray(listValue)) return null;
 

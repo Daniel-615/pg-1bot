@@ -1,7 +1,9 @@
-export const esp32WifiCategories = [
+import { blocklyText } from "../../../blockly/messages";
+export function getEsp32WifiCategories() {
+return [
   {
     kind:"category",
-    name:"WIFI",
+    name:blocklyText("1BOT_CAT_WIFI"),
     colour:"#5C81A6",
     contents:[
       {
@@ -31,7 +33,20 @@ export const esp32WifiCategories = [
       {
         kind: "block",
         type: "wifi_scan_networks",
+      },
+      {
+        kind: "block",
+        type: "wifi_start_web_server",
+      },
+      {
+        kind: "block",
+        type: "wifi_web_file_name",
+      },
+      {
+        kind: "block",
+        type: "wifi_web_response_equals",
       }
     ]
   }
-]
+];
+}

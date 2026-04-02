@@ -9,7 +9,7 @@ export function defineArduinoBlocks() {
   Blockly.common.defineBlocksWithJsonArray([
     {
       type: "led_set",
-      message0: "poner LED en pin %1 a %2",
+      message0: "%{BKY_1BOT_BLOCK_LED_SET}",
       args0: [
         {
           type: "field_number",
@@ -22,8 +22,8 @@ export function defineArduinoBlocks() {
           type: "field_dropdown",
           name: "STATE",
           options: [
-            ["ENCENDIDO", "HIGH"],
-            ["APAGADO", "LOW"],
+            ["%{BKY_1BOT_LED_ON}", "HIGH"],
+            ["%{BKY_1BOT_LED_OFF}", "LOW"],
           ],
         },
       ],
@@ -34,24 +34,8 @@ export function defineArduinoBlocks() {
       helpUrl: "",
     },
     {
-      type: "logic_boolean",
-      message0: "%1",
-      args0: [
-        {
-          type: "field_dropdown",
-          name: "BOOL",
-          options: [
-            ["true", "TRUE"],
-            ["false", "FALSE"],
-          ],
-        },
-      ],
-      output: "Boolean",
-      colour: "#c54040",
-    },
-    {
       type: "program_start",
-      message0: "🤖 1bot-start %1",
+      message0: "%{BKY_1BOT_BLOCK_PROGRAM_START}",
       args0: [
         {
           type: "input_statement",
@@ -64,7 +48,7 @@ export function defineArduinoBlocks() {
     },
     {
       type: "print",
-      message0: "imprimir %1",
+      message0: "%{BKY_1BOT_BLOCK_PRINT}",
       args0: [
         {
           type: "input_value",
@@ -103,8 +87,71 @@ export function defineArduinoBlocks() {
       ],
       output: "String",
       colour: "#c54040",
-      tooltip: "Bloque literal de texto (STRING).",
+      tooltip: "%{BKY_1BOT_BLOCK_STRING_TOOLTIP}",
       helpUrl: "",
     },
+    {
+      type: "list_var_get_index",
+      message0: "%{BKY_1BOT_BLOCK_LIST_GET_INDEX}",
+      args0: [
+        {
+          type: "field_variable",
+          name: "VAR",
+          variable: "miLista"
+        },
+        {
+          type: "field_dropdown",
+          name: "WHERE",
+          options: [
+            ["%{BKY_1BOT_LIST_FIRST}", "FIRST"],
+            ["%{BKY_1BOT_LIST_LAST}", "LAST"],
+            ["%{BKY_1BOT_LIST_INDEX}", "FROM_START"],
+          ]
+        },
+        {
+          type: "input_value",
+          name: "AT",
+          check: "Number"
+        }
+      ],
+      output: "Number",
+      colour: "#f78c2d",
+      tooltip: "Obtiene un elemento de una lista guardada en variable.",
+      helpUrl: "",
+    },
+    {
+      type: "list_var_set_index",
+      message0: "%{BKY_1BOT_BLOCK_LIST_SET_INDEX}",
+      args0: [
+        {
+          type: "field_variable",
+          name: "VAR",
+          variable: "miLista"
+        },
+        {
+          type: "field_dropdown",
+          name: "WHERE",
+          options: [
+            ["%{BKY_1BOT_LIST_FIRST}", "FIRST"],
+            ["%{BKY_1BOT_LIST_LAST}", "LAST"],
+            ["%{BKY_1BOT_LIST_INDEX}", "FROM_START"],
+          ]
+        },
+        {
+          type: "input_value",
+          name: "AT",
+          check: "Number"
+        },
+        {
+          type: "input_value",
+          name: "TO"
+        }
+      ],
+      previousStatement: null,
+      nextStatement: null,
+      colour: "#f78c2d",
+      tooltip: "Modifica un elemento de una lista guardada en variable.",
+      helpUrl: "",
+    }
   ]);
 }

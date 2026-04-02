@@ -1,7 +1,9 @@
-export const controlCategories = [
+import { blocklyText } from "../../../../blockly/messages";
+export function getControlCategories() {
+return [
   {
     kind: "category",
-    name: "CONTROL",
+    name: blocklyText("1BOT_CAT_CONTROL"),
     colour: "#ffaa00",
     contents: [
         { 
@@ -43,3 +45,4 @@ export const controlCategories = [
     ],
   },
 ];
+}
