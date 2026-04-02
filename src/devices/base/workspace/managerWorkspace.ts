@@ -1,24 +1,34 @@
-import * as Blockly from "blockly";
-import { createWorkspaceEsp32 } from "../../esp32/workspace/createWorkspaceEsp32";
-import { createWorkspaceUno } from "../../arduinoUno/workspace/workspaceUno";
-import { createWorkspace } from "../../../core/blockEngine/workspaceManager";
+import type * as Blockly from "blockly";
 import type { SymbolTableRow } from "../../../core/blockEngine/semantic/symbolTable";
+import { registerBaseBlocks } from "../register";
 
 type CreateWorkspaceManagerOptions = {
   onSymbolTableChange?: (rows: SymbolTableRow[]) => void;
 };
 
-export function createWorkspaceManager(
+export async function createWorkspaceManager(
   container: HTMLDivElement,
   board: string,
   options: CreateWorkspaceManagerOptions = {}
-): Blockly.Workspace {
+) : Promise<Blockly.Workspace> {
+  registerBaseBlocks();
+
   switch (board) {
-    case "uno":
+    case "uno": {
+      const { createWorkspaceUno } = await import("../../arduinoUno/workspace/workspaceUno");
       return createWorkspaceUno(container, options);
-    case "esp32":
+    }
+    case "esp32": {
+      const [{ createWorkspaceEsp32 }, { ESP32Board }] = await Promise.all([
+        import("../../esp32/workspace/createWorkspaceEsp32"),
+        import("../../esp32/register"),
+      ]);
+      new ESP32Board().registerBlocks?.();
       return createWorkspaceEsp32(container, options);
-    default:
+    }
+    default: {
+      const { createWorkspace } = await import("../../../core/blockEngine/workspaceManager");
       return createWorkspace(container, [], options);
+    }
   }
 }

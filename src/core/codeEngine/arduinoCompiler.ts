@@ -1,11 +1,11 @@
-import * as Blockly from "blockly";
+import type * as Blockly from "blockly";
 import { BoardFactory } from "../../boards/BoardFactory";
 
-export function compileArduino(
+export async function compileArduino(
   workspace: Blockly.Workspace,
   boardType: string
 ) {
-  const board = BoardFactory.create(boardType);
+  const board = await BoardFactory.create(boardType);
   const generator = board.getGenerator();
 
   generator.init(workspace);
@@ -13,4 +13,4 @@ export function compileArduino(
   const code = generator.workspaceToCode(workspace);
 
   return code;
-} 
+}

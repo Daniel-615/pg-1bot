@@ -1,5 +1,16 @@
 import * as Blockly from "blockly";
+import * as BlocklyEn from "blockly/msg/en";
+import * as BlocklyEs from "blockly/msg/es";
 import i18n, { type Language } from "../i18n";
+
+function normalizeBlocklyLocale(messages: Record<string, unknown>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(messages).filter(([, value]) => typeof value === "string")
+  ) as Record<string, string>;
+}
+
+const normalizedBlocklyEn = normalizeBlocklyLocale(BlocklyEn);
+const normalizedBlocklyEs = normalizeBlocklyLocale(BlocklyEs);
 
 const BLOCKLY_KEYS = [
   "1BOT_CAT_VARIABLES",
@@ -66,6 +77,8 @@ const BLOCKLY_KEYS = [
 ] as const;
 
 export function applyBlocklyLocale(language: Language = (i18n.language === "en" ? "en" : "es")) {
+  Blockly.setLocale(language === "en" ? normalizedBlocklyEn : normalizedBlocklyEs);
+
   for (const key of BLOCKLY_KEYS) {
     Blockly.Msg[key] = i18n.t(key, { lng: language });
   }

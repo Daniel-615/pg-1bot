@@ -1,5 +1,16 @@
 import { defineArduinoBlocks } from "./blocks/blocks";
 
-export function registerArduinoUno() {
+let baseBlocksRegistered = false;
+
+export function registerBaseBlocks() {
+  if (baseBlocksRegistered) {
+    return;
+  }
+
   defineArduinoBlocks();
+  baseBlocksRegistered = true;
+}
+
+export function registerArduinoUno() {
+  registerBaseBlocks();
 }

@@ -35,8 +35,15 @@ export function defineArduinoBlocks() {
     },
     {
       type: "program_start",
-      message0: "%{BKY_1BOT_BLOCK_PROGRAM_START}",
+      message0: "%1 %{BKY_1BOT_BLOCK_PROGRAM_START} %2",
       args0: [
+        {
+          type: "field_image",
+          src: "logo.webp",
+          width: 28,
+          height: 28,
+          alt: "1bot",
+        },
         {
           type: "input_statement",
           name: "DO",

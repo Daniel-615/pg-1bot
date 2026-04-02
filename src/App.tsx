@@ -1,15 +1,26 @@
 import { useEffect, useRef, useState } from "react";
-import * as Blockly from "blockly";
-import { applyBlocklyLocale } from "./blockly/messages";
-import { createWorkspaceManager } from "./devices/base/workspace/managerWorkspace";
+import type * as Blockly from "blockly";
 import type { SymbolTableRow } from "./core/blockEngine/semantic/symbolTable";
-import { compileArduino } from "./core/codeEngine/arduinoCompiler";
 import i18n, { persistLanguage, type Language } from "./i18n";
 import "./App.css";
+
+type EditorRuntime = {
+  applyBlocklyLocale: (language?: Language) => void;
+  compileArduino: (
+    workspace: Blockly.Workspace,
+    boardType: string
+  ) => Promise<string>;
+  createWorkspaceManager: (
+    container: HTMLDivElement,
+    board: string,
+    options?: { onSymbolTableChange?: (rows: SymbolTableRow[]) => void }
+  ) => Promise<Blockly.Workspace>;
+};
 
 function App() {
   const blocklyDiv = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<Blockly.Workspace | null>(null);
+  const runtimeRef = useRef<EditorRuntime | null>(null);
   const [language, setLanguage] = useState<Language>(
     () => (i18n.language === "en" ? "en" : "es")
   );
@@ -23,6 +34,9 @@ function App() {
   const [activeMode, setActiveMode] = useState<"cargar" | "envivo">("envivo");
   const [symbolRows, setSymbolRows] = useState<SymbolTableRow[]>([]);
   const [debugMode, setDebugMode] = useState(false);
+  const [isEditorLoading, setIsEditorLoading] = useState(true);
+  const [showEditorLoading, setShowEditorLoading] = useState(false);
+  const [editorLoadError, setEditorLoadError] = useState("");
   const [, setLanguageVersion] = useState(0);
 
   const t = (key: string, options?: Record<string, string | number>) =>
@@ -35,6 +49,27 @@ function App() {
     { id: "nano", name: "Arduino Nano", img: "/devices/arduino_nano.webp" },
     { id: "codey", name: "Codey", img: "/devices/Codey.webp" },
   ];
+
+  const loadEditorRuntime = async () => {
+    if (runtimeRef.current) {
+      return runtimeRef.current;
+    }
+
+    const [{ applyBlocklyLocale }, { compileArduino }, { createWorkspaceManager }] =
+      await Promise.all([
+        import("./blockly/messages"),
+        import("./core/codeEngine/arduinoCompiler"),
+        import("./devices/base/workspace/managerWorkspace"),
+      ]);
+
+    runtimeRef.current = {
+      applyBlocklyLocale,
+      compileArduino,
+      createWorkspaceManager,
+    };
+
+    return runtimeRef.current;
+  };
 
   useEffect(() => {
     void i18n.changeLanguage(language).then(() => {
@@ -66,40 +101,129 @@ function App() {
 
   useEffect(() => {
     if (!blocklyDiv.current) return;
-    applyBlocklyLocale(language);
 
-    if (workspaceRef.current) {
-      workspaceRef.current.dispose();
-      workspaceRef.current = null;
-    }
+    let isCancelled = false;
+    let compileTimeout: ReturnType<typeof setTimeout> | null = null;
+    let loadingTimeout: ReturnType<typeof setTimeout> | null = null;
+    let compileRequestId = 0;
+    let localWorkspace: Blockly.Workspace | null = null;
 
-    workspaceRef.current = createWorkspaceManager(blocklyDiv.current, board, {
-      onSymbolTableChange: setSymbolRows,
-    });
+    const cleanupWorkspace = () => {
+      if (compileTimeout) {
+        clearTimeout(compileTimeout);
+        compileTimeout = null;
+      }
 
-    const onChange = () => {
-      if (!workspaceRef.current) return;
-      const generated = compileArduino(workspaceRef.current, board);
-      setCode(generated);
+      if (loadingTimeout) {
+        clearTimeout(loadingTimeout);
+        loadingTimeout = null;
+      }
+
+      if (localWorkspace) {
+        localWorkspace.dispose();
+        localWorkspace = null;
+      }
+
+      if (workspaceRef.current) {
+        workspaceRef.current = null;
+      }
     };
 
-    workspaceRef.current.addChangeListener(onChange);
-    setCode(compileArduino(workspaceRef.current, board));
+    const initializeEditor = async () => {
+      setIsEditorLoading(true);
+      setShowEditorLoading(false);
+      setEditorLoadError("");
+      loadingTimeout = setTimeout(() => {
+        if (!isCancelled) {
+          setShowEditorLoading(true);
+        }
+      }, 180);
 
-    return () => {
       if (workspaceRef.current) {
-        workspaceRef.current.removeChangeListener(onChange);
         workspaceRef.current.dispose();
         workspaceRef.current = null;
       }
+
+      try {
+        const runtime = await loadEditorRuntime();
+
+        if (isCancelled || !blocklyDiv.current) {
+          return;
+        }
+
+        runtime.applyBlocklyLocale(language);
+
+        const scheduleCompile = () => {
+          if (!localWorkspace) {
+            return;
+          }
+
+          compileRequestId += 1;
+          const requestId = compileRequestId;
+
+          if (compileTimeout) {
+            clearTimeout(compileTimeout);
+          }
+
+          compileTimeout = setTimeout(async () => {
+            if (!localWorkspace || isCancelled) {
+              return;
+            }
+
+            const generated = await runtime.compileArduino(localWorkspace, board);
+
+            if (
+              !isCancelled &&
+              workspaceRef.current === localWorkspace &&
+              requestId === compileRequestId
+            ) {
+              setCode(generated);
+            }
+          }, 180);
+        };
+
+        localWorkspace = await runtime.createWorkspaceManager(blocklyDiv.current, board, {
+          onSymbolTableChange: setSymbolRows,
+        });
+
+        if (isCancelled) {
+          cleanupWorkspace();
+          return;
+        }
+
+        workspaceRef.current = localWorkspace;
+        localWorkspace.addChangeListener(scheduleCompile);
+        scheduleCompile();
+        if (loadingTimeout) {
+          clearTimeout(loadingTimeout);
+          loadingTimeout = null;
+        }
+        setIsEditorLoading(false);
+        setShowEditorLoading(false);
+      } catch (error) {
+        if (loadingTimeout) {
+          clearTimeout(loadingTimeout);
+          loadingTimeout = null;
+        }
+        console.error("Error loading editor", error);
+        if (!isCancelled) {
+          setEditorLoadError(t("editorLoadingError"));
+          setIsEditorLoading(false);
+          setShowEditorLoading(false);
+        }
+      }
+    };
+
+    void initializeEditor();
+
+    return () => {
+      isCancelled = true;
+      cleanupWorkspace();
       setSymbolRows([]);
+      setIsEditorLoading(false);
+      setShowEditorLoading(false);
     };
   }, [board, language]);
-
-  useEffect(() => {
-    if (!workspaceRef.current) return;
-    setCode(compileArduino(workspaceRef.current, board));
-  }, [board]);
 
   const handleRun = () => alert(t("alertRun"));
   const handleStop = () => alert(t("alertStop"));
@@ -341,6 +465,33 @@ function App() {
             className={`workspace ${activeTab === "blocks" ? "visible" : "hidden"}`}
           >
             <div ref={blocklyDiv} className="blockly-container" />
+            {editorLoadError && (
+              <div className="workspace-loading workspace-loading-error">
+                <div className="workspace-loading-copy">
+                  <strong>{editorLoadError}</strong>
+                  <span>{t("editorLoadingErrorDescription")}</span>
+                </div>
+              </div>
+            )}
+            {isEditorLoading && showEditorLoading && (
+              <div className="workspace-loading">
+                <div className="workspace-loading-brand">
+                  <div className="workspace-loading-orbit orbit-one"></div>
+                  <div className="workspace-loading-orbit orbit-two"></div>
+                  <div className="workspace-loading-logo-wrap">
+                    <img
+                      className="workspace-loading-logo"
+                      src="logo.webp"
+                      alt="1bot"
+                    />
+                  </div>
+                </div>
+                <div className="workspace-loading-copy">
+                  <strong>{t("editorLoading")}</strong>
+                  <span>{t("editorLoadingDescription")}</span>
+                </div>
+              </div>
+            )}
             {debugMode && (
               <aside className="symbol-table-panel">
                 <div className="symbol-table-header">
