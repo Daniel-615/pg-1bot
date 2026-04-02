@@ -35,6 +35,10 @@ export class ArduinoSemanticAnalyzer {
   private wifiMode!: "none" | "station" | "ap";
   private wifiConnected!: boolean;
   private attachedServoPins!: Set<string>;
+  private neoPixelConfig!: string | null;
+  private displayConfig!: string | null;
+  private dhtConfig!: string | null;
+  private webServerPort!: string | null;
 
   private debugMode = false;
   private blocksQueue: Blockly.Block[] = [];
@@ -159,6 +163,10 @@ export class ArduinoSemanticAnalyzer {
     this.wifiMode = "none";
     this.wifiConnected = false;
     this.attachedServoPins = new Set();
+    this.neoPixelConfig = null;
+    this.displayConfig = null;
+    this.dhtConfig = null;
+    this.webServerPort = null;
   }
 
   private isEsp32InputOnlyPin(pin: string) {
@@ -247,6 +255,33 @@ export class ArduinoSemanticAnalyzer {
     this.visit(next);
   }
 
+  private traverseNextBlock(block: Blockly.Block) {
+    const next = block.getNextBlock();
+    if (!next) return;
+
+    if (this.debugMode) {
+      this.blocksQueue.push(next);
+      return;
+    }
+
+    this.visit(next);
+  }
+
+  private traverseControlBlock(block: Blockly.Block, inputNames: string[]) {
+    inputNames.forEach((inputName) => {
+      const child = block.getInputTargetBlock(inputName);
+      if (!child) return;
+
+      if (this.debugMode) {
+        this.blocksQueue.push(child);
+      } else {
+        this.visit(child);
+      }
+    });
+
+    this.traverseNextBlock(block);
+  }
+
   private visit(block: Blockly.Block | null) {
     if (!block) return;
 
@@ -269,6 +304,17 @@ export class ArduinoSemanticAnalyzer {
         break;
 
       case "esp32_neopixel_init":
+        {
+          const config = `${block.getFieldValue("PIN")}:${block.getFieldValue("COUNT")}`;
+          if (this.neoPixelConfig && this.neoPixelConfig !== config) {
+            this.addIssue(
+              block,
+              "Ya inicializaste NeoPixel con otra configuracion. Usa una sola inicializacion por programa",
+              "warning"
+            );
+          }
+          this.neoPixelConfig = this.neoPixelConfig ?? config;
+        }
         this.hasNeoPixelInit = true;
         this.registerPinUsage(block, block.getFieldValue("PIN"), "neopixel");
         break;
@@ -286,6 +332,17 @@ export class ArduinoSemanticAnalyzer {
         break;
 
       case "esp32_display_init":
+        {
+          const config = `${block.getFieldValue("SDA")}:${block.getFieldValue("SCL")}`;
+          if (this.displayConfig && this.displayConfig !== config) {
+            this.addIssue(
+              block,
+              "Ya inicializaste el display con otros pines. Usa una sola inicializacion por programa",
+              "warning"
+            );
+          }
+          this.displayConfig = this.displayConfig ?? config;
+        }
         this.hasDisplayInit = true;
         break;
 
@@ -373,6 +430,13 @@ export class ArduinoSemanticAnalyzer {
         break;
 
       case "wifi_start_web_server":
+        if (this.webServerPort && this.webServerPort !== (block.getFieldValue("PORT") || "80")) {
+          this.addIssue(
+            block,
+            "Ya iniciaste un servidor web en otro puerto. Usa un solo puerto por programa",
+            "warning"
+          );
+        }
         if (!this.hasWifiSetup) {
           this.addIssue(
             block,
@@ -388,6 +452,7 @@ export class ArduinoSemanticAnalyzer {
           );
         }
         this.hasWebServerInit = true;
+        this.webServerPort = this.webServerPort ?? (block.getFieldValue("PORT") || "80");
         break;
 
       case "wifi_get_rssi":
@@ -541,6 +606,17 @@ export class ArduinoSemanticAnalyzer {
         break;
 
       case "esp32_dht_init":
+        {
+          const config = `${block.getFieldValue("PIN")}:${block.getFieldValue("TYPE")}`;
+          if (this.dhtConfig && this.dhtConfig !== config) {
+            this.addIssue(
+              block,
+              "Ya inicializaste el sensor DHT con otra configuracion. Usa una sola inicializacion por programa",
+              "warning"
+            );
+          }
+          this.dhtConfig = this.dhtConfig ?? config;
+        }
         this.hasDhtInit = true;
         break;
 
@@ -607,24 +683,32 @@ export class ArduinoSemanticAnalyzer {
 
       case "if": {
         const ok = this.handleIf(block);
-        if (!ok) return;
+        if (!ok) {
+          this.traverseControlBlock(block, ["CONDITION"]);
+          return;
+        }
+        this.traverseControlBlock(block, ["CONDITION"]);
         break;
       }
 
       case "if_else":
         this.handleIfElse(block);
+        this.traverseControlBlock(block, ["CONDITION"]);
         break;
 
       case "while_repeat":
         this.handleWhile(block);
+        this.traverseControlBlock(block, ["CONDITION"]);
         break;
 
       case "do_while":
         this.handleDoWhile(block);
+        this.traverseControlBlock(block, ["CONDITION"]);
         break;
 
       case "for_range":
         this.handleForRange(block);
+        this.traverseControlBlock(block, ["FROM", "TO"]);
         break;
 
       case "math_add":
@@ -657,6 +741,10 @@ export class ArduinoSemanticAnalyzer {
       case "logic_equals":
         this.handleOperatorLogic(block);
         break;
+    }
+
+    if (["if", "if_else", "while_repeat", "do_while", "for_range"].includes(block.type)) {
+      return;
     }
 
     this.traverseChildren(block);

@@ -37,7 +37,7 @@ export class Variables {
 
         const symbol = this.getSymbolTable().lookup(name);
         if (!symbol) {
-            const success = this.getSymbolTable().declare(name, inferredType);
+            const success = this.getSymbolTable().declare(name, inferredType, block.id);
             if (!success) {
                 this.getArduinoSemantic().addIssuePublic(block, `Variable duplicada: ${name}`, "error");
                 return;
@@ -58,22 +58,26 @@ export class Variables {
     }
 
     public checkUnusedVariables(workspace: Blockly.Workspace) {
-        const scopes = this.getSymbolTable().getFinalState();
-        scopes.forEach(scope => {
-            scope.forEach(symbol => {
-                if (!symbol.used) {
-                    const block = workspace.getAllBlocks(false).find(
-                        b => b.type === "variables_set" && this.getArduinoSemantic().getVariableName(b) === symbol.name
-                    );
-                    if (block) {
-                        this.getArduinoSemantic().addIssuePublic(
-                            block,
-                            `Variable declarada pero no utilizada`,
-                            "warning"
-                        );
-                    }
-                }
-            });
+        this.getSymbolTable().getTrackedSymbols().forEach(symbol => {
+            if (symbol.used) return;
+
+            const block =
+                (symbol.declaredByBlockId
+                    ? workspace.getBlockById(symbol.declaredByBlockId)
+                    : null) ??
+                workspace.getAllBlocks(false).find(
+                    b =>
+                        (b.type === "variables_set" || b.type === "variables_set_dynamic") &&
+                        this.getArduinoSemantic().getVariableName(b) === symbol.name
+                );
+
+            if (block) {
+                this.getArduinoSemantic().addIssuePublic(
+                    block,
+                    `Variable declarada pero no utilizada`,
+                    "warning"
+                );
+            }
         });
     }
 }

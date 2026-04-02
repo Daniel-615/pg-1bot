@@ -15,6 +15,12 @@ function createBlockMock(fields: Record<string, string> = {}): MockBlock {
   };
 }
 
+function getAllGlobalDefinitions(generator: ESP32Generator) {
+  return (generator as unknown as { getAllGlobalDefinitions: () => string[] })
+    .getAllGlobalDefinitions()
+    .join("\n");
+}
+
 describe("ESP32 extra generators", () => {
   it("genera inicializacion de neopixel con include y setup", () => {
     const generator = new ESP32Generator();
@@ -27,9 +33,27 @@ describe("ESP32 extra generators", () => {
 
     expect(result).toBe("");
     expect(Array.from(generator.includes)).toContain("#include <Adafruit_NeoPixel.h>");
-    expect(Array.from(generator.globalDefinitions).join("\n")).toContain(
+    expect(getAllGlobalDefinitions(generator)).toContain(
       "Adafruit_NeoPixel _1botEsp32Strip(5, 4, NEO_GRB + NEO_KHZ800);"
     );
+  });
+
+  it("no duplica la instancia global de neopixel si se reinicializa con otra configuracion", () => {
+    const generator = new ESP32Generator();
+    registerESP32LightGenerator(generator);
+
+    generator.forBlock["esp32_neopixel_init"](
+      createBlockMock({ PIN: "4", COUNT: "5" }) as never,
+      generator as never
+    );
+    generator.forBlock["esp32_neopixel_init"](
+      createBlockMock({ PIN: "15", COUNT: "8" }) as never,
+      generator as never
+    );
+
+    const globals = getAllGlobalDefinitions(generator);
+
+    expect(globals.match(/Adafruit_NeoPixel _1botEsp32Strip/g)).toHaveLength(1);
   });
 
   it("convierte color hexadecimal para neopixel", () => {
@@ -72,7 +96,25 @@ describe("ESP32 extra generators", () => {
     expect(initResult).toBe("");
     expect(tempResult).toEqual(["_1botEsp32Dht.readTemperature()", 0]);
     expect(Array.from(generator.includes)).toContain("#include <DHT.h>");
-    expect(Array.from(generator.globalDefinitions).join("\n")).toContain("DHT _1botEsp32Dht(4, DHT22);");
+    expect(getAllGlobalDefinitions(generator)).toContain("DHT _1botEsp32Dht(4, DHT22);");
+  });
+
+  it("no duplica la instancia global de DHT si se inicializa mas de una vez", () => {
+    const generator = new ESP32Generator();
+    registerESP32SensorGenerator(generator);
+
+    generator.forBlock["esp32_dht_init"](
+      createBlockMock({ PIN: "4", TYPE: "DHT11" }) as never,
+      generator as never
+    );
+    generator.forBlock["esp32_dht_init"](
+      createBlockMock({ PIN: "16", TYPE: "DHT22" }) as never,
+      generator as never
+    );
+
+    const globals = getAllGlobalDefinitions(generator);
+
+    expect(globals.match(/DHT _1botEsp32Dht/g)).toHaveLength(1);
   });
 
   it("genera attach y movimiento de servo", () => {
@@ -138,6 +180,24 @@ describe("ESP32 extra generators", () => {
     expect(result).toBe("_1botEsp32Display.setCursor(1, 1);\n_1botEsp32Display.print(\"ESP32\");\n");
   });
 
+  it("no duplica la instancia global del display si cambia la configuracion", () => {
+    const generator = new ESP32Generator();
+    registerESP32DisplayGenerator(generator);
+
+    generator.forBlock["esp32_display_init"](
+      createBlockMock({ SDA: "21", SCL: "22" }) as never,
+      generator as never
+    );
+    generator.forBlock["esp32_display_init"](
+      createBlockMock({ SDA: "18", SCL: "19" }) as never,
+      generator as never
+    );
+
+    const globals = getAllGlobalDefinitions(generator);
+
+    expect(globals.match(/LiquidCrystal_I2C _1botEsp32Display/g)).toHaveLength(1);
+  });
+
   it("genera desconexion wifi con terminador correcto", () => {
     const generator = new ESP32Generator();
     registerESP32WifiGenerator(generator);
@@ -188,6 +248,26 @@ describe("ESP32 extra generators", () => {
     const setupCode = Array.from(generator.setupDefinitions).join("\n");
     expect(setupCode).toContain("_1botLastWebPath = _1botWebServer.uri();");
     expect(setupCode).toContain("_1botWebServer.onNotFound");
+  });
+
+  it("no duplica la instancia global del servidor web si se agrega otra ruta", () => {
+    const generator = new ESP32Generator();
+    registerESP32WifiGenerator(generator);
+    generator.valueToCode = vi.fn(() => "\"ok\"") as never;
+
+    generator.forBlock["wifi_start_web_server"](
+      createBlockMock({ PORT: "80", PATH: "/" }) as never,
+      generator as never
+    );
+    generator.forBlock["wifi_start_web_server"](
+      createBlockMock({ PORT: "8080", PATH: "/status" }) as never,
+      generator as never
+    );
+
+    const globals = getAllGlobalDefinitions(generator);
+
+    expect(globals.match(/WebServer _1botWebServer/g)).toHaveLength(1);
+    expect(globals.match(/String _1botLastWebPath/g)).toHaveLength(1);
   });
 
   it("genera peticiones HTTP GET y POST", () => {

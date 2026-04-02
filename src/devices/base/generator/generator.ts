@@ -7,8 +7,10 @@ const ORDER_NONE = 99;
 
 export class ArduinoBaseGenerator extends Blockly.Generator {
   public setupDefinitions: Set<string>;
-  public includes: Set<String>;
-  public globalDefinitions: Set<String>;
+  public includes: Set<string>;
+  public globalDefinitions: Set<string>;
+  private keyedSetupDefinitions: Map<string, string>;
+  private keyedGlobalDefinitions: Map<string, string>;
   protected serialBaudRate: number;
   protected serialStartupDelayMs: number | null;
 
@@ -17,6 +19,8 @@ export class ArduinoBaseGenerator extends Blockly.Generator {
     this.setupDefinitions = new Set();
     this.includes = new Set();
     this.globalDefinitions = new Set();
+    this.keyedSetupDefinitions = new Map();
+    this.keyedGlobalDefinitions = new Map();
     this.serialBaudRate = 9600;
     this.serialStartupDelayMs = null;
     this.defineBlocks();
@@ -26,6 +30,8 @@ export class ArduinoBaseGenerator extends Blockly.Generator {
     this.setupDefinitions = new Set();
     this.includes = new Set();
     this.globalDefinitions = new Set();
+    this.keyedSetupDefinitions = new Map();
+    this.keyedGlobalDefinitions = new Map();
     if (!this.nameDB_) {
       this.nameDB_ = new Blockly.Names("");
     } else {
@@ -44,15 +50,37 @@ export class ArduinoBaseGenerator extends Blockly.Generator {
   finish(code: string) {
     return code;
   };
-  addInclude(code: String) {
+  addInclude(code: string) {
     this.includes.add(code)
   };
-  addGlobalDefinition(code: string) {
+  addGlobalDefinition(code: string, key?: string) {
+    if (key) {
+      this.keyedGlobalDefinitions.set(key, code);
+      return;
+    }
+
     this.globalDefinitions.add(code);
   };
-  addSetupDefinition(code: string) {
+  addSetupDefinition(code: string, key?: string) {
+    if (key) {
+      this.keyedSetupDefinitions.set(key, code);
+      return;
+    }
+
     this.setupDefinitions.add(code);
   };
+  protected getAllGlobalDefinitions() {
+    return [
+      ...Array.from(this.globalDefinitions),
+      ...Array.from(this.keyedGlobalDefinitions.values()),
+    ];
+  }
+  protected getAllSetupDefinitions() {
+    return [
+      ...Array.from(this.setupDefinitions),
+      ...Array.from(this.keyedSetupDefinitions.values()),
+    ];
+  }
   ensureSerial() {
     this.addSetupDefinition(`Serial.begin(${this.serialBaudRate});`);
 
@@ -70,7 +98,7 @@ export class ArduinoBaseGenerator extends Blockly.Generator {
 
       return `
         void setup() {
-          ${Array.from(this.setupDefinitions).join("\n  ")}
+          ${this.getAllSetupDefinitions().join("\n  ")}
         }
         void loop() {
         ${body}

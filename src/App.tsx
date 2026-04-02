@@ -279,6 +279,14 @@ function App() {
 
   const handleFullscreen = () => alert(t("alertFullscreen"));
   const handleRotate = () => alert(t("alertRotate"));
+  const getScopeLabel = (row: SymbolTableRow) => {
+    const scopeBase =
+      row.scopeKind === "global"
+        ? t("scopeGlobal")
+        : t("scopeLocal", { id: row.scopeId });
+
+    return row.active ? scopeBase : `${scopeBase} (${t("scopeClosed")})`;
+  };
 
   return (
     <div className="app-container">
@@ -520,13 +528,13 @@ function App() {
                       </thead>
                       <tbody>
                         {symbolRows.map((row, index) => (
-                          <tr key={`${row.name}-${row.scopeLevel}-${index}`}>
+                          <tr key={`${row.name}-${row.scopeId}-${index}`}>
                             <td>{row.name}</td>
                             <td>{row.type ?? "null"}</td>
                             <td>{row.value === null ? "null" : String(row.value)}</td>
                             <td>{row.initialized ? t("yes") : t("no")}</td>
                             <td>{row.used ? t("yes") : t("no")}</td>
-                            <td>{row.scopeLevel}</td>
+                            <td>{getScopeLabel(row)}</td>
                           </tr>
                         ))}
                       </tbody>

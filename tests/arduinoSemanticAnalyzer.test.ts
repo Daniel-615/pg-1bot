@@ -26,12 +26,15 @@ describe("ArduinoSemanticAnalyzer", () => {
     expect(getBlock.warningText).toBeNull();
     expect(analyzer.getSymbolTableRows()).toEqual([
       {
+        active: true,
         name: "led",
         type: "number",
         value: 5,
         initialized: true,
         used: true,
         scopeLevel: 0,
+        scopeId: 0,
+        scopeKind: "global",
       },
     ]);
   });
@@ -51,6 +54,48 @@ describe("ArduinoSemanticAnalyzer", () => {
     analyzer.analyze(workspace as never);
 
     expect(setBlock.warningText).toContain("Variable declarada pero no utilizada");
+  });
+
+  it("marca variables_set_dynamic no usadas", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const setDynamicBlock = createBlock({
+      id: "set-dynamic-unused",
+      type: "variables_set_dynamic",
+      fields: { VAR: "var-dynamic-unused" },
+      inputs: {
+        VALUE: createBlock({ id: "dynamic-num", type: "math_number", fields: { NUM: "7" } }),
+      },
+    });
+    const workspace = createWorkspace([setDynamicBlock], { "var-dynamic-unused": "dinamica" });
+
+    analyzer.analyze(workspace as never);
+
+    expect(setDynamicBlock.warningText).toContain("Variable declarada pero no utilizada");
+  });
+
+  it("marca variables locales no usadas aunque su scope ya se haya cerrado", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const localSet = createBlock({
+      id: "local-set-unused",
+      type: "variables_set",
+      fields: { VAR: "var-local-unused" },
+      inputs: {
+        VALUE: createBlock({ id: "local-value", type: "math_number", fields: { NUM: "11" } }),
+      },
+    });
+    const ifBlock = createBlock({
+      id: "if-local-unused",
+      type: "if",
+      inputs: {
+        CONDITION: createBlock({ id: "if-cond", type: "logic_boolean", fields: { BOOL: "TRUE" } }),
+        IF_BODY: localSet,
+      },
+    });
+    const workspace = createWorkspace([ifBlock], { "var-local-unused": "temporal" });
+
+    analyzer.analyze(workspace as never);
+
+    expect(localSet.warningText).toContain("Variable declarada pero no utilizada");
   });
 
   it("reporta warning por operador matemático con tipos incompatibles", () => {
@@ -121,6 +166,68 @@ describe("ArduinoSemanticAnalyzer", () => {
     analyzer.analyze(workspace as never);
 
     expect(notBlock.warningText).toBeNull();
+  });
+
+  it("actualiza una variable booleana negada dentro de while sin duplicar la visita del cuerpo", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const initialValue = createBlock({
+      id: "bool-initial",
+      type: "logic_boolean",
+      fields: { BOOL: "FALSE" },
+    });
+    const setInitial = createBlock({
+      id: "set-initial-not",
+      type: "variables_set",
+      fields: { VAR: "var-respuesta-not" },
+      inputs: { VALUE: initialValue },
+    });
+    const conditionGet = createBlock({
+      id: "get-condition-not",
+      type: "variables_get",
+      fields: { VAR: "var-respuesta-not" },
+      outputConnected: true,
+    });
+    const negatedValue = createBlock({
+      id: "not-value",
+      type: "logic_not",
+      inputs: {
+        BOOL: createBlock({
+          id: "get-negated-not",
+          type: "variables_get",
+          fields: { VAR: "var-respuesta-not" },
+          outputConnected: true,
+        }),
+      },
+      outputConnected: true,
+    });
+    const setInsideWhile = createBlock({
+      id: "set-inside-while",
+      type: "variables_set",
+      fields: { VAR: "var-respuesta-not" },
+      inputs: { VALUE: negatedValue },
+    });
+    const whileBlock = createBlock({
+      id: "while-negates-once",
+      type: "while_repeat",
+      inputs: {
+        CONDITION: conditionGet,
+        BODY: setInsideWhile,
+      },
+    });
+    setInitial.getNextBlock = () => whileBlock;
+    const workspace = createWorkspace([setInitial], { "var-respuesta-not": "respuesta_not" });
+
+    analyzer.analyze(workspace as never);
+
+    expect(analyzer.getSymbolTableRows()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "respuesta_not",
+          type: "boolean",
+          value: true,
+        }),
+      ])
+    );
   });
 
   it("detecta división por cero y expresiones no usadas", () => {
@@ -239,6 +346,79 @@ describe("ArduinoSemanticAnalyzer", () => {
 
     expect(neopixelSet.warningText).toContain("Debes inicializar la tira NeoPixel");
     expect(displayPrint.warningText).toContain("Debes inicializar el display");
+  });
+
+  it("advierte reinicializaciones conflictivas de NeoPixel, display, DHT y servidor web", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const neopixelInitA = createBlock({
+      id: "neo-init-a",
+      type: "esp32_neopixel_init",
+      fields: { PIN: "4", COUNT: "5" },
+    });
+    const neopixelInitB = createBlock({
+      id: "neo-init-b",
+      type: "esp32_neopixel_init",
+      fields: { PIN: "15", COUNT: "8" },
+    });
+    const displayInitA = createBlock({
+      id: "display-init-a",
+      type: "esp32_display_init",
+      fields: { SDA: "21", SCL: "22" },
+    });
+    const displayInitB = createBlock({
+      id: "display-init-b",
+      type: "esp32_display_init",
+      fields: { SDA: "18", SCL: "19" },
+    });
+    const dhtInitA = createBlock({
+      id: "dht-init-a",
+      type: "esp32_dht_init",
+      fields: { PIN: "4", TYPE: "DHT11" },
+    });
+    const dhtInitB = createBlock({
+      id: "dht-init-b",
+      type: "esp32_dht_init",
+      fields: { PIN: "16", TYPE: "DHT22" },
+    });
+    const wifiConnect = createBlock({
+      id: "wifi-connect-server",
+      type: "wifi_connect",
+      fields: { SSID: "red", PASSWORD: "12345678" },
+    });
+    const webServerA = createBlock({
+      id: "web-server-a",
+      type: "wifi_start_web_server",
+      fields: { PORT: "80", PATH: "/" },
+      inputs: {
+        CONTENT: createBlock({ id: "web-content-a", type: "string", fields: { STRING: "ok" } }),
+      },
+    });
+    const webServerB = createBlock({
+      id: "web-server-b",
+      type: "wifi_start_web_server",
+      fields: { PORT: "8080", PATH: "/status" },
+      inputs: {
+        CONTENT: createBlock({ id: "web-content-b", type: "string", fields: { STRING: "ready" } }),
+      },
+    });
+    wifiConnect.getNextBlock = () => webServerA;
+    webServerA.getNextBlock = () => webServerB;
+    const workspace = createWorkspace([
+      neopixelInitA,
+      neopixelInitB,
+      displayInitA,
+      displayInitB,
+      dhtInitA,
+      dhtInitB,
+      wifiConnect,
+    ]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(neopixelInitB.warningText).toContain("Ya inicializaste NeoPixel con otra configuracion");
+    expect(displayInitB.warningText).toContain("Ya inicializaste el display con otros pines");
+    expect(dhtInitB.warningText).toContain("Ya inicializaste el sensor DHT con otra configuracion");
+    expect(webServerB.warningText).toContain("Ya iniciaste un servidor web en otro puerto");
   });
 
   it("reporta dependencias faltantes para wifi y servidor web", () => {

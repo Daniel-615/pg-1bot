@@ -32,10 +32,10 @@ export class ESP32Generator extends ArduinoBaseGenerator {
 
             return `
                 ${Array.from(this.includes).join("\n")}
-                ${Array.from(this.globalDefinitions).join("\n")}
+                ${this.getAllGlobalDefinitions().join("\n")}
 
                 void setup() {
-                    ${Array.from(this.setupDefinitions).join("\n")}
+                    ${this.getAllSetupDefinitions().join("\n")}
                     }
 
                 void loop() {

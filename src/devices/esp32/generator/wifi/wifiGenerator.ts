@@ -81,8 +81,8 @@ export function registerESP32WifiGenerator(generator: ESP32Generator) {
 
     generator.addInclude("#include <WiFi.h>");
     generator.addInclude("#include <WebServer.h>");
-    generator.addGlobalDefinition(`WebServer _1botWebServer(${port});`);
-    generator.addGlobalDefinition(`String _1botLastWebPath = "None";`);
+    generator.addGlobalDefinition(`WebServer _1botWebServer(${port});`, "esp32_web_server_instance");
+    generator.addGlobalDefinition(`String _1botLastWebPath = "None";`, "esp32_web_last_path");
     generator.addSetupDefinition(`
       _1botWebServer.on(${path}, []() {
         _1botLastWebPath = _1botWebServer.uri();
@@ -100,7 +100,7 @@ export function registerESP32WifiGenerator(generator: ESP32Generator) {
 
   generator.forBlock["wifi_web_file_name"] = function () {
     generator.addInclude("#include <WebServer.h>");
-    generator.addGlobalDefinition(`String _1botLastWebPath = "None";`);
+    generator.addGlobalDefinition(`String _1botLastWebPath = "None";`, "esp32_web_last_path");
     return ["_1botLastWebPath", ORDER_ATOMIC];
   };
 
@@ -108,7 +108,7 @@ export function registerESP32WifiGenerator(generator: ESP32Generator) {
     const value = generator.valueToCode(block, "VALUE", ORDER_ATOMIC) || "\"None\"";
 
     generator.addInclude("#include <WebServer.h>");
-    generator.addGlobalDefinition(`String _1botLastWebPath = "None";`);
+    generator.addGlobalDefinition(`String _1botLastWebPath = "None";`, "esp32_web_last_path");
     return [`_1botLastWebPath == ${value}`, ORDER_ATOMIC];
   };
 

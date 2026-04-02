@@ -6,8 +6,8 @@ const DHT_INSTANCE = "_1botEsp32Dht";
 
 function ensureDht(generator: ESP32Generator, pin: string, type: string) {
   generator.addInclude("#include <DHT.h>");
-  generator.addGlobalDefinition(`DHT ${DHT_INSTANCE}(${pin}, ${type});`);
-  generator.addSetupDefinition(`${DHT_INSTANCE}.begin();`);
+  generator.addGlobalDefinition(`DHT ${DHT_INSTANCE}(${pin}, ${type});`, "esp32_dht_instance");
+  generator.addSetupDefinition(`${DHT_INSTANCE}.begin();`, "esp32_dht_setup");
 }
 
 function getServoInstance(pin: string) {

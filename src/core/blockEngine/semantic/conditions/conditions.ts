@@ -198,7 +198,7 @@ export class Conditions {
 
     try {
       this.runInScope(() => {
-        const declared = this.getSymbolTable().declare(varName, "number");
+        const declared = this.getSymbolTable().declare(varName, "number", block.id);
         if (!declared) {
           this.getArduinoSemantic().addIssuePublic(
             block,

@@ -1,4 +1,5 @@
 export type VarType="number" |"boolean" | "string" | "array" | null;
+export type ScopeKind = "global" | "local";
 
 export interface SymbolInfo{
     name: string;
@@ -7,6 +8,9 @@ export interface SymbolInfo{
     initialized: boolean;
     used: boolean;
     scopeLevel: number;
+    scopeId: number;
+    scopeKind: ScopeKind;
+    declaredByBlockId?: string;
 }
 export interface ExecutionSnapshot{
     step: number;
@@ -19,28 +23,55 @@ export interface SymbolTableRow{
     initialized: boolean;
     used: boolean;
     scopeLevel: number;
+    scopeId: number;
+    scopeKind: ScopeKind;
+    active: boolean;
 }
+
+interface ScopeFrame {
+    id: number;
+    kind: ScopeKind;
+    symbols: Map<string, SymbolInfo>;
+}
+
 export class SymbolTable{
-    private globalScope: Map <string, SymbolInfo>= new Map();
-    private scopeStack: Map <string, SymbolInfo>[]= [];
+    private globalScope: ScopeFrame = {
+        id: 0,
+        kind: "global",
+        symbols: new Map(),
+    };
+    private scopeStack: ScopeFrame[]= [];
     private snapshots: ExecutionSnapshot[]= [];
     private stepCounter= 0;
+    private scopeCounter = 1;
+    private allSymbols: SymbolInfo[] = [];
+
     constructor(){
         this.scopeStack.push(this.globalScope);
     }
     
     reset(){
-        this.globalScope = new Map();
+        this.globalScope = {
+            id: 0,
+            kind: "global",
+            symbols: new Map(),
+        };
         this.scopeStack = [this.globalScope];
         this.snapshots = [];
         this.stepCounter = 0;
+        this.scopeCounter = 1;
+        this.allSymbols = [];
     }
     public cloneState() {
         /*Makes a copy of the symbol table state */
-        return this.scopeStack.map(scope => new Map(scope));
+        return this.scopeStack.map(scope => new Map(scope.symbols));
     }
     enterScope(){
-        const newScope= new Map<string,SymbolInfo>();
+        const newScope: ScopeFrame = {
+            id: this.scopeCounter++,
+            kind: "local",
+            symbols: new Map<string, SymbolInfo>(),
+        };
         this.scopeStack.push(newScope);
     }
     exitScope(){
@@ -51,19 +82,24 @@ export class SymbolTable{
     private currentScope(){
         return this.scopeStack[this.scopeStack.length-1];
     }
-    declare(name :string, type: VarType): boolean{
+    declare(name :string, type: VarType, declaredByBlockId?: string): boolean{
         const scope=this.currentScope();
-        if(scope.has(name)){
+        if(scope.symbols.has(name)){
             return false; //si ya existe retorna falso
         }
-        scope.set(name,{
+        const symbolInfo: SymbolInfo = {
             name,
             type,
             value: null,
             initialized: false,
             used: false,
-            scopeLevel: this.scopeStack.length-1
-        });
+            scopeLevel: this.scopeStack.length-1,
+            scopeId: scope.id,
+            scopeKind: scope.kind,
+            declaredByBlockId,
+        };
+        scope.symbols.set(name, symbolInfo);
+        this.allSymbols.push(symbolInfo);
         this.saveSnapshot();
         return true;
     }
@@ -92,8 +128,8 @@ export class SymbolTable{
     lookup(name: string): SymbolInfo | null{
         for (let i= this.scopeStack.length-1; i>=0; i--){
             const scope= this.scopeStack[i];
-            if(scope.has(name)){
-                return scope.get(name)!;
+            if(scope.symbols.has(name)){
+                return scope.symbols.get(name)!;
             }
         }
         return null;
@@ -102,7 +138,7 @@ export class SymbolTable{
 
         const copyScopes = this.scopeStack.map(scope => {
         return new Map(
-            Array.from(scope.entries()).map(([key, value]) => [
+            Array.from(scope.symbols.entries()).map(([key, value]) => [
             key,
             { ...value }
             ])
@@ -118,31 +154,49 @@ export class SymbolTable{
         return this.snapshots;
     }
     getFinalState(): Map <string, SymbolInfo>[]{
-        return this.scopeStack;
+        return this.scopeStack.map(scope => scope.symbols);
     }
     getRows(): SymbolTableRow[] {
-        return this.scopeStack.flatMap(scope =>
-            Array.from(scope.values()).map(symbol => ({
+        return this.allSymbols
+            .map(symbol => ({
                 name: symbol.name,
                 type: symbol.type,
                 value: symbol.value,
                 initialized: symbol.initialized,
                 used: symbol.used,
-                scopeLevel: symbol.scopeLevel
+                scopeLevel: symbol.scopeLevel,
+                scopeId: symbol.scopeId,
+                scopeKind: symbol.scopeKind,
+                active: this.scopeStack.some(scope => scope.id === symbol.scopeId),
             }))
-        );
+            .sort((left, right) => {
+                if (left.scopeLevel !== right.scopeLevel) {
+                    return left.scopeLevel - right.scopeLevel;
+                }
+
+                if (left.scopeId !== right.scopeId) {
+                    return left.scopeId - right.scopeId;
+                }
+
+                return left.name.localeCompare(right.name);
+            });
+    }
+    getTrackedSymbols(): SymbolInfo[] {
+        return this.allSymbols.map(symbol => ({ ...symbol }));
     }
      toFlatObject() {
     const result: any = {};
 
     this.scopeStack.forEach(scope => {
-      scope.forEach((symbol, name) => {
+      scope.symbols.forEach((symbol, name) => {
         result[name] = {
           type: symbol.type,
           value: symbol.value,
           initialized: symbol.initialized,
           used: symbol.used,
-          scopeLevel: symbol.scopeLevel
+          scopeLevel: symbol.scopeLevel,
+          scopeId: symbol.scopeId,
+          scopeKind: symbol.scopeKind,
         };
       });
     });

@@ -17,6 +17,8 @@ describe("SymbolTable", () => {
       initialized: false,
       used: false,
       scopeLevel: 0,
+      scopeId: 0,
+      scopeKind: "global",
     });
   });
 
@@ -84,6 +86,7 @@ describe("SymbolTable", () => {
       type: "string",
       value: "interno",
       scopeLevel: 1,
+      scopeKind: "local",
     });
 
     table.exitScope();
@@ -147,6 +150,9 @@ describe("SymbolTable", () => {
         initialized: true,
         used: false,
         scopeLevel: 0,
+        scopeId: 0,
+        scopeKind: "global",
+        active: true,
       },
       {
         name: "activo",
@@ -155,6 +161,9 @@ describe("SymbolTable", () => {
         initialized: true,
         used: false,
         scopeLevel: 1,
+        scopeId: 1,
+        scopeKind: "local",
+        active: true,
       },
     ]);
 
@@ -165,6 +174,8 @@ describe("SymbolTable", () => {
         initialized: true,
         used: false,
         scopeLevel: 0,
+        scopeId: 0,
+        scopeKind: "global",
       },
       activo: {
         type: "boolean",
@@ -172,8 +183,34 @@ describe("SymbolTable", () => {
         initialized: true,
         used: false,
         scopeLevel: 1,
+        scopeId: 1,
+        scopeKind: "local",
       },
     });
+  });
+
+  it("mantiene visibles filas de scopes locales cerrados", () => {
+    const table = new SymbolTable();
+
+    table.declare("globalFlag", "boolean");
+    table.assign("globalFlag", true, "boolean");
+    table.enterScope();
+    table.declare("temp", "number");
+    table.assign("temp", 99, "number");
+    table.exitScope();
+
+    expect(table.getRows()).toEqual([
+      expect.objectContaining({
+        name: "globalFlag",
+        scopeKind: "global",
+        active: true,
+      }),
+      expect.objectContaining({
+        name: "temp",
+        scopeKind: "local",
+        active: false,
+      }),
+    ]);
   });
 
   it("reinicia completamente el estado interno", () => {

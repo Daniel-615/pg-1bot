@@ -11,12 +11,13 @@ function hexToCppColor(hex: string) {
 function ensureStrip(generator: ESP32Generator, pin: string, count: string) {
   generator.addInclude("#include <Adafruit_NeoPixel.h>");
   generator.addGlobalDefinition(
-    `Adafruit_NeoPixel ${STRIP_INSTANCE}(${count}, ${pin}, NEO_GRB + NEO_KHZ800);`
+    `Adafruit_NeoPixel ${STRIP_INSTANCE}(${count}, ${pin}, NEO_GRB + NEO_KHZ800);`,
+    "esp32_neopixel_instance"
   );
   generator.addSetupDefinition(`
     ${STRIP_INSTANCE}.begin();
     ${STRIP_INSTANCE}.show();
-  `);
+  `, "esp32_neopixel_setup");
 }
 
 export function registerESP32LightGenerator(generator: ESP32Generator) {
