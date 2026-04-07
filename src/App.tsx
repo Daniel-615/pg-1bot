@@ -51,6 +51,7 @@ function App() {
     { id: "nano", name: "Arduino Nano", img: "/devices/arduino_nano.webp" },
     { id: "codey", name: "Codey", img: "/devices/Codey.webp" },
   ];
+  const currentDevice = devices.find((device) => device.id === board);
 
   const loadEditorRuntime = async () => {
     if (runtimeRef.current) {
@@ -393,35 +394,55 @@ function App() {
               <button className="tab">{t("objects")}</button>
               <button className="tab">{t("background")}</button>
             </div>
-            <div className="tab-content">
-              <div className="device-selector">
-                <div
-                  className="device-card selected"
-                  onClick={() => setDeviceMenuOpen(!deviceMenuOpen)}
-                >
-                  <span className="device-name">
-                    {devices.find((device) => device.id === board)?.name}
-                  </span>
-                </div>
-
-                {deviceMenuOpen && (
-                  <div className="device-menu">
+              <div className="tab-content">
+                <div className="device-selector">
+                  <select
+                    className="device-native-select"
+                    value={board}
+                    onChange={(event) => {
+                      setBoard(event.target.value);
+                      setDeviceMenuOpen(false);
+                    }}
+                    aria-label={t("devices")}
+                  >
                     {devices.map((device) => (
-                      <div
-                        key={device.id}
-                        className="device-option"
-                        onClick={() => {
+                      <option key={device.id} value={device.id}>
+                        {device.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    className="device-card selected"
+                    onClick={() => setDeviceMenuOpen(!deviceMenuOpen)}
+                    aria-expanded={deviceMenuOpen}
+                    aria-haspopup="listbox"
+                  >
+                    <span className="device-name">
+                      {currentDevice?.name}
+                    </span>
+                  </button>
+
+                  {deviceMenuOpen && (
+                    <div className="device-menu" role="listbox" aria-label={t("devices")}>
+                      {devices.map((device) => (
+                        <button
+                          type="button"
+                          key={device.id}
+                          className="device-option"
+                          onClick={() => {
                           setBoard(device.id);
                           setDeviceMenuOpen(false);
-                        }}
-                      >
-                        <span>{device.name}</span>
-                        <img src={device.img} alt="img_boards" />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                          }}
+                        >
+                          <span>{device.name}</span>
+                          <img src={device.img} alt="img_boards" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
             </div>
           </div>
 

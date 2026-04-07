@@ -1,4 +1,4 @@
-export type VarType="number" |"boolean" | "string" | "array" | null;
+export type VarType="number" |"boolean" | "string" | "array" | "array_string" | null;
 export type ScopeKind = "global" | "local";
 
 export interface SymbolInfo{

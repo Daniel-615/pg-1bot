@@ -1,16 +1,17 @@
 import * as Blockly from "blockly";
-import { ArduinoBaseGenerator } from "../base/generator/generator";
+import { ArduinoUnoGenerator } from "../arduinoUno/generator";
 
-export class ArduinoNanoGenerator extends ArduinoBaseGenerator {
+export class ArduinoNanoGenerator extends ArduinoUnoGenerator {
   constructor() {
-    super("ArduinoNano");
+    super();
+    this.name_ = "nano";
   }
 
   init(workspace: Blockly.Workspace) {
     super.init(workspace);
 
     this.addReservedWords(
-      "setup,loop,pinMode,digitalWrite,delay,HIGH,LOW,INPUT,OUTPUT"
+      "setup,loop,pinMode,digitalWrite,digitalRead,analogRead,analogWrite,delay,delayMicroseconds,HIGH,LOW,INPUT,OUTPUT,Serial,pulseIn,tone,Servo"
     );
   }
 }

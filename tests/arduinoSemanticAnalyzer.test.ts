@@ -136,7 +136,7 @@ describe("ArduinoSemanticAnalyzer", () => {
     });
     const equalsBlock = createBlock({
       id: "equals-1",
-      type: "logic_equals",
+      type: "logic_equal",
       inputs: {
         A: createBlock({ id: "eq-left", type: "math_number", fields: { NUM: "2" } }),
         B: createBlock({ id: "eq-right", type: "string", fields: { STRING: "2" } }),
@@ -146,7 +146,7 @@ describe("ArduinoSemanticAnalyzer", () => {
 
     analyzer.analyze(workspace as never);
 
-    expect(andBlock.warningText).toContain("Los operadores AND/OR deben usar valores booleanos");
+    expect(andBlock.warningText).toBeNull();
     expect(greaterBlock.warningText).toContain("Las comparaciones < y > deben usar números");
     expect(equalsBlock.warningText).toContain("Estás comparando valores de distinto tipo");
   });

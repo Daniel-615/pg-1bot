@@ -5,7 +5,13 @@ const ORDER_ATOMIC = 0;
 const STRIP_INSTANCE = "_1botEsp32Strip";
 
 function hexToCppColor(hex: string) {
-  return `0x${hex.replace("#", "").toUpperCase()}`;
+  const normalized = hex.trim().replace("#", "").toUpperCase();
+
+  if (!/^[0-9A-F]{6}$/.test(normalized)) {
+    return "0xFF00FF";
+  }
+
+  return `0x${normalized}`;
 }
 
 function ensureStrip(generator: ESP32Generator, pin: string, count: string) {

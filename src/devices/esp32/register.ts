@@ -1,6 +1,6 @@
 import type { Board } from "../../boards/Board";
 import { ESP32Generator } from "./generator/generator";
-import { defineESP32Blocks } from "./blocks/blocks";
+import { defineEsp32Blocks } from "./blocks/blocks";
 
 let esp32BlocksRegistered = false;
 
@@ -16,7 +16,7 @@ export class ESP32Board implements Board<ESP32Generator> {
       return;
     }
 
-    defineESP32Blocks();
+    defineEsp32Blocks();
     esp32BlocksRegistered = true;
   }
 }

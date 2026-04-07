@@ -198,6 +198,10 @@ export class ArduinoSemanticAnalyzer {
     return ["0", "2", "4", "12", "13", "14", "15", "27", "32", "33"].includes(pin);
   }
 
+  private isUnoSerialPin(pin: string) {
+    return ["0", "1"].includes(pin);
+  }
+
   private registerPinUsage(
     block: Blockly.Block,
     pin: string,
@@ -681,6 +685,102 @@ export class ArduinoSemanticAnalyzer {
         break;
       }
 
+      case "arduino_uno_digital_write": {
+        const pin = block.getFieldValue("PIN");
+        if (this.isUnoSerialPin(pin)) {
+          this.addIssue(
+            block,
+            "Los pines 0 y 1 en Arduino Uno se usan tambien para Serial. Evita usarlos si trabajas con puerto serie",
+            "warning"
+          );
+        }
+        this.registerPinUsage(block, pin, "digital_output");
+        break;
+      }
+
+      case "arduino_uno_digital_read":
+      case "arduino_uno_pulse_in": {
+        const pin = block.getFieldValue("PIN");
+        if (this.isUnoSerialPin(pin)) {
+          this.addIssue(
+            block,
+            "Los pines 0 y 1 en Arduino Uno se usan tambien para Serial. Evita usarlos si trabajas con puerto serie",
+            "warning"
+          );
+        }
+        this.registerPinUsage(block, pin, "digital_input");
+        this.handleCheckUnusedExpression(block);
+        break;
+      }
+
+      case "arduino_uno_analog_read":
+        this.registerPinUsage(block, block.getFieldValue("PIN"), "analog_input");
+        this.handleCheckUnusedExpression(block);
+        break;
+
+      case "arduino_uno_pwm_write":
+        this.registerPinUsage(block, block.getFieldValue("PIN"), "pwm_output");
+        break;
+
+      case "arduino_uno_servo_attach": {
+        const pin = block.getFieldValue("PIN");
+        if (this.isUnoSerialPin(pin)) {
+          this.addIssue(
+            block,
+            "Los pines 0 y 1 en Arduino Uno se usan tambien para Serial. Evita usarlos si trabajas con puerto serie",
+            "warning"
+          );
+        }
+        this.attachedServoPins.add(pin);
+        this.registerPinUsage(block, pin, "servo_output");
+        break;
+      }
+
+      case "arduino_uno_servo_write": {
+        const pin = block.getFieldValue("PIN");
+        if (!this.attachedServoPins.has(pin)) {
+          this.addIssue(
+            block,
+            "El servo se conectara automaticamente en ese pin. Puedes omitir el bloque de conectar servo si quieres",
+            "suggestion"
+          );
+        }
+        if (this.isUnoSerialPin(pin)) {
+          this.addIssue(
+            block,
+            "Los pines 0 y 1 en Arduino Uno se usan tambien para Serial. Evita usarlos si trabajas con puerto serie",
+            "warning"
+          );
+        }
+        this.registerPinUsage(block, pin, "servo_output");
+        break;
+      }
+
+      case "arduino_uno_tone_play": {
+        const pin = block.getFieldValue("PIN");
+        if (this.isUnoSerialPin(pin)) {
+          this.addIssue(
+            block,
+            "Los pines 0 y 1 en Arduino Uno se usan tambien para Serial. Evita usarlos si trabajas con puerto serie",
+            "warning"
+          );
+        }
+        this.registerPinUsage(block, pin, "tone_output");
+        break;
+      }
+
+      case "arduino_uno_sensor_ultrasonico": {
+        const trig = block.getFieldValue("TRIG");
+        const echo = block.getFieldValue("ECHO");
+        if (trig && echo && trig === echo) {
+          this.addIssue(block, "TRIG y ECHO no deberian usar el mismo pin", "warning");
+        }
+        this.registerPinUsage(block, trig, "ultrasonic_trig");
+        this.registerPinUsage(block, echo, "ultrasonic_echo");
+        this.handleCheckUnusedExpression(block);
+        break;
+      }
+
       case "if": {
         const ok = this.handleIf(block);
         if (!ok) {
@@ -715,6 +815,14 @@ export class ArduinoSemanticAnalyzer {
       case "math_subtract":
       case "math_multiply":
       case "math_divide":
+      case "arduino_uno_math_map":
+      case "arduino_uno_math_constrain":
+      case "arduino_uno_number_to_int":
+      case "arduino_uno_ascii_to_char":
+      case "arduino_uno_char_to_ascii":
+      case "arduino_uno_serial_available":
+      case "arduino_uno_serial_read":
+      case "arduino_uno_temporizador":
         this.handleOperatorMath(block);
         this.handleCheckUnusedExpression(block);
 
@@ -731,6 +839,31 @@ export class ArduinoSemanticAnalyzer {
         if (block.type === "math_divide") {
           this.handleDivide(block);
         }
+        if (block.type === "arduino_uno_math_map") {
+          const fromLow = this.inferValue(block.getInputTargetBlock("FROM_LOW"));
+          const fromHigh = this.inferValue(block.getInputTargetBlock("FROM_HIGH"));
+          if (typeof fromLow === "number" && typeof fromHigh === "number" && fromLow === fromHigh) {
+            this.addIssue(block, "En mapear, el rango de origen no debe tener el mismo inicio y fin", "error");
+          }
+        }
+        if (block.type === "arduino_uno_ascii_to_char") {
+          const value = this.inferValue(block.getInputTargetBlock("VALUE"));
+          if (typeof value === "number" && (value < 0 || value > 255)) {
+            this.addIssue(block, "El codigo ASCII deberia estar entre 0 y 255", "warning");
+          }
+        }
+        if (block.type === "arduino_uno_char_to_ascii") {
+          const value = this.inferValue(block.getInputTargetBlock("VALUE"));
+          if (typeof value === "string" && value.length === 0) {
+            this.addIssue(block, "Conviene usar al menos un caracter para convertir a ASCII", "suggestion");
+          }
+        }
+        if (block.type === "arduino_uno_number_to_int") {
+          const value = this.inferValue(block.getInputTargetBlock("VALUE"));
+          if (typeof value === "number" && Number.isInteger(value)) {
+            this.addIssue(block, "Ese valor ya es entero; convertirlo de nuevo no cambia el resultado", "suggestion");
+          }
+        }
         break;
 
       case "logic_and":
@@ -738,7 +871,7 @@ export class ArduinoSemanticAnalyzer {
       case "logic_not":
       case "logic_less":
       case "logic_greater":
-      case "logic_equals":
+      case "logic_equal":
         this.handleOperatorLogic(block);
         break;
     }
@@ -813,7 +946,7 @@ export class ArduinoSemanticAnalyzer {
     if (index < 0 || index >= nextValue.length) return;
 
     nextValue[index] = valueToAssign;
-    this.symbolTable.assign(name, nextValue, "array");
+    this.symbolTable.assign(name, nextValue, symbol.type);
   }
 
   private handleIf(block: Blockly.Block) {
@@ -926,8 +1059,19 @@ export class ArduinoSemanticAnalyzer {
           const { left, right } = this.getBinaryInputs(block);
           const typeA = this.inferType(left);
           const typeB = this.inferType(right);
-        if (typeA !== "boolean" || typeB !== "boolean") {
-          this.addIssue(block, "Los operadores AND/OR deben usar valores booleanos", "error");
+        const validLeft = typeA === "boolean" || typeA === "number";
+        const validRight = typeB === "boolean" || typeB === "number";
+        if (!validLeft || !validRight) {
+          this.addIssue(block, "Los operadores AND/OR deben usar valores booleanos o numericos", "error");
+        }
+
+        const leftValue = this.inferValue(left);
+        const rightValue = this.inferValue(right);
+        const leftInvalidNumber = typeof leftValue === "number" && leftValue !== 0 && leftValue !== 1;
+        const rightInvalidNumber = typeof rightValue === "number" && rightValue !== 0 && rightValue !== 1;
+
+        if (leftInvalidNumber || rightInvalidNumber) {
+          this.addIssue(block, "En operadores AND/OR los valores numericos solo deben ser 0 o 1", "error");
         }
         }
         break;
@@ -950,7 +1094,7 @@ export class ArduinoSemanticAnalyzer {
         }
         break;
 
-      case "logic_equals":
+      case "logic_equal":
         {
           const { left, right } = this.getBinaryInputs(block);
           const typeA = this.inferType(left);
@@ -973,6 +1117,14 @@ export class ArduinoSemanticAnalyzer {
       case "math_subtract":
       case "math_multiply":
       case "math_divide":
+      case "arduino_uno_math_map":
+      case "arduino_uno_math_constrain":
+      case "arduino_uno_number_to_int":
+      case "arduino_uno_serial_available":
+      case "arduino_uno_serial_read":
+      case "arduino_uno_digital_read":
+      case "arduino_uno_analog_read":
+      case "arduino_uno_pulse_in":
       case "esp32_digital_read":
       case "esp32_analog_read":
       case "esp32_touch_read":
@@ -987,13 +1139,15 @@ export class ArduinoSemanticAnalyzer {
       case "logic_or":
       case "logic_not":
       case "logic_less":
-      case "logic_equals":
+      case "logic_equal":
       case "logic_greater":
       case "wifi_is_connected":
       case "wifi_web_response_equals":
         return "boolean";
 
       case "string":
+      case "arduino_uno_ascii_to_char":
+      case "json_object":
       case "wifi_local_ip":
       case "wifi_web_file_name":
       case "wifi_http_get_text":
@@ -1001,12 +1155,30 @@ export class ArduinoSemanticAnalyzer {
         return "string";
 
       case "lists_create_empty":
-      case "lists_create_with":
       case "lists_repeat":
-      case "wifi_scan_networks":
         return "array";
 
+      case "lists_create_with": {
+        const listBlock = block as Blockly.Block & { itemCount_?: number };
+        const itemCount = listBlock.itemCount_ ?? 0;
+        let hasStringItems = false;
+
+        for (let index = 0; index < itemCount; index += 1) {
+          const itemType = this.inferType(block.getInputTargetBlock(`ADD${index}`));
+          if (itemType === "string") {
+            hasStringItems = true;
+            break;
+          }
+        }
+
+        return hasStringItems ? "array_string" : "array";
+      }
+
+      case "wifi_scan_networks":
+        return "array_string";
+
       case "lists_length":
+      case "arduino_uno_char_to_ascii":
         return "number";
 
       case "lists_getIndex": {
@@ -1017,8 +1189,16 @@ export class ArduinoSemanticAnalyzer {
           return "string";
         }
 
+        const listType = this.inferType(listBlock);
+        if (listType === "array_string") {
+          return "string";
+        }
+
         if (listBlock.type === "variables_get") {
           const symbol = this.symbolTable.lookup(this.getVariableName(listBlock) ?? "");
+          if (symbol?.type === "array_string") {
+            return "string";
+          }
           return symbol?.type === "array" ? "number" : symbol?.type ?? null;
         }
 
@@ -1028,6 +1208,9 @@ export class ArduinoSemanticAnalyzer {
       case "list_var_get_index": {
         const symbol = this.symbolTable.lookup(this.getVariableName(block) ?? "");
         if (!symbol) return null;
+        if (symbol.type === "array_string") {
+          return "string";
+        }
         return symbol.type === "array" ? "number" : symbol.type;
       }
 
@@ -1055,6 +1238,20 @@ export class ArduinoSemanticAnalyzer {
 
       case "string":
         return block.getFieldValue("STRING");
+
+      case "json_object": {
+        const pairs: string[] = [];
+        const jsonBlock = block as Blockly.Block & { itemCount_?: number };
+        const itemCount = jsonBlock.itemCount_ ?? 1;
+
+        for (let index = 0; index < itemCount; index += 1) {
+          const key = block.getFieldValue(`KEY${index}`) || `campo${index + 1}`;
+          const value = this.inferValue(block.getInputTargetBlock(`VALUE${index}`));
+          pairs.push(`${JSON.stringify(key)}:${JSON.stringify(value ?? "")}`);
+        }
+
+        return `{${pairs.join(",")}}`;
+      }
 
       case "lists_create_empty":
         return [];
@@ -1145,6 +1342,56 @@ export class ArduinoSemanticAnalyzer {
         return left / right;
       }
 
+      case "arduino_uno_math_map": {
+        const value = this.inferValue(block.getInputTargetBlock("VALUE"));
+        const fromLow = this.inferValue(block.getInputTargetBlock("FROM_LOW"));
+        const fromHigh = this.inferValue(block.getInputTargetBlock("FROM_HIGH"));
+        const toLow = this.inferValue(block.getInputTargetBlock("TO_LOW"));
+        const toHigh = this.inferValue(block.getInputTargetBlock("TO_HIGH"));
+        const values = [value, fromLow, fromHigh, toLow, toHigh];
+        if (values.some((item) => typeof item !== "number")) {
+          return null;
+        }
+        const numericValue = value as number;
+        const numericFromLow = fromLow as number;
+        const numericFromHigh = fromHigh as number;
+        const numericToLow = toLow as number;
+        const numericToHigh = toHigh as number;
+
+        if (numericFromHigh === numericFromLow) {
+          return null;
+        }
+        return (
+          ((numericValue - numericFromLow) * (numericToHigh - numericToLow)) /
+          (numericFromHigh - numericFromLow)
+        ) + numericToLow;
+      }
+
+      case "arduino_uno_math_constrain": {
+        const value = this.inferValue(block.getInputTargetBlock("VALUE"));
+        const low = this.inferValue(block.getInputTargetBlock("LOW"));
+        const high = this.inferValue(block.getInputTargetBlock("HIGH"));
+        if (typeof value !== "number" || typeof low !== "number" || typeof high !== "number") {
+          return null;
+        }
+        return Math.min(Math.max(value, low), high);
+      }
+
+      case "arduino_uno_number_to_int": {
+        const value = this.inferValue(block.getInputTargetBlock("VALUE"));
+        return typeof value === "number" ? Math.trunc(value) : null;
+      }
+
+      case "arduino_uno_ascii_to_char": {
+        const value = this.inferValue(block.getInputTargetBlock("VALUE"));
+        return typeof value === "number" ? String.fromCharCode(value) : null;
+      }
+
+      case "arduino_uno_char_to_ascii": {
+        const value = this.inferValue(block.getInputTargetBlock("VALUE"));
+        return typeof value === "string" && value.length > 0 ? value.charCodeAt(0) : null;
+      }
+
       case "logic_not": {
         const value = this.inferValue(this.getConditionBlock(block));
         return typeof value === "boolean" ? !value : null;
@@ -1153,13 +1400,17 @@ export class ArduinoSemanticAnalyzer {
       case "logic_and": {
         const left = this.inferValue(block.getInputTargetBlock("A"));
         const right = this.inferValue(block.getInputTargetBlock("B"));
-        return typeof left === "boolean" && typeof right === "boolean" ? left && right : null;
+        const leftValid = typeof left === "boolean" || typeof left === "number";
+        const rightValid = typeof right === "boolean" || typeof right === "number";
+        return leftValid && rightValid ? Boolean(left) && Boolean(right) : null;
       }
 
       case "logic_or": {
         const left = this.inferValue(block.getInputTargetBlock("A"));
         const right = this.inferValue(block.getInputTargetBlock("B"));
-        return typeof left === "boolean" && typeof right === "boolean" ? left || right : null;
+        const leftValid = typeof left === "boolean" || typeof left === "number";
+        const rightValid = typeof right === "boolean" || typeof right === "number";
+        return leftValid && rightValid ? Boolean(left) || Boolean(right) : null;
       }
 
       case "logic_less": {
@@ -1174,7 +1425,7 @@ export class ArduinoSemanticAnalyzer {
         return typeof left === "number" && typeof right === "number" ? left > right : null;
       }
 
-      case "logic_equals": {
+      case "logic_equal": {
         const left = this.inferValue(block.getInputTargetBlock("A"));
         const right = this.inferValue(block.getInputTargetBlock("B"));
         return left !== null && right !== null ? left === right : null;

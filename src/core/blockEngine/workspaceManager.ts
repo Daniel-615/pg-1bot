@@ -24,6 +24,18 @@ export function createWorkspace(
       ],
     },
   });
+  workspace.registerToolboxCategoryCallback("VARIABLE_EXTENDED", (targetWorkspace) => {
+    const variableItems = Blockly.Variables.flyoutCategory(targetWorkspace, false) as Blockly.utils.toolbox.FlyoutItemInfoArray;
+
+    return [
+      ...variableItems,
+      { kind: "sep" },
+      { kind: "block", type: "lists_create_with" },
+      { kind: "block", type: "lists_length" },
+      { kind: "block", type: "list_var_get_index" },
+      { kind: "block", type: "list_var_set_index" },
+    ] as Blockly.utils.toolbox.FlyoutItemInfoArray;
+  });
   const startBlock = workspace.newBlock("program_start");
   startBlock.initSvg();
   startBlock.render();

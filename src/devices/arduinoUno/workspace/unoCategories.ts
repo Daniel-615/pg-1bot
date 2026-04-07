@@ -1,22 +1,14 @@
+import { getArduinoUnoDataCategories } from "./unoDataCategories";
+import { getArduinoUnoPinCategories } from "./unoPinCategories";
+import { getArduinoUnoSensorCategories } from "./unoSensorCategories";
+import { getArduinoUnoSerialCategories } from "./unoSerialCategories";
 
-export const unoCategories=[
-    {
-        kind: "category",
-        name: "Sensor",
-        colour: "#4C97FF",
-        contents:[
-            {
-                kind: "block",
-                type: "temporizador"
-            },
-            {
-                kind: "block",
-                type: "reiniciar_temporizador",
-            },
-            {
-                kind:"block",
-                type: "leer_sensor"
-            }
-        ]
-    }
-]
+export function getArduinoUnoCategories(extraCategories: any[] = []) {
+  return [
+    ...getArduinoUnoPinCategories(),
+    ...getArduinoUnoSerialCategories(),
+    ...getArduinoUnoDataCategories(),
+    ...getArduinoUnoSensorCategories(),
+    ...extraCategories,
+  ];
+}

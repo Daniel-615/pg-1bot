@@ -15,8 +15,20 @@ export async function createWorkspaceManager(
 
   switch (board) {
     case "uno": {
-      const { createWorkspaceUno } = await import("../../arduinoUno/workspace/workspaceUno");
+      const [{ createWorkspaceUno }, { ArduinoUnoBoard }] = await Promise.all([
+        import("../../arduinoUno/workspace/workspaceUno"),
+        import("../../arduinoUno/register"),
+      ]);
+      new ArduinoUnoBoard().registerBlocks?.();
       return createWorkspaceUno(container, options);
+    }
+    case "nano": {
+      const [{ createWorkspaceNano }, { ArduinoNanoBoard }] = await Promise.all([
+        import("../../arduinoNano/workspace/workspaceNano"),
+        import("../../arduinoNano/register"),
+      ]);
+      new ArduinoNanoBoard().registerBlocks?.();
+      return createWorkspaceNano(container, options);
     }
     case "esp32": {
       const [{ createWorkspaceEsp32 }, { ESP32Board }] = await Promise.all([
@@ -25,6 +37,14 @@ export async function createWorkspaceManager(
       ]);
       new ESP32Board().registerBlocks?.();
       return createWorkspaceEsp32(container, options);
+    }
+    case "mega": {
+      const [{ createWorkspaceMega }, { ArduinoMegaBoard }] = await Promise.all([
+        import("../../arduinoMega/workspace/workspaceMega"),
+        import("../../arduinoMega/register"),
+      ]);
+      new ArduinoMegaBoard().registerBlocks?.();
+      return createWorkspaceMega(container, options);
     }
     default: {
       const { createWorkspace } = await import("../../../core/blockEngine/workspaceManager");

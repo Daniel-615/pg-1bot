@@ -9,31 +9,7 @@ return [
       kind: "category",
       name: blocklyText("1BOT_CAT_VARIABLES"),
       colour: "#fb8e3b",
-      contents:[
-        {
-          kind:"custom",
-          custom: "VARIABLE"
-        },
-        {
-          kind: "sep"
-        },
-        {
-          kind: "block",
-          type: "lists_create_with"
-        },
-        {
-          kind: "block",
-          type: "lists_length"
-        },
-        {
-          kind: "block",
-          type: "list_var_get_index"
-        },
-        {
-          kind: "block",
-          type: "list_var_set_index"
-        }
-      ]
+      custom: "VARIABLE_EXTENDED"
     },
     ...getHardwareCategories(),
     ...getTypesCategories(),

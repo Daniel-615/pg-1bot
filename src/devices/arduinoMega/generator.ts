@@ -1,11 +1,11 @@
 import * as Blockly from "blockly";
-import { ArduinoBaseGenerator } from "../base/generator/generator";
-
-export class ArduinoMegaGenerator extends ArduinoBaseGenerator {
+import { ArduinoUnoGenerator } from "../arduinoUno/generator";
+export class ArduinoMegaGenerator extends ArduinoUnoGenerator {
   constructor() {
-    super("mega");
+    super();
+    this.name_="mega";
   }
-
+  
   init(workspace: Blockly.Workspace) {
     super.init(workspace);
 

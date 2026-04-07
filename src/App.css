@@ -470,6 +470,18 @@ body {
   width: 100%;
 }
 
+.device-native-select {
+  display: none;
+  width: 100%;
+  padding: 12px;
+  background: var(--bg-white);
+  border: 2px solid var(--primary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .device-card {
   width: 100%;
   padding: 12px;
@@ -481,6 +493,7 @@ body {
   gap: 12px;
   cursor: pointer;
   transition: all var(--transition-normal);
+  appearance: none;
 }
 
 .device-card:hover {
@@ -531,8 +544,13 @@ body {
 .device-option {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  width: 100%;
   gap: 10px;
   padding: 10px;
+  border: none;
+  background: transparent;
+  text-align: left;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background var(--transition-fast);
@@ -1377,6 +1395,17 @@ body {
 
   .device-card {
     padding: 8px;
+  }
+
+  .device-native-select {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 12px;
+  }
+
+  .device-card,
+  .device-menu {
+    display: none;
   }
 
   .device-icon {

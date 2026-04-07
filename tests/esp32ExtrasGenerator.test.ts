@@ -160,7 +160,14 @@ describe("ESP32 extra generators", () => {
     );
 
     expect(result).toEqual([
-      "({ digitalWrite(2, LOW); delayMicroseconds(2); digitalWrite(2, HIGH); delayMicroseconds(10); digitalWrite(2, LOW); pulseIn(5, HIGH, 30000UL) * 0.0343 / 2; })",
+      `([]() {
+        digitalWrite(2, LOW);
+        delayMicroseconds(2);
+        digitalWrite(2, HIGH);
+        delayMicroseconds(10);
+        digitalWrite(2, LOW);
+        return pulseIn(5, HIGH, 30000UL) * 0.0343 / 2;
+      })()`,
       0,
     ]);
     expect(Array.from(generator.setupDefinitions)).toContain("pinMode(2, OUTPUT);");

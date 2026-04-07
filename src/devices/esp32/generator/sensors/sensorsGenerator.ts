@@ -28,7 +28,14 @@ export function registerESP32SensorGenerator(generator: ESP32Generator) {
     generator.addSetupDefinition(`pinMode(${echo}, INPUT);`);
 
     return [
-      `({ digitalWrite(${trig}, LOW); delayMicroseconds(2); digitalWrite(${trig}, HIGH); delayMicroseconds(10); digitalWrite(${trig}, LOW); pulseIn(${echo}, HIGH, 30000UL) * 0.0343 / 2; })`,
+      `([]() {
+        digitalWrite(${trig}, LOW);
+        delayMicroseconds(2);
+        digitalWrite(${trig}, HIGH);
+        delayMicroseconds(10);
+        digitalWrite(${trig}, LOW);
+        return pulseIn(${echo}, HIGH, 30000UL) * 0.0343 / 2;
+      })()`,
       ORDER_ATOMIC,
     ];
   };

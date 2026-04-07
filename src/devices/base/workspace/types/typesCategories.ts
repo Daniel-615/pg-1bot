@@ -18,6 +18,10 @@ return [
           kind: "block",
           type: "string",
         },
+        {
+          kind: "block",
+          type: "json_object",
+        }
       ],
     },
 ];
