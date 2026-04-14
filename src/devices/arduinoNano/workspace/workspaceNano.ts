@@ -1,4 +1,4 @@
-import type { SymbolTableRow } from "../../../core/blockEngine/semantic/symbolTable";
+import type { SymbolTableRow } from "../../../core/blockEngine/semantic/base/symbolTable";
 import { createWorkspace } from "../../../core/blockEngine/workspaceManager";
 import { getArduinoUnoCategories } from "../../arduinoUno/workspace/unoCategories";
 import { getArduinoNanoCategories } from "./nanoCategories";

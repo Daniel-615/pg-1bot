@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SymbolTable } from "../src/core/blockEngine/semantic/symbolTable";
+import { SymbolTable } from "../src/core/blockEngine/semantic/base/symbolTable";
 
 describe("SymbolTable", () => {
   it("declara una variable con su tipo y estado inicial", () => {

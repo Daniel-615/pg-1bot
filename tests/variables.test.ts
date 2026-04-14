@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { Variables } from "../src/core/blockEngine/semantic/variables/variables";
-import { SymbolTable } from "../src/core/blockEngine/semantic/symbolTable";
+import { Variables } from "../src/core/blockEngine/semantic/base/variables/variables";
+import { SymbolTable } from "../src/core/blockEngine/semantic/base/symbolTable";
 
 type IssueSeverity = "error" | "warning" | "suggestion";
 

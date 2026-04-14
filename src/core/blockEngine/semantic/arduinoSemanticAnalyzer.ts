@@ -1,10 +1,22 @@
-import * as Blockly from "blockly";
-import { SymbolTable } from "./symbolTable";
-import type { SymbolTableRow, VarType } from "./symbolTable";
-import { Variables } from "./variables/variables";
-import { Conditions } from "./conditions/conditions";
-import { Operators } from "./operators/operators";
-import { translateSemanticMessage } from "./semanticI18n";
+﻿import * as Blockly from "blockly";
+import { SymbolTable } from "./base/symbolTable";
+import type { SymbolTableRow, VarType } from "./base/symbolTable";
+import { Variables } from "./base/variables/variables";
+import { Conditions } from "./base/conditions/conditions";
+import { Operators } from "./base/operators/operators";
+import { CodeyRockySemantic } from "./codeyRocky/codeyRockySemantic";
+import { translateSemanticMessage } from "./base/semanticI18n";
+import { getBinaryInputs, getConditionBlock } from "./base/workspace/blockAccess";
+import { WorkspaceTraversal } from "./base/workspace/workspaceTraversal";
+import { WifiSemantic } from "./esp32/wifi/wifiSemantic";
+import { DisplaySemantic } from "./esp32/display/displaySemantic";
+import { LucesSemantic } from "./esp32/luces/lucesSemantic";
+import { PinesEsp32Semantic } from "./esp32/pines/pinesEsp32Semantic";
+import { SensoresEsp32Semantic } from "./esp32/sensores/sensoresEsp32Semantic";
+import { PinesArduinoSemantic } from "./arduino/pines/pinesArduinoSemantic";
+import { SensoresArduinoSemantic } from "./arduino/sensores/sensoresArduinoSemantic";
+import { DatosArduinoSemantic } from "./arduino/datos/datosArduinoSemantic";
+import { SerialArduinoSemantic } from "./arduino/serial/serialArduinoSemantic";
 
 type Severity = "error" | "warning" | "suggestion";
 
@@ -26,24 +38,30 @@ export class ArduinoSemanticAnalyzer {
   private conditions!: Conditions;
   private operators!: Operators;
   private errors!: Map<string, Issue[]>;
-  private hasNeoPixelInit!: boolean;
-  private hasDisplayInit!: boolean;
-  private hasDhtInit!: boolean;
-  private hasWifiSetup!: boolean;
-  private hasWebServerInit!: boolean;
   private pinUsage!: Map<string, { mode: string; blockId: string }>;
-  private wifiMode!: "none" | "station" | "ap";
-  private wifiConnected!: boolean;
-  private attachedServoPins!: Set<string>;
-  private neoPixelConfig!: string | null;
-  private displayConfig!: string | null;
-  private dhtConfig!: string | null;
-  private webServerPort!: string | null;
+  private codeyRocky!: CodeyRockySemantic;
+  private wifiSemantic!: WifiSemantic;
+  private displaySemantic!: DisplaySemantic;
+  private lucesSemantic!: LucesSemantic;
+  private pinesEsp32Semantic!: PinesEsp32Semantic;
+  private sensoresEsp32Semantic!: SensoresEsp32Semantic;
+  private pinesArduinoSemantic!: PinesArduinoSemantic;
+  private sensoresArduinoSemantic!: SensoresArduinoSemantic;
+  private datosArduinoSemantic!: DatosArduinoSemantic;
+  private serialArduinoSemantic!: SerialArduinoSemantic;
 
   private debugMode = false;
   private blocksQueue: Blockly.Block[] = [];
   private history: Array<Map<string, unknown>[]> = [];
   private currentIndex = 0;
+
+  private getTraversal() {
+    return new WorkspaceTraversal({
+      debugMode: this.debugMode,
+      queueBlock: (block) => this.blocksQueue.push(block),
+      visitBlock: (block) => this.visit(block),
+    });
+  }
 
   analyze(workspace: Blockly.Workspace) {
     this.debugMode = false;
@@ -154,52 +172,55 @@ export class ArduinoSemanticAnalyzer {
     this.conditions = new Conditions(this.symbolTable, this);
     this.operators = new Operators(this);
     this.errors = new Map();
-    this.hasNeoPixelInit = false;
-    this.hasDisplayInit = false;
-    this.hasDhtInit = false;
-    this.hasWifiSetup = false;
-    this.hasWebServerInit = false;
     this.pinUsage = new Map();
-    this.wifiMode = "none";
-    this.wifiConnected = false;
-    this.attachedServoPins = new Set();
-    this.neoPixelConfig = null;
-    this.displayConfig = null;
-    this.dhtConfig = null;
-    this.webServerPort = null;
-  }
-
-  private isEsp32InputOnlyPin(pin: string) {
-    return ["34", "35", "36", "39"].includes(pin);
-  }
-
-  private isEsp32AdcPin(pin: string) {
-    return [
-      "0",
-      "2",
-      "4",
-      "12",
-      "13",
-      "14",
-      "15",
-      "25",
-      "26",
-      "27",
-      "32",
-      "33",
-      "34",
-      "35",
-      "36",
-      "39",
-    ].includes(pin);
-  }
-
-  private isEsp32TouchPin(pin: string) {
-    return ["0", "2", "4", "12", "13", "14", "15", "27", "32", "33"].includes(pin);
-  }
-
-  private isUnoSerialPin(pin: string) {
-    return ["0", "1"].includes(pin);
+    this.codeyRocky = new CodeyRockySemantic({
+      addIssue: (block, message, severity) => this.addIssue(block, message, severity),
+      inferValue: (block) => this.inferValue(block),
+      handleCheckUnusedExpression: (block) => this.handleCheckUnusedExpression(block),
+    });
+    this.codeyRocky.reset();
+    this.wifiSemantic = new WifiSemantic({
+      addIssue: (block, message, severity) => this.addIssue(block, message, severity),
+      inferValue: (block) => this.inferValue(block),
+    });
+    this.wifiSemantic.reset();
+    this.displaySemantic = new DisplaySemantic({
+      addIssue: (block, message, severity) => this.addIssue(block, message, severity),
+    });
+    this.displaySemantic.reset();
+    this.lucesSemantic = new LucesSemantic({
+      addIssue: (block, message, severity) => this.addIssue(block, message, severity),
+      registerPinUsage: (block, pin, mode) => this.registerPinUsage(block, pin, mode),
+    });
+    this.lucesSemantic.reset();
+    this.pinesEsp32Semantic = new PinesEsp32Semantic({
+      addIssue: (block, message, severity) => this.addIssue(block, message, severity),
+      registerPinUsage: (block, pin, mode) => this.registerPinUsage(block, pin, mode),
+    });
+    this.sensoresEsp32Semantic = new SensoresEsp32Semantic({
+      addIssue: (block, message, severity) => this.addIssue(block, message, severity),
+      registerPinUsage: (block, pin, mode) => this.registerPinUsage(block, pin, mode),
+    });
+    this.sensoresEsp32Semantic.reset();
+    this.pinesArduinoSemantic = new PinesArduinoSemantic({
+      addIssue: (block, message, severity) => this.addIssue(block, message, severity),
+      registerPinUsage: (block, pin, mode) => this.registerPinUsage(block, pin, mode),
+      handleCheckUnusedExpression: (block) => this.handleCheckUnusedExpression(block),
+    });
+    this.pinesArduinoSemantic.reset();
+    this.sensoresArduinoSemantic = new SensoresArduinoSemantic({
+      addIssue: (block, message, severity) => this.addIssue(block, message, severity),
+      registerPinUsage: (block, pin, mode) => this.registerPinUsage(block, pin, mode),
+      handleCheckUnusedExpression: (block) => this.handleCheckUnusedExpression(block),
+    });
+    this.datosArduinoSemantic = new DatosArduinoSemantic({
+      addIssue: (block, message, severity) => this.addIssue(block, message, severity),
+      inferValue: (block) => this.inferValue(block),
+      handleCheckUnusedExpression: (block) => this.handleCheckUnusedExpression(block),
+    });
+    this.serialArduinoSemantic = new SerialArduinoSemantic({
+      handleCheckUnusedExpression: (block) => this.handleCheckUnusedExpression(block),
+    });
   }
 
   private registerPinUsage(
@@ -221,75 +242,30 @@ export class ArduinoSemanticAnalyzer {
     this.pinUsage.set(pin, { mode, blockId: block.id });
   }
 
-  private getConditionBlock(block: Blockly.Block) {
-    return (
-      block.getInputTargetBlock("CONDITION") ||
-      block.getInputTargetBlock("BOOLEAN") ||
-      block.getInputTargetBlock("BOOL")
-    );
-  }
-
-  private getBinaryInputs(block: Blockly.Block) {
-    return {
-      left: block.getInputTargetBlock("A"),
-      right: block.getInputTargetBlock("B"),
-    };
-  }
-
-  private traverseChildren(block: Blockly.Block) {
-    block.inputList.forEach(input => {
-      const child = input.connection?.targetBlock();
-      if (!child) return;
-
-      if (this.debugMode) {
-        this.blocksQueue.push(child);
-      } else {
-        this.visit(child);
-      }
-    });
-
-    const next = block.getNextBlock();
-    if (!next) return;
-
-    if (this.debugMode) {
-      this.blocksQueue.push(next);
-      return;
-    }
-
-    this.visit(next);
-  }
-
-  private traverseNextBlock(block: Blockly.Block) {
-    const next = block.getNextBlock();
-    if (!next) return;
-
-    if (this.debugMode) {
-      this.blocksQueue.push(next);
-      return;
-    }
-
-    this.visit(next);
-  }
-
-  private traverseControlBlock(block: Blockly.Block, inputNames: string[]) {
-    inputNames.forEach((inputName) => {
-      const child = block.getInputTargetBlock(inputName);
-      if (!child) return;
-
-      if (this.debugMode) {
-        this.blocksQueue.push(child);
-      } else {
-        this.visit(child);
-      }
-    });
-
-    this.traverseNextBlock(block);
-  }
-
   private visit(block: Blockly.Block | null) {
     if (!block) return;
 
     block.setWarningText(null);
+
+    const boardHandlers = [
+      this.codeyRocky,
+      this.wifiSemantic,
+      this.displaySemantic,
+      this.lucesSemantic,
+      this.pinesEsp32Semantic,
+      this.sensoresEsp32Semantic,
+      this.pinesArduinoSemantic,
+      this.sensoresArduinoSemantic,
+      this.datosArduinoSemantic,
+      this.serialArduinoSemantic,
+    ];
+
+    for (const handler of boardHandlers) {
+      if (handler.handleBlock(block)) {
+        this.getTraversal().traverseChildren(block);
+        return;
+      }
+    }
 
     switch (block.type) {
       case "variables_set":
@@ -307,522 +283,40 @@ export class ArduinoSemanticAnalyzer {
         this.handleListSetIndex(block);
         break;
 
-      case "esp32_neopixel_init":
-        {
-          const config = `${block.getFieldValue("PIN")}:${block.getFieldValue("COUNT")}`;
-          if (this.neoPixelConfig && this.neoPixelConfig !== config) {
-            this.addIssue(
-              block,
-              "Ya inicializaste NeoPixel con otra configuracion. Usa una sola inicializacion por programa",
-              "warning"
-            );
-          }
-          this.neoPixelConfig = this.neoPixelConfig ?? config;
-        }
-        this.hasNeoPixelInit = true;
-        this.registerPinUsage(block, block.getFieldValue("PIN"), "neopixel");
-        break;
-
-      case "esp32_neopixel_set_color":
-      case "esp32_neopixel_set_rgb":
-      case "esp32_neopixel_clear":
-        if (!this.hasNeoPixelInit) {
-          this.addIssue(
-            block,
-            "Debes inicializar la tira NeoPixel antes de controlar sus LEDs",
-            "error"
-          );
-        }
-        break;
-
-      case "esp32_display_init":
-        {
-          const config = `${block.getFieldValue("SDA")}:${block.getFieldValue("SCL")}`;
-          if (this.displayConfig && this.displayConfig !== config) {
-            this.addIssue(
-              block,
-              "Ya inicializaste el display con otros pines. Usa una sola inicializacion por programa",
-              "warning"
-            );
-          }
-          this.displayConfig = this.displayConfig ?? config;
-        }
-        this.hasDisplayInit = true;
-        break;
-
-      case "esp32_display_print":
-      case "esp32_display_clear":
-        if (!this.hasDisplayInit) {
-          this.addIssue(
-            block,
-            "Debes inicializar el display antes de mostrar o limpiar contenido",
-            "error"
-          );
-        }
-        break;
-
-      case "wifi_connect":
-        if (!block.getFieldValue("SSID")?.trim()) {
-          this.addIssue(block, "El SSID no debería estar vacío", "suggestion");
-        }
-        if (!block.getFieldValue("PASSWORD")?.trim()) {
-          this.addIssue(block, "La contraseña WiFi no debería estar vacía", "suggestion");
-        } else if ((block.getFieldValue("PASSWORD") ?? "").trim().length < 8) {
-          this.addIssue(block, "La contraseña WiFi debería tener al menos 8 caracteres", "warning");
-        }
-        if (this.wifiMode === "ap") {
-          this.addIssue(
-            block,
-            "Ya configuraste un punto de acceso. Evita mezclar modo AP y conexion WiFi cliente en el mismo flujo",
-            "warning"
-          );
-        }
-        if (this.wifiConnected && this.wifiMode === "station") {
-          this.addIssue(
-            block,
-            "Ya existe una conexion WiFi cliente previa en este flujo",
-            "suggestion"
-          );
-        }
-        this.hasWifiSetup = true;
-        this.wifiMode = "station";
-        this.wifiConnected = true;
-        break;
-
-      case "wifi_create_ap":
-        if (!block.getFieldValue("SSID")?.trim()) {
-          this.addIssue(block, "El SSID del punto de acceso no debería estar vacío", "suggestion");
-        }
-        if (!block.getFieldValue("PASSWORD")?.trim()) {
-          this.addIssue(block, "La contraseña del punto de acceso no debería estar vacía", "suggestion");
-        } else if ((block.getFieldValue("PASSWORD") ?? "").trim().length < 8) {
-          this.addIssue(
-            block,
-            "La contraseña del punto de acceso debería tener al menos 8 caracteres",
-            "warning"
-          );
-        }
-        if (this.wifiMode === "station") {
-          this.addIssue(
-            block,
-            "Ya configuraste una conexion WiFi cliente. Evita mezclar modo cliente y punto de acceso en el mismo flujo",
-            "warning"
-          );
-        }
-        if (this.wifiConnected && this.wifiMode === "ap") {
-          this.addIssue(
-            block,
-            "Ya existe un punto de acceso configurado en este flujo",
-            "suggestion"
-          );
-        }
-        this.hasWifiSetup = true;
-        this.wifiMode = "ap";
-        this.wifiConnected = true;
-        break;
-
-      case "wifi_disconnect":
-        if (!this.wifiConnected) {
-          this.addIssue(
-            block,
-            "No puedes desconectar WiFi si antes no conectaste o creaste un punto de acceso",
-            "error"
-          );
-        }
-        this.wifiConnected = false;
-        this.hasWebServerInit = false;
-        break;
-
-      case "wifi_start_web_server":
-        if (this.webServerPort && this.webServerPort !== (block.getFieldValue("PORT") || "80")) {
-          this.addIssue(
-            block,
-            "Ya iniciaste un servidor web en otro puerto. Usa un solo puerto por programa",
-            "warning"
-          );
-        }
-        if (!this.hasWifiSetup) {
-          this.addIssue(
-            block,
-            "Conviene conectar WiFi o crear un punto de acceso antes de iniciar el servidor web",
-            "warning"
-          );
-        }
-        if (!this.wifiConnected) {
-          this.addIssue(
-            block,
-            "No hay una conexion WiFi activa para iniciar el servidor web",
-            "error"
-          );
-        }
-        this.hasWebServerInit = true;
-        this.webServerPort = this.webServerPort ?? (block.getFieldValue("PORT") || "80");
-        break;
-
-      case "wifi_get_rssi":
-        if (this.wifiMode !== "station" || !this.wifiConnected) {
-          this.addIssue(
-            block,
-            "La intensidad de señal solo esta disponible cuando hay una conexion WiFi cliente activa",
-            "error"
-          );
-        }
-        if (!this.hasWifiSetup) {
-          this.addIssue(
-            block,
-            "Debes conectar WiFi o crear un punto de acceso antes de consultar este dato",
-            "error"
-          );
-        }
-        break;
-
-      case "wifi_local_ip":
-        if (!this.hasWifiSetup) {
-          this.addIssue(
-            block,
-            "Debes conectar WiFi o crear un punto de acceso antes de consultar este dato",
-            "error"
-          );
-        }
-        if (!this.wifiConnected) {
-          this.addIssue(
-            block,
-            "No hay una conexion WiFi activa para consultar este dato",
-            "error"
-          );
-        }
-        break;
-
-      case "wifi_web_file_name":
-      case "wifi_web_response_equals":
-        if (!this.hasWebServerInit) {
-          this.addIssue(
-            block,
-            "Debes iniciar el servidor web antes de consultar la ruta solicitada",
-            "error"
-          );
-        }
-        break;
-
-      case "wifi_http_get_text":
-      case "wifi_http_post_text":
-        if (!this.hasWifiSetup || !this.wifiConnected) {
-          this.addIssue(
-            block,
-            "Debes conectar WiFi o crear un punto de acceso antes de hacer peticiones HTTP",
-            "error"
-          );
-        }
-        if (block.type === "wifi_http_post_text") {
-          const contentTypeBlock = block.getInputTargetBlock("CONTENT_TYPE");
-          const contentTypeValue = this.inferValue(contentTypeBlock);
-
-          if (typeof contentTypeValue !== "string" || !contentTypeValue.trim()) {
-            this.addIssue(
-              block,
-              "En content-type normalmente va algo como application/json o text/plain",
-              "suggestion"
-            );
-          } else {
-            const normalizedContentType = contentTypeValue.trim().toLowerCase();
-            if (normalizedContentType === "post" || normalizedContentType === "get") {
-              this.addIssue(
-                block,
-                "En content-type no va el metodo HTTP. Usa valores como application/json o text/plain",
-                "warning"
-              );
-            }
-          }
-        }
-        break;
-
-      case "esp32_pin_mode": {
-        const pin = block.getFieldValue("PIN");
-        const mode = block.getFieldValue("MODE");
-        if (mode === "OUTPUT" && this.isEsp32InputOnlyPin(pin)) {
-          this.addIssue(
-            block,
-            `El pin ${pin} en ESP32 es solo de entrada y no puede configurarse como OUTPUT`,
-            "error"
-          );
-        }
-        this.registerPinUsage(block, pin, "pin_mode");
-        break;
-      }
-
-      case "esp32_digital_write":
-        if (this.isEsp32InputOnlyPin(block.getFieldValue("PIN"))) {
-          this.addIssue(
-            block,
-            `El pin ${block.getFieldValue("PIN")} en ESP32 es solo de entrada y no sirve como salida digital`,
-            "error"
-          );
-        }
-        this.registerPinUsage(block, block.getFieldValue("PIN"), "digital_output");
-        break;
-
-      case "esp32_digital_read":
-        this.registerPinUsage(block, block.getFieldValue("PIN"), "digital_input");
-        break;
-
-      case "esp32_analog_read":
-        if (!this.isEsp32AdcPin(block.getFieldValue("PIN"))) {
-          this.addIssue(
-            block,
-            `El pin ${block.getFieldValue("PIN")} no suele ser valido para lectura analogica en ESP32`,
-            "warning"
-          );
-        }
-        this.registerPinUsage(block, block.getFieldValue("PIN"), "analog_input");
-        break;
-
-      case "esp32_pwm_write":
-        if (this.isEsp32InputOnlyPin(block.getFieldValue("PIN"))) {
-          this.addIssue(
-            block,
-            `El pin ${block.getFieldValue("PIN")} en ESP32 es solo de entrada y no sirve para PWM`,
-            "error"
-          );
-        }
-        this.registerPinUsage(block, block.getFieldValue("PIN"), "pwm_output");
-        break;
-
-      case "esp32_analog_write":
-        if (this.isEsp32InputOnlyPin(block.getFieldValue("PIN"))) {
-          this.addIssue(
-            block,
-            `El pin ${block.getFieldValue("PIN")} en ESP32 es solo de entrada y no sirve para salida analoga por PWM`,
-            "error"
-          );
-        }
-        this.registerPinUsage(block, block.getFieldValue("PIN"), "pwm_output");
-        break;
-
-      case "esp32_touch_read":
-        if (!this.isEsp32TouchPin(block.getFieldValue("PIN"))) {
-          this.addIssue(
-            block,
-            `El pin ${block.getFieldValue("PIN")} no tiene capacidad touch en ESP32`,
-            "warning"
-          );
-        }
-        this.registerPinUsage(block, block.getFieldValue("PIN"), "touch_input");
-        break;
-
-      case "esp32_dht_init":
-        {
-          const config = `${block.getFieldValue("PIN")}:${block.getFieldValue("TYPE")}`;
-          if (this.dhtConfig && this.dhtConfig !== config) {
-            this.addIssue(
-              block,
-              "Ya inicializaste el sensor DHT con otra configuracion. Usa una sola inicializacion por programa",
-              "warning"
-            );
-          }
-          this.dhtConfig = this.dhtConfig ?? config;
-        }
-        this.hasDhtInit = true;
-        break;
-
-      case "esp32_dht_temperature":
-      case "esp32_dht_humidity":
-        if (!this.hasDhtInit) {
-          this.addIssue(
-            block,
-            "Debes inicializar el sensor DHT antes de leer temperatura o humedad",
-            "error"
-          );
-        }
-        break;
-
-      case "esp32_servo_attach": {
-        const pin = block.getFieldValue("PIN");
-        if (this.isEsp32InputOnlyPin(pin)) {
-          this.addIssue(
-            block,
-            `El pin ${pin} en ESP32 es solo de entrada y no sirve para un servo`,
-            "error"
-          );
-        }
-        this.attachedServoPins.add(pin);
-        this.registerPinUsage(block, pin, "servo_output");
-        break;
-      }
-
-      case "esp32_servo_write": {
-        const pin = block.getFieldValue("PIN");
-        if (!this.attachedServoPins.has(pin)) {
-          this.addIssue(
-            block,
-            "Debes conectar o inicializar el servo antes de moverlo",
-            "error"
-          );
-        }
-        this.registerPinUsage(block, pin, "servo_output");
-        break;
-      }
-
-      case "esp32_tone_play":
-      case "esp32_tone_stop":
-        if (this.isEsp32InputOnlyPin(block.getFieldValue("PIN"))) {
-          this.addIssue(
-            block,
-            `El pin ${block.getFieldValue("PIN")} en ESP32 es solo de entrada y no sirve para buzzer`,
-            "error"
-          );
-        }
-        this.registerPinUsage(block, block.getFieldValue("PIN"), "tone_output");
-        break;
-
-      case "esp32_ultrasonic_distance": {
-        const trig = block.getFieldValue("TRIG");
-        const echo = block.getFieldValue("ECHO");
-        if (trig && echo && trig === echo) {
-          this.addIssue(block, "TRIG y ECHO no deberían usar el mismo pin", "warning");
-        }
-        this.registerPinUsage(block, trig, "ultrasonic_trig");
-        this.registerPinUsage(block, echo, "ultrasonic_echo");
-        break;
-      }
-
-      case "arduino_uno_digital_write": {
-        const pin = block.getFieldValue("PIN");
-        if (this.isUnoSerialPin(pin)) {
-          this.addIssue(
-            block,
-            "Los pines 0 y 1 en Arduino Uno se usan tambien para Serial. Evita usarlos si trabajas con puerto serie",
-            "warning"
-          );
-        }
-        this.registerPinUsage(block, pin, "digital_output");
-        break;
-      }
-
-      case "arduino_uno_digital_read":
-      case "arduino_uno_pulse_in": {
-        const pin = block.getFieldValue("PIN");
-        if (this.isUnoSerialPin(pin)) {
-          this.addIssue(
-            block,
-            "Los pines 0 y 1 en Arduino Uno se usan tambien para Serial. Evita usarlos si trabajas con puerto serie",
-            "warning"
-          );
-        }
-        this.registerPinUsage(block, pin, "digital_input");
-        this.handleCheckUnusedExpression(block);
-        break;
-      }
-
-      case "arduino_uno_analog_read":
-        this.registerPinUsage(block, block.getFieldValue("PIN"), "analog_input");
-        this.handleCheckUnusedExpression(block);
-        break;
-
-      case "arduino_uno_pwm_write":
-        this.registerPinUsage(block, block.getFieldValue("PIN"), "pwm_output");
-        break;
-
-      case "arduino_uno_servo_attach": {
-        const pin = block.getFieldValue("PIN");
-        if (this.isUnoSerialPin(pin)) {
-          this.addIssue(
-            block,
-            "Los pines 0 y 1 en Arduino Uno se usan tambien para Serial. Evita usarlos si trabajas con puerto serie",
-            "warning"
-          );
-        }
-        this.attachedServoPins.add(pin);
-        this.registerPinUsage(block, pin, "servo_output");
-        break;
-      }
-
-      case "arduino_uno_servo_write": {
-        const pin = block.getFieldValue("PIN");
-        if (!this.attachedServoPins.has(pin)) {
-          this.addIssue(
-            block,
-            "El servo se conectara automaticamente en ese pin. Puedes omitir el bloque de conectar servo si quieres",
-            "suggestion"
-          );
-        }
-        if (this.isUnoSerialPin(pin)) {
-          this.addIssue(
-            block,
-            "Los pines 0 y 1 en Arduino Uno se usan tambien para Serial. Evita usarlos si trabajas con puerto serie",
-            "warning"
-          );
-        }
-        this.registerPinUsage(block, pin, "servo_output");
-        break;
-      }
-
-      case "arduino_uno_tone_play": {
-        const pin = block.getFieldValue("PIN");
-        if (this.isUnoSerialPin(pin)) {
-          this.addIssue(
-            block,
-            "Los pines 0 y 1 en Arduino Uno se usan tambien para Serial. Evita usarlos si trabajas con puerto serie",
-            "warning"
-          );
-        }
-        this.registerPinUsage(block, pin, "tone_output");
-        break;
-      }
-
-      case "arduino_uno_sensor_ultrasonico": {
-        const trig = block.getFieldValue("TRIG");
-        const echo = block.getFieldValue("ECHO");
-        if (trig && echo && trig === echo) {
-          this.addIssue(block, "TRIG y ECHO no deberian usar el mismo pin", "warning");
-        }
-        this.registerPinUsage(block, trig, "ultrasonic_trig");
-        this.registerPinUsage(block, echo, "ultrasonic_echo");
-        this.handleCheckUnusedExpression(block);
-        break;
-      }
-
       case "if": {
         const ok = this.handleIf(block);
         if (!ok) {
-          this.traverseControlBlock(block, ["CONDITION"]);
+          this.getTraversal().traverseControlBlock(block, ["CONDITION"]);
           return;
         }
-        this.traverseControlBlock(block, ["CONDITION"]);
-        break;
+        this.getTraversal().traverseControlBlock(block, ["CONDITION"]);
+        return;
       }
 
       case "if_else":
         this.handleIfElse(block);
-        this.traverseControlBlock(block, ["CONDITION"]);
-        break;
+        this.getTraversal().traverseControlBlock(block, ["CONDITION"]);
+        return;
 
       case "while_repeat":
         this.handleWhile(block);
-        this.traverseControlBlock(block, ["CONDITION"]);
-        break;
+        this.getTraversal().traverseControlBlock(block, ["CONDITION"]);
+        return;
 
       case "do_while":
         this.handleDoWhile(block);
-        this.traverseControlBlock(block, ["CONDITION"]);
-        break;
+        this.getTraversal().traverseControlBlock(block, ["CONDITION"]);
+        return;
 
       case "for_range":
         this.handleForRange(block);
-        this.traverseControlBlock(block, ["FROM", "TO"]);
-        break;
+        this.getTraversal().traverseControlBlock(block, ["FROM", "TO"]);
+        return;
 
       case "math_add":
       case "math_subtract":
       case "math_multiply":
       case "math_divide":
-      case "arduino_uno_math_map":
-      case "arduino_uno_math_constrain":
-      case "arduino_uno_number_to_int":
-      case "arduino_uno_ascii_to_char":
-      case "arduino_uno_char_to_ascii":
-      case "arduino_uno_serial_available":
-      case "arduino_uno_serial_read":
-      case "arduino_uno_temporizador":
         this.handleOperatorMath(block);
         this.handleCheckUnusedExpression(block);
 
@@ -839,31 +333,6 @@ export class ArduinoSemanticAnalyzer {
         if (block.type === "math_divide") {
           this.handleDivide(block);
         }
-        if (block.type === "arduino_uno_math_map") {
-          const fromLow = this.inferValue(block.getInputTargetBlock("FROM_LOW"));
-          const fromHigh = this.inferValue(block.getInputTargetBlock("FROM_HIGH"));
-          if (typeof fromLow === "number" && typeof fromHigh === "number" && fromLow === fromHigh) {
-            this.addIssue(block, "En mapear, el rango de origen no debe tener el mismo inicio y fin", "error");
-          }
-        }
-        if (block.type === "arduino_uno_ascii_to_char") {
-          const value = this.inferValue(block.getInputTargetBlock("VALUE"));
-          if (typeof value === "number" && (value < 0 || value > 255)) {
-            this.addIssue(block, "El codigo ASCII deberia estar entre 0 y 255", "warning");
-          }
-        }
-        if (block.type === "arduino_uno_char_to_ascii") {
-          const value = this.inferValue(block.getInputTargetBlock("VALUE"));
-          if (typeof value === "string" && value.length === 0) {
-            this.addIssue(block, "Conviene usar al menos un caracter para convertir a ASCII", "suggestion");
-          }
-        }
-        if (block.type === "arduino_uno_number_to_int") {
-          const value = this.inferValue(block.getInputTargetBlock("VALUE"));
-          if (typeof value === "number" && Number.isInteger(value)) {
-            this.addIssue(block, "Ese valor ya es entero; convertirlo de nuevo no cambia el resultado", "suggestion");
-          }
-        }
         break;
 
       case "logic_and":
@@ -876,22 +345,18 @@ export class ArduinoSemanticAnalyzer {
         break;
     }
 
-    if (["if", "if_else", "while_repeat", "do_while", "for_range"].includes(block.type)) {
-      return;
-    }
-
-    this.traverseChildren(block);
+    this.getTraversal().traverseChildren(block);
   }
 
   private handleVariableSubtractZero(block: Blockly.Block) {
-    const { left, right } = this.getBinaryInputs(block);
+    const { left, right } = getBinaryInputs(block);
     if (!left || !right) return;
 
     this.operators.handleVariableSubtractZero(block, left, right);
   }
 
   private handleSubtractOperator(block: Blockly.Block) {
-    const { left, right } = this.getBinaryInputs(block);
+    const { left, right } = getBinaryInputs(block);
     if (!left || !right) {
       console.log("HandleSubtractOperator A o B se encuentran vacíos.");
       return;
@@ -951,7 +416,7 @@ export class ArduinoSemanticAnalyzer {
 
   private handleIf(block: Blockly.Block) {
     try {
-      const condition = this.getConditionBlock(block);
+      const condition = getConditionBlock(block);
       const type = this.inferType(condition);
       const ok = this.getConditions().handleIf(block, type);
       return ok ?? false;
@@ -961,14 +426,14 @@ export class ArduinoSemanticAnalyzer {
   }
 
   private handleIfElse(block: Blockly.Block) {
-    const condition = this.getConditionBlock(block);
+    const condition = getConditionBlock(block);
     const type = this.inferType(condition);
     const ok = this.getConditions().handleIfElse(block, type);
     if (!ok) return;
   }
 
   private handleWhile(block: Blockly.Block) {
-    const condition = this.getConditionBlock(block);
+    const condition = getConditionBlock(block);
     const type = this.inferType(condition);
 
     const ok = this.getConditions().handleWhile(block, type);
@@ -981,7 +446,7 @@ export class ArduinoSemanticAnalyzer {
       return;
     }
 
-    const condition = this.getConditionBlock(block);
+    const condition = getConditionBlock(block);
     const type = this.inferType(condition);
 
     if (type !== "boolean") {
@@ -1004,21 +469,21 @@ export class ArduinoSemanticAnalyzer {
   }
 
   private handleMultiply(block: Blockly.Block) {
-    const { left, right } = this.getBinaryInputs(block);
+    const { left, right } = getBinaryInputs(block);
     if (!left || !right) return;
 
     this.operators.handleMultiply(block, left, right);
   }
 
   private handleDivide(block: Blockly.Block) {
-    const { left, right } = this.getBinaryInputs(block);
+    const { left, right } = getBinaryInputs(block);
     if (!left || !right) return;
 
     this.operators.handleDivide(block, left, right);
   }
 
   private handleVariablePlusZero(block: Blockly.Block) {
-    const { left, right } = this.getBinaryInputs(block);
+    const { left, right } = getBinaryInputs(block);
     if (!left || !right) return;
 
     this.operators.handleVariablePlusZero(block, left, right);
@@ -1029,7 +494,7 @@ export class ArduinoSemanticAnalyzer {
   }
 
   private handleOperatorMath(block: Blockly.Block) {
-    const { left, right } = this.getBinaryInputs(block);
+    const { left, right } = getBinaryInputs(block);
     if (!left || !right) return;
 
     const typeA = this.inferType(left);
@@ -1056,7 +521,7 @@ export class ArduinoSemanticAnalyzer {
       case "logic_and":
       case "logic_or":
         {
-          const { left, right } = this.getBinaryInputs(block);
+          const { left, right } = getBinaryInputs(block);
           const typeA = this.inferType(left);
           const typeB = this.inferType(right);
         const validLeft = typeA === "boolean" || typeA === "number";
@@ -1077,7 +542,7 @@ export class ArduinoSemanticAnalyzer {
         break;
 
       case "logic_not":
-        if (this.inferType(this.getConditionBlock(block)) !== "boolean") {
+        if (this.inferType(getConditionBlock(block)) !== "boolean") {
           this.addIssue(block, "El operador NOT solo funciona con booleanos", "error");
         }
         break;
@@ -1085,7 +550,7 @@ export class ArduinoSemanticAnalyzer {
       case "logic_greater":
       case "logic_less":
         {
-          const { left, right } = this.getBinaryInputs(block);
+          const { left, right } = getBinaryInputs(block);
           const typeA = this.inferType(left);
           const typeB = this.inferType(right);
         if (typeA !== "number" || typeB !== "number") {
@@ -1096,7 +561,7 @@ export class ArduinoSemanticAnalyzer {
 
       case "logic_equal":
         {
-          const { left, right } = this.getBinaryInputs(block);
+          const { left, right } = getBinaryInputs(block);
           const typeA = this.inferType(left);
           const typeB = this.inferType(right);
         if (typeA !== typeB) {
@@ -1110,6 +575,21 @@ export class ArduinoSemanticAnalyzer {
   private inferType(block: Blockly.Block | null): VarType {
     if (!block) return null;
 
+    const codeyType = this.codeyRocky.inferType(block);
+    if (codeyType !== undefined) {
+      return codeyType;
+    }
+
+    const arduinoDataType = this.datosArduinoSemantic.inferType(block);
+    if (arduinoDataType !== undefined) {
+      return arduinoDataType;
+    }
+
+    const arduinoSerialType = this.serialArduinoSemantic.inferType(block);
+    if (arduinoSerialType !== undefined) {
+      return arduinoSerialType;
+    }
+
     switch (block.type) {
       case "number":
       case "math_number":
@@ -1117,11 +597,6 @@ export class ArduinoSemanticAnalyzer {
       case "math_subtract":
       case "math_multiply":
       case "math_divide":
-      case "arduino_uno_math_map":
-      case "arduino_uno_math_constrain":
-      case "arduino_uno_number_to_int":
-      case "arduino_uno_serial_available":
-      case "arduino_uno_serial_read":
       case "arduino_uno_digital_read":
       case "arduino_uno_analog_read":
       case "arduino_uno_pulse_in":
@@ -1146,7 +621,6 @@ export class ArduinoSemanticAnalyzer {
         return "boolean";
 
       case "string":
-      case "arduino_uno_ascii_to_char":
       case "json_object":
       case "wifi_local_ip":
       case "wifi_web_file_name":
@@ -1178,7 +652,6 @@ export class ArduinoSemanticAnalyzer {
         return "array_string";
 
       case "lists_length":
-      case "arduino_uno_char_to_ascii":
         return "number";
 
       case "lists_getIndex": {
@@ -1227,6 +700,21 @@ export class ArduinoSemanticAnalyzer {
 
   private inferValue(block: Blockly.Block | null): unknown {
     if (!block) return null;
+
+    const codeyValue = this.codeyRocky.inferValue(block);
+    if (codeyValue.handled) {
+      return codeyValue.value;
+    }
+
+    const arduinoDataValue = this.datosArduinoSemantic.inferValue(block);
+    if (arduinoDataValue.handled) {
+      return arduinoDataValue.value;
+    }
+
+    const arduinoSerialValue = this.serialArduinoSemantic.inferValue(block);
+    if (arduinoSerialValue.handled) {
+      return arduinoSerialValue.value;
+    }
 
     switch (block.type) {
       case "number":
@@ -1342,58 +830,8 @@ export class ArduinoSemanticAnalyzer {
         return left / right;
       }
 
-      case "arduino_uno_math_map": {
-        const value = this.inferValue(block.getInputTargetBlock("VALUE"));
-        const fromLow = this.inferValue(block.getInputTargetBlock("FROM_LOW"));
-        const fromHigh = this.inferValue(block.getInputTargetBlock("FROM_HIGH"));
-        const toLow = this.inferValue(block.getInputTargetBlock("TO_LOW"));
-        const toHigh = this.inferValue(block.getInputTargetBlock("TO_HIGH"));
-        const values = [value, fromLow, fromHigh, toLow, toHigh];
-        if (values.some((item) => typeof item !== "number")) {
-          return null;
-        }
-        const numericValue = value as number;
-        const numericFromLow = fromLow as number;
-        const numericFromHigh = fromHigh as number;
-        const numericToLow = toLow as number;
-        const numericToHigh = toHigh as number;
-
-        if (numericFromHigh === numericFromLow) {
-          return null;
-        }
-        return (
-          ((numericValue - numericFromLow) * (numericToHigh - numericToLow)) /
-          (numericFromHigh - numericFromLow)
-        ) + numericToLow;
-      }
-
-      case "arduino_uno_math_constrain": {
-        const value = this.inferValue(block.getInputTargetBlock("VALUE"));
-        const low = this.inferValue(block.getInputTargetBlock("LOW"));
-        const high = this.inferValue(block.getInputTargetBlock("HIGH"));
-        if (typeof value !== "number" || typeof low !== "number" || typeof high !== "number") {
-          return null;
-        }
-        return Math.min(Math.max(value, low), high);
-      }
-
-      case "arduino_uno_number_to_int": {
-        const value = this.inferValue(block.getInputTargetBlock("VALUE"));
-        return typeof value === "number" ? Math.trunc(value) : null;
-      }
-
-      case "arduino_uno_ascii_to_char": {
-        const value = this.inferValue(block.getInputTargetBlock("VALUE"));
-        return typeof value === "number" ? String.fromCharCode(value) : null;
-      }
-
-      case "arduino_uno_char_to_ascii": {
-        const value = this.inferValue(block.getInputTargetBlock("VALUE"));
-        return typeof value === "string" && value.length > 0 ? value.charCodeAt(0) : null;
-      }
-
       case "logic_not": {
-        const value = this.inferValue(this.getConditionBlock(block));
+        const value = this.inferValue(getConditionBlock(block));
         return typeof value === "boolean" ? !value : null;
       }
 
@@ -1464,3 +902,4 @@ export class ArduinoSemanticAnalyzer {
     });
   }
 }
+

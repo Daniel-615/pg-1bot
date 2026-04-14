@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { Conditions } from "../src/core/blockEngine/semantic/conditions/conditions";
-import { SymbolTable } from "../src/core/blockEngine/semantic/symbolTable";
+import { Conditions } from "../src/core/blockEngine/semantic/base/conditions/conditions";
+import { SymbolTable } from "../src/core/blockEngine/semantic/base/symbolTable";
 import { createBlock } from "./helpers/semanticMocks";
 
 type IssueSeverity = "error" | "warning" | "suggestion";

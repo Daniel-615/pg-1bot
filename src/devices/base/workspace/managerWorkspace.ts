@@ -1,5 +1,5 @@
 import type * as Blockly from "blockly";
-import type { SymbolTableRow } from "../../../core/blockEngine/semantic/symbolTable";
+import type { SymbolTableRow } from "../../../core/blockEngine/semantic/base/symbolTable";
 import { registerBaseBlocks } from "../register";
 
 type CreateWorkspaceManagerOptions = {
@@ -45,6 +45,14 @@ export async function createWorkspaceManager(
       ]);
       new ArduinoMegaBoard().registerBlocks?.();
       return createWorkspaceMega(container, options);
+    }
+    case "codey": {
+      const [{ createWorkspaceCodey }, { CodeyBoard }] = await Promise.all([
+        import("../../codey/workspace/workspaceCodey"),
+        import("../../codey/register"),
+      ]);
+      new CodeyBoard().registerBlocks?.();
+      return createWorkspaceCodey(container, options);
     }
     default: {
       const { createWorkspace } = await import("../../../core/blockEngine/workspaceManager");

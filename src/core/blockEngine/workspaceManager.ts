@@ -1,7 +1,7 @@
 import * as Blockly from "blockly";
 import "blockly/blocks";
 import { ArduinoSemanticAnalyzer } from "./semantic/arduinoSemanticAnalyzer";
-import type { SymbolTableRow } from "./semantic/symbolTable";
+import type { SymbolTableRow } from "./semantic/base/symbolTable";
 import { getBaseCategories } from "../../devices/base/workspace/baseCategories";
 
 type CreateWorkspaceOptions = {

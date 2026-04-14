@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { Operators } from "../src/core/blockEngine/semantic/operators/operators";
+import { Operators } from "../src/core/blockEngine/semantic/base/operators/operators";
 import { createBlock } from "./helpers/semanticMocks";
 
 type IssueSeverity = "error" | "warning" | "suggestion";

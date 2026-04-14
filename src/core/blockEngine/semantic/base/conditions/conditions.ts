@@ -1,4 +1,4 @@
-import type { ArduinoSemanticAnalyzer } from "../arduinoSemanticAnalyzer";
+import type { ArduinoSemanticAnalyzer } from "../../arduinoSemanticAnalyzer";
 import { SymbolTable, type VarType } from "../symbolTable";
 import * as Blockly from "blockly";
 

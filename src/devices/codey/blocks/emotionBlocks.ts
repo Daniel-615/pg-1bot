@@ -1,0 +1,40 @@
+import type { CodeyBlockDefinition } from "./types";
+
+const emotionBlockSpecs = [
+  { type: "codey_emotion_look_up", key: "LOOK_UP" },
+  { type: "codey_emotion_look_down", key: "LOOK_DOWN" },
+  { type: "codey_emotion_look_left", key: "LOOK_LEFT" },
+  { type: "codey_emotion_look_right", key: "LOOK_RIGHT" },
+  { type: "codey_emotion_look_around", key: "LOOK_AROUND" },
+  { type: "codey_emotion_blink", key: "BLINK" },
+  { type: "codey_emotion_smile", key: "SMILE" },
+  { type: "codey_emotion_oh_yes", key: "OH_YES" },
+  { type: "codey_emotion_naughty", key: "NAUGHTY" },
+  { type: "codey_emotion_proud", key: "PROUD" },
+  { type: "codey_emotion_yummy", key: "YUMMY" },
+  { type: "codey_emotion_uh_oh", key: "UH_OH" },
+  { type: "codey_emotion_wow", key: "WOW" },
+  { type: "codey_emotion_hurt", key: "HURT" },
+  { type: "codey_emotion_sad", key: "SAD" },
+  { type: "codey_emotion_angry", key: "ANGRY" },
+  { type: "codey_emotion_hello", key: "HELLO" },
+  { type: "codey_emotion_run", key: "RUN" },
+  { type: "codey_emotion_scared", key: "SCARED" },
+  { type: "codey_emotion_shiver", key: "SHIVER" },
+  { type: "codey_emotion_dizzy", key: "DIZZY" },
+  { type: "codey_emotion_yawn", key: "YAWN" },
+  { type: "codey_emotion_sleep", key: "SLEEP" },
+  { type: "codey_emotion_wakeup", key: "WAKEUP" },
+  { type: "codey_emotion_yes", key: "YES" },
+  { type: "codey_emotion_no", key: "NO" },
+];
+
+export const emotionBlocks: CodeyBlockDefinition[] = emotionBlockSpecs.map(({ type, key }) => ({
+  type,
+  message0: `%{BKY_1BOT_CODEY_EMOTION_${key}}`,
+  previousStatement: null,
+  nextStatement: null,
+  colour: "#46B8F2",
+  tooltip: `%{BKY_1BOT_CODEY_EMOTION_${key}_TOOLTIP}`,
+  helpUrl: "",
+}));

@@ -1,0 +1,90 @@
+import type { CodeyBlockDefinition } from "./types";
+
+export const lightingBlocks: CodeyBlockDefinition[] = [
+  {
+    type: "codey_led_rgb_for",
+    message0: "%{BKY_1BOT_CODEY_LIGHTING_RGB_FOR}",
+    args0: [
+      { type: "field_colour", name: "COLOR", colour: "#ff0000" },
+      { type: "field_number", name: "SECONDS", value: 1, min: 0, precision: 0.1 },
+    ],
+    previousStatement: null,
+    nextStatement: null,
+    colour: "#A86EDB",
+    tooltip: "%{BKY_1BOT_CODEY_LIGHTING_RGB_FOR_TOOLTIP}",
+    helpUrl: "",
+  },
+  {
+    type: "codey_led_rgb",
+    message0: "%{BKY_1BOT_CODEY_LIGHTING_RGB}",
+    args0: [{ type: "field_colour", name: "COLOR", colour: "#ff0000" }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: "#A86EDB",
+    tooltip: "%{BKY_1BOT_CODEY_LIGHTING_RGB_TOOLTIP}",
+    helpUrl: "",
+  },
+  {
+    type: "codey_led_component",
+    message0: "%{BKY_1BOT_CODEY_LIGHTING_COMPONENT}",
+    args0: [
+      {
+        type: "field_dropdown",
+        name: "COMPONENT",
+        options: [
+          ["%{BKY_1BOT_CODEY_LIGHTING_RED}", "red"],
+          ["%{BKY_1BOT_CODEY_LIGHTING_GREEN}", "green"],
+          ["%{BKY_1BOT_CODEY_LIGHTING_BLUE}", "blue"],
+        ],
+      },
+      { type: "field_number", name: "VALUE", value: 255, min: 0, max: 255, precision: 1 },
+    ],
+    previousStatement: null,
+    nextStatement: null,
+    colour: "#A86EDB",
+    tooltip: "%{BKY_1BOT_CODEY_LIGHTING_COMPONENT_TOOLTIP}",
+    helpUrl: "",
+  },
+  {
+    type: "codey_led_off",
+    message0: "%{BKY_1BOT_CODEY_LIGHTING_OFF}",
+    previousStatement: null,
+    nextStatement: null,
+    colour: "#A86EDB",
+    tooltip: "%{BKY_1BOT_CODEY_LIGHTING_OFF_TOOLTIP}",
+    helpUrl: "",
+  },
+  {
+    type: "rocky_light_color",
+    message0: "%{BKY_1BOT_ROCKY_LIGHTING_COLOR}",
+    args0: [
+      {
+        type: "field_dropdown",
+        name: "COLOR",
+        options: [
+          ["%{BKY_1BOT_ROCKY_COLOR_RED}", "red"],
+          ["%{BKY_1BOT_ROCKY_COLOR_GREEN}", "green"],
+          ["%{BKY_1BOT_ROCKY_COLOR_BLUE}", "blue"],
+          ["%{BKY_1BOT_ROCKY_COLOR_YELLOW}", "yellow"],
+          ["%{BKY_1BOT_ROCKY_COLOR_CYAN}", "cyan"],
+          ["%{BKY_1BOT_ROCKY_COLOR_PURPLE}", "purple"],
+          ["%{BKY_1BOT_ROCKY_COLOR_WHITE}", "white"],
+        ],
+      },
+    ],
+    previousStatement: null,
+    nextStatement: null,
+    colour: "#A86EDB",
+    tooltip: "%{BKY_1BOT_ROCKY_LIGHTING_COLOR_TOOLTIP}",
+    helpUrl: "",
+  },
+  {
+    type: "rocky_light_off",
+    message0: "%{BKY_1BOT_ROCKY_LIGHTING_OFF}",
+    previousStatement: null,
+    nextStatement: null,
+    colour: "#A86EDB",
+    tooltip: "%{BKY_1BOT_ROCKY_LIGHTING_OFF_TOOLTIP}",
+    helpUrl: "",
+  },
+];

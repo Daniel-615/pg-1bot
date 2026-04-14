@@ -729,6 +729,508 @@ describe("ArduinoSemanticAnalyzer", () => {
     );
   });
 
+  it("registra variables de Codey desde pulse_button y mensaje infrarrojo recibido", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const setButton = createBlock({
+      id: "set-codey-button",
+      type: "variables_set",
+      fields: { VAR: "var-codey-button" },
+      inputs: {
+        VALUE: createBlock({
+          id: "pulse-button-value",
+          type: "pulse_button",
+          fields: { BUTTON: "A" },
+          outputConnected: true,
+        }),
+      },
+    });
+    const setIrMessage = createBlock({
+      id: "set-codey-ir",
+      type: "variables_set",
+      fields: { VAR: "var-codey-ir" },
+      inputs: {
+        VALUE: createBlock({
+          id: "receive-ir-value",
+          type: "codey_receive_message_infrarred",
+          outputConnected: true,
+        }),
+      },
+    });
+    setButton.getNextBlock = () => setIrMessage;
+    const workspace = createWorkspace([setButton], {
+      "var-codey-button": "boton_presionado",
+      "var-codey-ir": "mensaje_ir",
+    });
+
+    analyzer.analyze(workspace as never);
+
+    expect(analyzer.getSymbolTableRows()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "boton_presionado",
+          type: "boolean",
+          value: false,
+          initialized: true,
+        }),
+        expect.objectContaining({
+          name: "mensaje_ir",
+          type: "string",
+          value: "",
+          initialized: true,
+        }),
+      ])
+    );
+  });
+
+  it("registra variables de sensores adicionales de Codey con el tipo correcto", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const setPotentiometer = createBlock({
+      id: "set-codey-potentiometer",
+      type: "variables_set",
+      fields: { VAR: "var-codey-potentiometer" },
+      inputs: {
+        VALUE: createBlock({
+          id: "codey-potentiometer-value",
+          type: "codey_potentiometer_value",
+          outputConnected: true,
+        }),
+      },
+    });
+    const setTilt = createBlock({
+      id: "set-codey-tilt",
+      type: "variables_set",
+      fields: { VAR: "var-codey-tilt" },
+      inputs: {
+        VALUE: createBlock({
+          id: "codey-tilt-value",
+          type: "codey_is_tilted",
+          fields: { DIRECTION: "LEFT" },
+          outputConnected: true,
+        }),
+      },
+    });
+    const setRotation = createBlock({
+      id: "set-codey-rotation",
+      type: "variables_set",
+      fields: { VAR: "var-codey-rotation" },
+      inputs: {
+        VALUE: createBlock({
+          id: "codey-rotation-value",
+          type: "codey_rotation_angle",
+          fields: { AXIS: "x" },
+          outputConnected: true,
+        }),
+      },
+    });
+    setPotentiometer.getNextBlock = () => setTilt;
+    setTilt.getNextBlock = () => setRotation;
+    const workspace = createWorkspace([setPotentiometer], {
+      "var-codey-potentiometer": "potenciometro",
+      "var-codey-tilt": "inclinado",
+      "var-codey-rotation": "rotacion",
+    });
+
+    analyzer.analyze(workspace as never);
+
+    expect(analyzer.getSymbolTableRows()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "potenciometro",
+          type: "number",
+          value: 0,
+          initialized: true,
+        }),
+        expect.objectContaining({
+          name: "inclinado",
+          type: "boolean",
+          value: false,
+          initialized: true,
+        }),
+        expect.objectContaining({
+          name: "rotacion",
+          type: "number",
+          value: 0,
+          initialized: true,
+        }),
+      ])
+    );
+  });
+
+  it("registra variables de temporizador y sensores frontales de Rocky con el tipo correcto", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const setTimer = createBlock({
+      id: "set-codey-timer",
+      type: "variables_set",
+      fields: { VAR: "var-codey-timer" },
+      inputs: {
+        VALUE: createBlock({
+          id: "codey-timer-value",
+          type: "codey_timer",
+          outputConnected: true,
+        }),
+      },
+    });
+    const setObstacle = createBlock({
+      id: "set-rocky-obstacle",
+      type: "variables_set",
+      fields: { VAR: "var-rocky-obstacle" },
+      inputs: {
+        VALUE: createBlock({
+          id: "rocky-obstacle-value",
+          type: "rocky_is_obstacle_ahead",
+          outputConnected: true,
+        }),
+      },
+    });
+    const setGreyness = createBlock({
+      id: "set-rocky-greyness",
+      type: "variables_set",
+      fields: { VAR: "var-rocky-greyness" },
+      inputs: {
+        VALUE: createBlock({
+          id: "rocky-greyness-value",
+          type: "rocky_greyness",
+          outputConnected: true,
+        }),
+      },
+    });
+    setTimer.getNextBlock = () => setObstacle;
+    setObstacle.getNextBlock = () => setGreyness;
+    const workspace = createWorkspace([setTimer], {
+      "var-codey-timer": "temporizador_codey",
+      "var-rocky-obstacle": "obstaculo",
+      "var-rocky-greyness": "gris",
+    });
+
+    analyzer.analyze(workspace as never);
+
+    expect(analyzer.getSymbolTableRows()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "temporizador_codey",
+          type: "number",
+          value: 0,
+          initialized: true,
+        }),
+        expect.objectContaining({
+          name: "obstaculo",
+          type: "boolean",
+          value: false,
+          initialized: true,
+        }),
+        expect.objectContaining({
+          name: "gris",
+          type: "number",
+          value: 0,
+          initialized: true,
+        }),
+      ])
+    );
+  });
+
+  it("sugiere completar el mensaje infrarrojo de Codey cuando esta vacio", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const sendIr = createBlock({
+      id: "codey-send-empty",
+      type: "codey_send_message_infrarred",
+      inputs: {
+        VALUE: createBlock({ id: "codey-send-empty-value", type: "string", fields: { STRING: "" } }),
+      },
+    });
+    const workspace = createWorkspace([sendIr]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(sendIr.warningText).toContain("El mensaje infrarrojo no deberia estar vacio");
+  });
+
+  it("reporta error si se intenta enviar una senal IR aprendida sin grabarla antes", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const sendLearned = createBlock({
+      id: "codey-send-learned",
+      type: "send_signal_infrarred_controller_distance",
+    });
+    const workspace = createWorkspace([sendLearned]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(sendLearned.warningText).toContain(
+      "Debes grabar primero una senal infrarroja del control antes de enviarla"
+    );
+  });
+
+  it("sugiere no duplicar la espera de conexion con Rocky en el mismo flujo", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const connectRockyA = createBlock({
+      id: "codey-rocky-a",
+      type: "codey_connect_rocky",
+    });
+    const connectRockyB = createBlock({
+      id: "codey-rocky-b",
+      type: "codey_connect_rocky",
+    });
+    connectRockyA.getNextBlock = () => connectRockyB;
+    const workspace = createWorkspace([connectRockyA]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(connectRockyB.warningText).toContain(
+      "Ya agregaste una espera de conexion con Rocky en este flujo"
+    );
+  });
+
+  it("sugiere conectar Rocky antes de usar bloques de movimiento", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const moveBlock = createBlock({
+      id: "rocky-forward-no-connect",
+      type: "rocky_forward_for",
+      fields: { POWER: "50", SECONDS: "1" },
+    });
+    const workspace = createWorkspace([moveBlock]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(moveBlock.warningText).toContain(
+      "Conviene conectar a Rocky antes de usar bloques de movimiento"
+    );
+  });
+
+  it("advierte parametros invalidos en bloques de accion de Rocky", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const connectRocky = createBlock({
+      id: "codey-rocky-connect-motion",
+      type: "codey_connect_rocky",
+    });
+    const driveTimed = createBlock({
+      id: "rocky-forward-invalid",
+      type: "rocky_forward_for",
+      fields: { POWER: "0", SECONDS: "0" },
+    });
+    const turnByAngle = createBlock({
+      id: "rocky-turn-invalid",
+      type: "rocky_turn_left_degree",
+      fields: { ANGLE: "0" },
+    });
+    const driveWheels = createBlock({
+      id: "rocky-drive-invalid",
+      type: "rocky_drive_power",
+      fields: { LEFT_POWER: "120", RIGHT_POWER: "-150" },
+    });
+    connectRocky.getNextBlock = () => driveTimed;
+    driveTimed.getNextBlock = () => turnByAngle;
+    turnByAngle.getNextBlock = () => driveWheels;
+    const workspace = createWorkspace([connectRocky]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(driveTimed.warningText).toContain("La potencia de Rocky deberia ser distinta de 0");
+    expect(driveTimed.warningText).toContain("El tiempo de movimiento de Rocky deberia ser mayor que 0");
+    expect(turnByAngle.warningText).toContain("Los grados de giro de Rocky deberian ser mayores que 0");
+    expect(driveWheels.warningText).toContain("La potencia de Rocky deberia estar entre -100 y 100");
+  });
+
+  it("registra volumen actual de Codey como numero", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const setVolume = createBlock({
+      id: "set-codey-current-volume",
+      type: "variables_set",
+      fields: { VAR: "var-codey-current-volume" },
+      inputs: {
+        VALUE: createBlock({
+          id: "codey-current-volume-value",
+          type: "codey_current_volume",
+          outputConnected: true,
+        }),
+      },
+    });
+    const workspace = createWorkspace([setVolume], {
+      "var-codey-current-volume": "volumen_actual",
+    });
+
+    analyzer.analyze(workspace as never);
+
+    expect(analyzer.getSymbolTableRows()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "volumen_actual",
+          type: "number",
+          value: 0,
+          initialized: true,
+        }),
+      ])
+    );
+  });
+
+  it("advierte parametros invalidos en bloques de altavoz de Codey", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const playNote = createBlock({
+      id: "codey-note-invalid",
+      type: "codey_play_note",
+      fields: { NOTE: "C4", BEAT: "0" },
+    });
+    const playTone = createBlock({
+      id: "codey-tone-invalid",
+      type: "codey_play_tone",
+      fields: { FREQUENCY: "6000", SECONDS: "0" },
+    });
+    const changeVolume = createBlock({
+      id: "codey-change-volume-zero",
+      type: "codey_change_volume",
+      fields: { DELTA: "0" },
+    });
+    playNote.getNextBlock = () => playTone;
+    playTone.getNextBlock = () => changeVolume;
+    const workspace = createWorkspace([playNote]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(playNote.warningText).toContain("La duracion en tiempos deberia ser mayor que 0");
+    expect(playTone.warningText).toContain("La frecuencia deberia estar entre 0 y 5000 Hz");
+    expect(playTone.warningText).toContain("La duracion del tono deberia ser mayor que 0");
+    expect(changeVolume.warningText).toContain("Cambiar el volumen en 0 no produce ningun cambio");
+  });
+
+  it("advierte parametros invalidos en bloques de iluminacion de Codey", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const ledTimed = createBlock({
+      id: "codey-led-timed-invalid",
+      type: "codey_led_rgb_for",
+      fields: { COLOR: "#ff0000", SECONDS: "0" },
+    });
+    const ledComponent = createBlock({
+      id: "codey-led-component-invalid",
+      type: "codey_led_component",
+      fields: { COMPONENT: "red", VALUE: "0" },
+    });
+    ledTimed.getNextBlock = () => ledComponent;
+    const workspace = createWorkspace([ledTimed]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(ledTimed.warningText).toContain("La duracion de la luz deberia ser mayor que 0");
+    expect(ledComponent.warningText).toContain(
+      "Ese valor de LED es 0. Si quieres apagarlo, conviene usar el bloque de apagar"
+    );
+  });
+
+  it("sugiere conectar Rocky antes de usar sensores o luces de Rocky", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const rockySensor = createBlock({
+      id: "rocky-sensor-no-connect",
+      type: "rocky_is_obstacle_ahead",
+      outputConnected: false,
+    });
+    const rockyLight = createBlock({
+      id: "rocky-light-no-connect",
+      type: "rocky_light_color",
+      fields: { COLOR: "red" },
+    });
+    rockySensor.getNextBlock = () => rockyLight;
+    const workspace = createWorkspace([rockySensor]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(rockySensor.warningText).toContain(
+      "Conviene conectar a Rocky antes de usar bloques de sensores o luces de Rocky"
+    );
+    expect(rockyLight.warningText).toContain(
+      "Conviene conectar a Rocky antes de usar bloques de sensores o luces de Rocky"
+    );
+  });
+
+  it("advierte texto vacio y coordenadas invalidas en apariencia de Codey", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const showText = createBlock({
+      id: "codey-show-text-empty",
+      type: "codey_show_text",
+      fields: { TEXT: "" },
+    });
+    const showImageAt = createBlock({
+      id: "codey-show-image-at-invalid",
+      type: "codey_show_image_at",
+      fields: { IMAGE: "0066660000000000", X: "20", Y: "10" },
+    });
+    const getPixel = createBlock({
+      id: "codey-get-pixel-invalid",
+      type: "codey_get_pixel",
+      fields: { X: "20", Y: "9" },
+      outputConnected: false,
+    });
+    showText.getNextBlock = () => showImageAt;
+    showImageAt.getNextBlock = () => getPixel;
+    const workspace = createWorkspace([showText]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(showText.warningText).toContain("El texto de la pantalla no deberia estar vacio");
+    expect(showImageAt.warningText).toContain(
+      "La posicion x/y de imagen o texto deberia mantenerse dentro del rango visible"
+    );
+    expect(getPixel.warningText).toContain(
+      "Las coordenadas del pixel deberian estar entre x 0-15 e y 0-7"
+    );
+  });
+
+  it("detecta repeticiones y no-op en bloques de Codey Rocky", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const emotionA = createBlock({
+      id: "codey-emotion-smile-a",
+      type: "codey_emotion_smile",
+    });
+    const emotionB = createBlock({
+      id: "codey-emotion-smile-b",
+      type: "codey_emotion_smile",
+    });
+    const ledA = createBlock({
+      id: "codey-led-black",
+      type: "codey_led_rgb",
+      fields: { COLOR: "#000000" },
+    });
+    const ledB = createBlock({
+      id: "codey-led-black-repeat",
+      type: "codey_led_rgb",
+      fields: { COLOR: "#000000" },
+    });
+    const stopA = createBlock({
+      id: "rocky-stop-a",
+      type: "rocky_stop",
+    });
+    const stopB = createBlock({
+      id: "rocky-stop-b",
+      type: "rocky_stop",
+    });
+    const resetTimerA = createBlock({
+      id: "codey-reset-timer-a",
+      type: "codey_reset_timer",
+    });
+    const resetTimerB = createBlock({
+      id: "codey-reset-timer-b",
+      type: "codey_reset_timer",
+    });
+    emotionA.getNextBlock = () => emotionB;
+    emotionB.getNextBlock = () => ledA;
+    ledA.getNextBlock = () => ledB;
+    ledB.getNextBlock = () => stopA;
+    stopA.getNextBlock = () => stopB;
+    stopB.getNextBlock = () => resetTimerA;
+    resetTimerA.getNextBlock = () => resetTimerB;
+    const workspace = createWorkspace([emotionA]);
+
+    analyzer.analyze(workspace as never);
+
+    expect(emotionB.warningText).toContain(
+      "Ese bloque repite la misma expresion o pantalla que el anterior y puede no producir un cambio visible"
+    );
+    expect(ledA.warningText).toContain(
+      "Ese color equivale a apagar el LED. Conviene usar el bloque de apagar"
+    );
+    expect(ledB.warningText).toContain(
+      "Ese bloque repite el mismo estado de luz que el anterior y puede no producir un cambio visible"
+    );
+    expect(stopB.warningText).toContain("Rocky ya estaba detenido por el bloque anterior");
+    expect(resetTimerB.warningText).toContain("Ya reiniciaste el temporizador de Codey en este flujo");
+  });
+
   it("traduce los mensajes semanticos segun el idioma activo", async () => {
     await i18n.changeLanguage("en");
 

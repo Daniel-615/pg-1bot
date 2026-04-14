@@ -1,4 +1,4 @@
-import type { ArduinoSemanticAnalyzer } from "../arduinoSemanticAnalyzer";
+import type { ArduinoSemanticAnalyzer } from "../../arduinoSemanticAnalyzer";
 import * as Blockly from "blockly";
 
 export class Operators {

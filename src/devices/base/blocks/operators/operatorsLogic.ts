@@ -1,5 +1,5 @@
 import * as Blockly from "blockly";
-const TYPE_COLOR = "#c54040";
+const OPERATOR_COLOR = "#1a840a";
 
 export function defineArduinoOperatorsLogicBlocks() {
   Blockly.common.defineBlocksWithJsonArray([
@@ -20,7 +20,7 @@ export function defineArduinoOperatorsLogicBlocks() {
       ],
       inputsInline: true,
       output: "Boolean",
-      colour: TYPE_COLOR,
+      colour: OPERATOR_COLOR,
     },
     {
       type: "logic_less",
@@ -39,7 +39,7 @@ export function defineArduinoOperatorsLogicBlocks() {
       ],
       inputsInline: true,
       output: "Boolean",
-      colour: TYPE_COLOR,
+      colour: OPERATOR_COLOR,
     },
     {
       type: "logic_equal",
@@ -58,7 +58,7 @@ export function defineArduinoOperatorsLogicBlocks() {
       ],
       inputsInline: true,
       output: "Boolean",
-      colour: TYPE_COLOR,
+      colour: OPERATOR_COLOR,
     },
     {
       type: "logic_and",
@@ -77,7 +77,7 @@ export function defineArduinoOperatorsLogicBlocks() {
       ],
       inputsInline: true,
       output: "Boolean",
-      colour: TYPE_COLOR,
+      colour: OPERATOR_COLOR,
     },
     {
       type: "logic_or",
@@ -96,7 +96,7 @@ export function defineArduinoOperatorsLogicBlocks() {
       ],
       inputsInline: true,
       output: "Boolean",
-      colour: TYPE_COLOR,
+      colour: OPERATOR_COLOR,
     },
     {
       type: "logic_not",
@@ -110,7 +110,7 @@ export function defineArduinoOperatorsLogicBlocks() {
       ],
       inputsInline: true,
       output: "Boolean",
-      colour: TYPE_COLOR
+      colour: OPERATOR_COLOR
     },
   ]);
 }
