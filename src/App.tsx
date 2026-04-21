@@ -7,7 +7,24 @@ import { AppHeader } from "./app/components/AppHeader";
 import { AppSidebar } from "./app/components/AppSidebar";
 import { AppWorkspace } from "./app/components/AppWorkspace";
 import { AppStatusBar } from "./app/components/AppStatusBar";
+import {
+  compileSketch,
+  getArduinoCompileErrorMessage,
+  resolveCompileTarget,
+} from "./api/arduino.compile";
+import { detectClientPlatform } from "./app/platform";
 import "./App.css";
+
+function sanitizeFilename(value: string) {
+  return value
+    .replace(/[<>:"/\\|?*]/g, "_")
+    .split("")
+    .filter((character) => {
+      const code = character.charCodeAt(0);
+      return code >= 32;
+    })
+    .join("");
+}
 
 function App() {
   const [language, setLanguage] = useState<Language>(
@@ -23,6 +40,7 @@ function App() {
   const [symbolRows, setSymbolRows] = useState<SymbolTableRow[]>([]);
   const [debugMode, setDebugMode] = useState(false);
   const [, setLanguageVersion] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
 
   const { blocklyDivRef, code, isEditorLoading, showEditorLoading, editorLoadError } =
     useBlocklyEditor({
@@ -33,6 +51,12 @@ function App() {
 
   const t = (key: string, options?: Record<string, string | number>) =>
     i18n.t(key, options);
+  const clientPlatform = detectClientPlatform();
+  const compileTarget = resolveCompileTarget(clientPlatform);
+  const compileTargetLabel =
+    clientPlatform === "mobile"
+      ? t("compileTargetBackend", { apiUrl: compileTarget.apiUrl })
+      : t("compileTargetLocal", { apiUrl: compileTarget.apiUrl });
 
   const currentDevice = DEVICES.find((device) => device.id === board);
 
@@ -64,15 +88,63 @@ function App() {
     }
   }, [language, projectName]);
 
-  const handleRun = () => alert(t("alertRun"));
+  const downloadGeneratedCode = (filename: string) => {
+    const blob = new Blob([code], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const compileAndUpload = async (shouldDownloadFirst = false) => {
+    if (!code.trim()) {
+      alert("No hay codigo Arduino para compilar.");
+      return;
+    }
+
+    const fallbackName = t("fallbackProjectName");
+    const filenameBase = (projectName.trim() || fallbackName).replace(/\s+/g, "_");
+    const filename = `${filenameBase}.ino`;
+
+    if (shouldDownloadFirst) {
+      downloadGeneratedCode(filename);
+    }
+
+    setIsUploading(true);
+
+    try {
+      const result = await compileSketch({
+        code,
+        board,
+        filename,
+        target: compileTarget,
+      });
+
+      const responseMessage =
+        typeof result.data === "object" &&
+        result.data !== null &&
+        "message" in result.data &&
+        typeof result.data.message === "string"
+          ? result.data.message
+          : result.message;
+
+      alert(responseMessage);
+    } catch (error) {
+      alert(getArduinoCompileErrorMessage(error));
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRun = async () => {
+    await compileAndUpload(true);
+  };
   const handleStop = () => alert(t("alertStop"));
   const handleToggleDebug = () => setDebugMode((current) => !current);
-  const handleUpload = () => {
-    alert(
-      t("alertUpload", {
-        device: currentDevice?.name || board,
-      })
-    );
+  const handleUpload = async () => {
+    await compileAndUpload(false);
   };
   const handleSave = () => alert(t("alertSave", { projectName }));
   const handleFile = () => alert(t("alertFile"));
@@ -92,16 +164,9 @@ function App() {
     if (requestedName === null) return;
 
     const sanitizedName =
-      requestedName.trim().replace(/[<>:\"/\\|?*\x00-\x1F]/g, "_") ||
-      t("fallbackProjectName");
+      sanitizeFilename(requestedName.trim()) || t("fallbackProjectName");
 
-    const blob = new Blob([code], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${sanitizedName.replace(/\s+/g, "_")}.ino`;
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadGeneratedCode(`${sanitizedName.replace(/\s+/g, "_")}.ino`);
   };
 
   const handleModeChange = (mode: "cargar" | "envivo") => {
@@ -145,6 +210,7 @@ function App() {
         onToggleDebug={handleToggleDebug}
         onStop={handleStop}
         onUpload={handleUpload}
+        isUploading={isUploading}
         t={t}
       />
 
@@ -184,6 +250,7 @@ function App() {
         board={board}
         connectionType={connectionType}
         isConnected={isConnected}
+        compileTargetLabel={compileTargetLabel}
         t={t}
       />
     </div>

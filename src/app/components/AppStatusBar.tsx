@@ -2,6 +2,7 @@ type AppStatusBarProps = {
   board: string;
   connectionType: "usb" | "bluetooth" | "wifi";
   isConnected: boolean;
+  compileTargetLabel: string;
   t: (key: string, options?: Record<string, string | number>) => string;
 };
 
@@ -9,6 +10,7 @@ export function AppStatusBar({
   board,
   connectionType,
   isConnected,
+  compileTargetLabel,
   t,
 }: AppStatusBarProps) {
   return (
@@ -25,6 +27,7 @@ export function AppStatusBar({
         </span>
       </div>
       <div className="status-right">
+        <span>{compileTargetLabel}</span>
         <span>{t("appTitle")}</span>
       </div>
     </footer>
