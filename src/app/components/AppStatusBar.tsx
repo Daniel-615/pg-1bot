@@ -1,3 +1,6 @@
+import { memo } from "react";
+import "./AppStatusBar.css";
+
 type AppStatusBarProps = {
   board: string;
   connectionType: "usb" | "bluetooth" | "wifi";
@@ -6,7 +9,7 @@ type AppStatusBarProps = {
   t: (key: string, options?: Record<string, string | number>) => string;
 };
 
-export function AppStatusBar({
+export const AppStatusBar = memo(function AppStatusBar({
   board,
   connectionType,
   isConnected,
@@ -32,4 +35,4 @@ export function AppStatusBar({
       </div>
     </footer>
   );
-}
+});

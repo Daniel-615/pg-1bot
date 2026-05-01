@@ -1,0 +1,54 @@
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 28px;
+  min-height: 28px;
+  padding: 0 16px;
+  background: var(--bg-dark);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+}
+
+.status-left,
+.status-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-indicator {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  background: var(--text-light);
+  border-radius: 50%;
+}
+
+.status-indicator.connected {
+  background: #4ade80;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+}
+
+@media (max-width: 768px) {
+  .status-bar {
+    height: 24px;
+    min-height: 24px;
+    padding: 0 10px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .status-text {
+    display: none;
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .status-bar {
+    height: 22px;
+    min-height: 22px;
+  }
+}

@@ -1,4 +1,6 @@
+import { memo } from "react";
 import type { Language } from "../../i18n";
+import "./AppHeader.css";
 
 type AppHeaderProps = {
   language: Language;
@@ -11,13 +13,11 @@ type AppHeaderProps = {
   onEdit: () => void;
   onRun: () => void;
   onToggleDebug: () => void;
-  onStop: () => void;
-  onUpload: () => void;
   isUploading: boolean;
   t: (key: string, options?: Record<string, string | number>) => string;
 };
 
-export function AppHeader({
+export const AppHeader = memo(function AppHeader({
   language,
   projectName,
   debugMode,
@@ -28,8 +28,6 @@ export function AppHeader({
   onEdit,
   onRun,
   onToggleDebug,
-  onStop,
-  onUpload,
   isUploading,
   t,
 }: AppHeaderProps) {
@@ -85,7 +83,7 @@ export function AppHeader({
 
       <div className="header-right">
         <button className="action-btn run-btn" onClick={onRun} disabled={isUploading}>
-          <span className="btn-text">{isUploading ? "Guardando..." : t("run")}</span>
+          <span className="btn-text">{isUploading ? "Cargando..." : t("run")}</span>
         </button>
         <button
           className={`action-btn debug-btn ${debugMode ? "active" : ""}`}
@@ -93,13 +91,7 @@ export function AppHeader({
         >
           <span className="btn-text">{debugMode ? t("exitDebug") : t("debug")}</span>
         </button>
-        <button className="action-btn stop-btn" onClick={onStop}>
-          <span className="btn-text">{t("stop")}</span>
-        </button>
-        <button className="action-btn upload-btn" onClick={onUpload} disabled={isUploading}>
-          <span className="btn-text">{isUploading ? "Compilando..." : t("upload")}</span>
-        </button>
       </div>
     </header>
   );
-}
+});

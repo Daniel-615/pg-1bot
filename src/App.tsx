@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SymbolTableRow } from "./core/blockEngine/semantic/base/symbolTable";
 import i18n, { persistLanguage, type Language } from "./i18n";
 import { DEVICES } from "./app/constants";
@@ -8,23 +8,31 @@ import { AppSidebar } from "./app/components/AppSidebar";
 import { AppWorkspace } from "./app/components/AppWorkspace";
 import { AppStatusBar } from "./app/components/AppStatusBar";
 import {
-  compileSketch,
   getArduinoCompileErrorMessage,
   resolveCompileTarget,
 } from "./api/arduino.compile";
 import { detectClientPlatform } from "./app/platform";
+import type { SerialPortOption } from "./app/types";
 import "./App.css";
+import { io } from "socket.io-client";
+
+type Toast = {
+  id: number;
+  type: "success" | "error" | "info";
+  message: string;
+};
 
 function sanitizeFilename(value: string) {
-  return value
-    .replace(/[<>:"/\\|?*]/g, "_")
-    .split("")
-    .filter((character) => {
-      const code = character.charCodeAt(0);
-      return code >= 32;
-    })
-    .join("");
+  return value.replace(/[<>:"/\\|?*]/g, "_");
 }
+
+const BOARD_FQBN: Record<string, string> = {
+  esp32: "esp32:esp32:esp32",
+  uno: "arduino:avr:uno",
+};
+
+const MAX_SERIAL_LOG_LINES = 300;
+const TOAST_DURATION_MS = 4200;
 
 function App() {
   const [language, setLanguage] = useState<Language>(
@@ -32,33 +40,181 @@ function App() {
   );
   const [board, setBoard] = useState("esp32");
   const [projectName, setProjectName] = useState(() => i18n.t("projectUntitled"));
-  const [activeTab, setActiveTab] = useState<"blocks" | "code">("blocks");
+  const [activeTab, setActiveTab] = useState<"blocks" | "code" | "simulator">("blocks");
   const [connectionType] = useState<"usb" | "bluetooth" | "wifi">("usb");
-  const [isConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
   const [deviceMenuOpen, setDeviceMenuOpen] = useState(false);
-  const [activeMode, setActiveMode] = useState<"cargar" | "envivo">("envivo");
   const [symbolRows, setSymbolRows] = useState<SymbolTableRow[]>([]);
   const [debugMode, setDebugMode] = useState(false);
   const [, setLanguageVersion] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [ports, setPorts] = useState<SerialPortOption[]>([]);
+  const [selectedPort, setSelectedPort] = useState("");
+  const [serialOpen, setSerialOpen] = useState(false);
+  const [serialLogs, setSerialLogs] = useState<string[]>([]);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const { blocklyDivRef, code, isEditorLoading, showEditorLoading, editorLoadError } =
-    useBlocklyEditor({
-      board,
-      language,
-      onSymbolTableChange: setSymbolRows,
+  const {
+    blocklyDivRef,
+    code,
+    workspaceVersion,
+    getSimulationSnapshot,
+    isEditorLoading,
+    showEditorLoading,
+    editorLoadError,
+  } = useBlocklyEditor({
+    board,
+    language,
+    onSymbolTableChange: setSymbolRows,
+  });
+
+  const t = useCallback(
+    (key: string, options?: Record<string, string | number>) => {
+      void language;
+      return i18n.t(key, options);
+    },
+    [language]
+  );
+
+  const clientPlatform = useMemo(() => detectClientPlatform(), []);
+  const compileTarget = useMemo(
+    () => resolveCompileTarget(clientPlatform),
+    [clientPlatform]
+  );
+  const compileTargetLabel = useMemo(
+    () =>
+      clientPlatform === "mobile"
+        ? t("compileTargetBackend", { apiUrl: compileTarget.apiUrl })
+        : t("compileTargetLocal", { apiUrl: compileTarget.apiUrl }),
+    [clientPlatform, compileTarget.apiUrl, t]
+  );
+  const currentDevice = useMemo(
+    () => DEVICES.find((device) => device.id === board),
+    [board]
+  );
+
+  const dismissToast = useCallback((id: number) => {
+    setToasts((current) => current.filter((toast) => toast.id !== id));
+  }, []);
+
+  const showToast = useCallback(
+    (type: Toast["type"], message: string) => {
+      const id = Date.now() + Math.random();
+      setToasts((current) => [...current, { id, type, message }].slice(-4));
+      window.setTimeout(() => dismissToast(id), TOAST_DURATION_MS);
+    },
+    [dismissToast]
+  );
+
+  useEffect(() => {
+    const socket = io("http://localhost:3000");
+
+    socket.on("serial-data", (line) => {
+      setSerialLogs((prev) => [...prev, line].slice(-MAX_SERIAL_LOG_LINES));
     });
 
-  const t = (key: string, options?: Record<string, string | number>) =>
-    i18n.t(key, options);
-  const clientPlatform = detectClientPlatform();
-  const compileTarget = resolveCompileTarget(clientPlatform);
-  const compileTargetLabel =
-    clientPlatform === "mobile"
-      ? t("compileTargetBackend", { apiUrl: compileTarget.apiUrl })
-      : t("compileTargetLocal", { apiUrl: compileTarget.apiUrl });
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
-  const currentDevice = DEVICES.find((device) => device.id === board);
+  useEffect(() => {
+    const syncFullscreenState = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    document.addEventListener("fullscreenchange", syncFullscreenState);
+    return () => document.removeEventListener("fullscreenchange", syncFullscreenState);
+  }, []);
+
+  const fetchPorts = useCallback(async () => {
+    try {
+      const res = await fetch("http://localhost:3000/api/arduino/ports");
+      const data = await res.json();
+
+      if (data.ok) {
+        setPorts(data.ports);
+        showToast("success", "Puertos COM actualizados correctamente.");
+        return;
+      }
+
+      showToast(
+        "error",
+        data.error ||
+          "No se pudieron cargar los puertos COM. Verifica que el servicio local esté ejecutándose."
+      );
+    } catch (err) {
+      showToast(
+        "error",
+        `No se pudo conectar con el servicio local de Arduino para leer puertos. Detalle: ${
+          err instanceof Error ? err.message : "error desconocido"
+        }`
+      );
+    }
+  }, [showToast]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void fetchPorts();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [fetchPorts]);
+
+  const startSerialMonitor = useCallback(async () => {
+    if (!selectedPort) {
+      showToast("error", "Selecciona un puerto COM antes de abrir el monitor serial.");
+      return;
+    }
+
+    try {
+      const res = await fetch("http://localhost:3000/api/arduino/monitor/start", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ port: selectedPort, baud: 115200 }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      setSerialLogs([]);
+      setSerialOpen(true);
+      showToast("success", `Monitor serial abierto en ${selectedPort}.`);
+    } catch (err) {
+      showToast(
+        "error",
+        `No se pudo abrir el monitor serial en ${selectedPort}. Detalle: ${
+          err instanceof Error ? err.message : "error desconocido"
+        }`
+      );
+    }
+  }, [selectedPort, showToast]);
+
+  const stopSerialMonitor = useCallback(async () => {
+    try {
+      const res = await fetch("http://localhost:3000/api/arduino/monitor/stop", {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      setSerialOpen(false);
+      showToast("success", "Monitor serial cerrado.");
+    } catch (err) {
+      showToast(
+        "error",
+        `No se pudo cerrar el monitor serial. Detalle: ${
+          err instanceof Error ? err.message : "error desconocido"
+        }`
+      );
+    }
+  }, [showToast]);
 
   useEffect(() => {
     void i18n.changeLanguage(language).then(() => {
@@ -67,133 +223,135 @@ function App() {
     persistLanguage(language);
   }, [language]);
 
-  useEffect(() => {
-    const syncLanguage = (nextLanguage: string) => {
-      setLanguage(nextLanguage === "en" ? "en" : "es");
-      setLanguageVersion((current) => current + 1);
-    };
+  const downloadGeneratedCode = useCallback(
+    (filename: string) => {
+      const blob = new Blob([code], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    },
+    [code]
+  );
 
-    i18n.on("languageChanged", syncLanguage);
-
-    return () => {
-      i18n.off("languageChanged", syncLanguage);
-    };
-  }, []);
-
-  useEffect(() => {
-    const defaultNames = new Set(["Sin titulo", "Untitled"]);
-
-    if (defaultNames.has(projectName)) {
-      setProjectName(t("projectUntitled"));
-    }
-  }, [language, projectName]);
-
-  const downloadGeneratedCode = (filename: string) => {
-    const blob = new Blob([code], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const compileAndUpload = async (shouldDownloadFirst = false) => {
+  const compileAndUpload = useCallback(async () => {
     if (!code.trim()) {
-      alert("No hay codigo Arduino para compilar.");
+      showToast(
+        "error",
+        "No hay código generado para compilar. Agrega bloques antes de correr el programa."
+      );
       return;
     }
 
-    const fallbackName = t("fallbackProjectName");
-    const filenameBase = (projectName.trim() || fallbackName).replace(/\s+/g, "_");
-    const filename = `${filenameBase}.ino`;
-
-    if (shouldDownloadFirst) {
-      downloadGeneratedCode(filename);
-    }
-
+    const filename = `${sanitizeFilename(projectName)}.ino`;
     setIsUploading(true);
 
     try {
-      const result = await compileSketch({
-        code,
-        board,
-        filename,
-        target: compileTarget,
+      const formData = new FormData();
+      const fqbn = BOARD_FQBN[board] || "esp32:esp32:esp32";
+
+      formData.append("file", new Blob([code]), filename);
+      formData.append("upload", "true");
+      formData.append("fqbn", fqbn);
+
+      if (selectedPort) {
+        formData.append("port", selectedPort);
+      }
+
+      const res = await fetch("http://localhost:3000/api/arduino/compile", {
+        method: "POST",
+        body: formData,
       });
+      const result = await res.json();
 
-      const responseMessage =
-        typeof result.data === "object" &&
-        result.data !== null &&
-        "message" in result.data &&
-        typeof result.data.message === "string"
-          ? result.data.message
-          : result.message;
+      if (result.ok) {
+        setIsConnected(true);
+        showToast("success", result.message || "Programa compilado y cargado correctamente.");
+        return;
+      }
 
-      alert(responseMessage);
-    } catch (error) {
-      alert(getArduinoCompileErrorMessage(error));
+      showToast(
+        "error",
+        result.error ||
+          "La compilación falló. Revisa la placa seleccionada, el puerto COM y el código generado."
+      );
+    } catch (err) {
+      showToast("error", getArduinoCompileErrorMessage(err));
     } finally {
       setIsUploading(false);
     }
-  };
+  }, [board, code, projectName, selectedPort, showToast]);
 
-  const handleRun = async () => {
-    await compileAndUpload(true);
-  };
-  const handleStop = () => alert(t("alertStop"));
-  const handleToggleDebug = () => setDebugMode((current) => !current);
-  const handleUpload = async () => {
-    await compileAndUpload(false);
-  };
-  const handleSave = () => alert(t("alertSave", { projectName }));
-  const handleFile = () => alert(t("alertFile"));
-  const handleEdit = () => alert(t("alertEdit"));
+  const handleRun = useCallback(() => {
+    void compileAndUpload();
+  }, [compileAndUpload]);
 
-  const handleCopyCode = () => {
-    navigator.clipboard
+  const handleCopyCode = useCallback(() => {
+    void navigator.clipboard
       .writeText(code)
-      .then(() => alert(t("alertCopySuccess")))
-      .catch(() => alert(t("alertCopyError")));
-  };
+      .then(() => showToast("success", "Código copiado al portapapeles."))
+      .catch((err) =>
+        showToast(
+          "error",
+          `No se pudo copiar el código al portapapeles. Detalle: ${
+            err instanceof Error ? err.message : "permiso denegado"
+          }`
+        )
+      );
+  }, [code, showToast]);
 
-  const handleDownloadCode = () => {
-    const suggestedName = projectName.trim() || t("fallbackProjectName");
-    const requestedName = window.prompt(t("promptFileName"), suggestedName);
+  const handleDownloadCode = useCallback(() => {
+    const filename = `${projectName}.ino`;
+    downloadGeneratedCode(filename);
+    showToast("success", `Archivo ${filename} descargado.`);
+  }, [downloadGeneratedCode, projectName, showToast]);
 
-    if (requestedName === null) return;
+  const getScopeLabel = useCallback((row: SymbolTableRow) => row.scopeKind, []);
+  const handleToggleDebug = useCallback(() => setDebugMode((current) => !current), []);
+  const handleToggleDeviceMenu = useCallback(
+    () => setDeviceMenuOpen((current) => !current),
+    []
+  );
+  const handleSave = useCallback(
+    () => showToast("info", "La acción Guardar todavía no está implementada."),
+    [showToast]
+  );
+  const handleFile = useCallback(() => {}, []);
+  const handleEdit = useCallback(() => {}, []);
+  const handleFullscreen = useCallback(() => {
+    if (!document.fullscreenEnabled) {
+      showToast("error", "Tu navegador no permite activar pantalla completa desde esta página.");
+      return;
+    }
 
-    const sanitizedName =
-      sanitizeFilename(requestedName.trim()) || t("fallbackProjectName");
+    const fullscreenAction = document.fullscreenElement
+      ? document.exitFullscreen()
+      : document.documentElement.requestFullscreen();
 
-    downloadGeneratedCode(`${sanitizedName.replace(/\s+/g, "_")}.ino`);
-  };
-
-  const handleModeChange = (mode: "cargar" | "envivo") => {
-    setActiveMode(mode);
-    alert(
-      t("modeChanged", {
-        mode: mode === "cargar" ? t("modeUpload") : t("modeLive"),
+    void fullscreenAction
+      .then(() => {
+        const active = Boolean(document.fullscreenElement);
+        setIsFullscreen(active);
+        showToast(
+          "success",
+          active ? "Pantalla completa activada." : "Pantalla completa desactivada."
+        );
       })
-    );
-  };
-
-  const handleBoardChange = (nextBoard: string) => {
-    setBoard(nextBoard);
-    setDeviceMenuOpen(false);
-  };
-
-  const handleFullscreen = () => alert(t("alertFullscreen"));
-  const handleRotate = () => alert(t("alertRotate"));
-
-  const getScopeLabel = (row: SymbolTableRow) => {
-    const scopeBase =
-      row.scopeKind === "global"
-        ? t("scopeGlobal")
-        : t("scopeLocal", { id: row.scopeId });
-
-    return row.active ? scopeBase : `${scopeBase} (${t("scopeClosed")})`;
-  };
+      .catch((err) => {
+        showToast(
+          "error",
+          `No se pudo cambiar el modo de pantalla completa. Detalle: ${
+            err instanceof Error ? err.message : "permiso denegado por el navegador"
+          }`
+        );
+      });
+  }, [showToast]);
+  const handleRotate = useCallback(
+    () => showToast("info", "La acción de rotar todavía no está implementada."),
+    [showToast]
+  );
 
   return (
     <div className="app-container">
@@ -203,13 +361,11 @@ function App() {
         debugMode={debugMode}
         onProjectNameChange={setProjectName}
         onLanguageChange={setLanguage}
+        onRun={handleRun}
+        onToggleDebug={handleToggleDebug}
         onSave={handleSave}
         onFile={handleFile}
         onEdit={handleEdit}
-        onRun={handleRun}
-        onToggleDebug={handleToggleDebug}
-        onStop={handleStop}
-        onUpload={handleUpload}
         isUploading={isUploading}
         t={t}
       />
@@ -217,27 +373,36 @@ function App() {
       <div className="main-content">
         <AppSidebar
           board={board}
-          activeMode={activeMode}
+          isFullscreen={isFullscreen}
           deviceMenuOpen={deviceMenuOpen}
           currentDevice={currentDevice}
           devices={DEVICES}
-          onBoardChange={handleBoardChange}
-          onToggleDeviceMenu={() => setDeviceMenuOpen((current) => !current)}
-          onModeChange={handleModeChange}
+          onBoardChange={setBoard}
+          onToggleDeviceMenu={handleToggleDeviceMenu}
           onFullscreen={handleFullscreen}
           onRotate={handleRotate}
           t={t}
+          ports={ports}
+          selectedPort={selectedPort}
+          setSelectedPort={setSelectedPort}
+          fetchPorts={fetchPorts}
+          serialOpen={serialOpen}
+          startSerialMonitor={startSerialMonitor}
+          stopSerialMonitor={stopSerialMonitor}
         />
 
         <AppWorkspace
           activeTab={activeTab}
+          board={board}
           code={code}
           debugMode={debugMode}
           symbolRows={symbolRows}
+          workspaceVersion={workspaceVersion}
           isEditorLoading={isEditorLoading}
           showEditorLoading={showEditorLoading}
           editorLoadError={editorLoadError}
           blocklyDivRef={blocklyDivRef}
+          getSimulationSnapshot={getSimulationSnapshot}
           onTabChange={setActiveTab}
           onCopyCode={handleCopyCode}
           onDownloadCode={handleDownloadCode}
@@ -250,9 +415,39 @@ function App() {
         board={board}
         connectionType={connectionType}
         isConnected={isConnected}
-        compileTargetLabel={compileTargetLabel}
+        compileTargetLabel={isConnected ? "Arduino conectado" : compileTargetLabel}
         t={t}
       />
+
+      {serialOpen && (
+        <div className="serial-monitor">
+          <div className="serial-header">
+            Serial Monitor
+            <button onClick={stopSerialMonitor}>Cerrar</button>
+          </div>
+
+          <div className="serial-body">
+            {serialLogs.map((line, index) => (
+              <div key={index}>{line}</div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="toast-region" aria-live="polite" aria-relevant="additions">
+        {toasts.map((toast) => (
+          <button
+            key={toast.id}
+            className={`toast toast-${toast.type}`}
+            onClick={() => dismissToast(toast.id)}
+          >
+            <span className="toast-title">
+              {toast.type === "success" ? "Listo" : toast.type === "error" ? "Error" : "Info"}
+            </span>
+            <span className="toast-message">{toast.message}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

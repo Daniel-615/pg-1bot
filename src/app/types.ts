@@ -22,3 +22,16 @@ export type DeviceOption = {
   name: string;
   img: string;
 };
+
+export type SerialPortOption = {
+  path: string;
+  friendlyName?: string;
+};
+
+export type SimulationBlock = {
+  id: string;
+  type: string;
+  fields: Record<string, string>;
+  inputs: Record<string, SimulationBlock | null>;
+  next: SimulationBlock | null;
+};

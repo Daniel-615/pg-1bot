@@ -1,37 +1,62 @@
+import { memo, useMemo } from "react";
 import type { RefObject } from "react";
 import type { SymbolTableRow } from "../../core/blockEngine/semantic/base/symbolTable";
+import type { SimulationBlock } from "../types";
+import { Esp32SimulatorPanel } from "./Esp32SimulatorPanel";
+import "./AppWorkspace.css";
 
 type AppWorkspaceProps = {
-  activeTab: "blocks" | "code";
+  activeTab: "blocks" | "code" | "simulator";
+  board: string;
   code: string;
   debugMode: boolean;
   symbolRows: SymbolTableRow[];
+  workspaceVersion: number;
   isEditorLoading: boolean;
   showEditorLoading: boolean;
   editorLoadError: string;
   blocklyDivRef: RefObject<HTMLDivElement | null>;
-  onTabChange: (tab: "blocks" | "code") => void;
+  getSimulationSnapshot: () => SimulationBlock[];
+  onTabChange: (tab: "blocks" | "code" | "simulator") => void;
   onCopyCode: () => void;
   onDownloadCode: () => void;
   getScopeLabel: (row: SymbolTableRow) => string;
   t: (key: string, options?: Record<string, string | number>) => string;
 };
 
-export function AppWorkspace({
+export const AppWorkspace = memo(function AppWorkspace({
   activeTab,
+  board,
   code,
   debugMode,
   symbolRows,
+  workspaceVersion,
   isEditorLoading,
   showEditorLoading,
   editorLoadError,
   blocklyDivRef,
+  getSimulationSnapshot,
   onTabChange,
   onCopyCode,
   onDownloadCode,
   getScopeLabel,
   t,
 }: AppWorkspaceProps) {
+  const symbolTableRows = useMemo(
+    () =>
+      symbolRows.map((row, index) => (
+        <tr key={`${row.name}-${row.scopeId}-${index}`}>
+          <td>{row.name}</td>
+          <td>{row.type ?? "null"}</td>
+          <td>{row.value === null ? "null" : String(row.value)}</td>
+          <td>{row.initialized ? t("yes") : t("no")}</td>
+          <td>{row.used ? t("yes") : t("no")}</td>
+          <td>{getScopeLabel(row)}</td>
+        </tr>
+      )),
+    [getScopeLabel, symbolRows, t]
+  );
+
   return (
     <main className="workspace-container">
       <div className="workspace-tabs">
@@ -46,6 +71,12 @@ export function AppWorkspace({
           onClick={() => onTabChange("code")}
         >
           {t("code")}
+        </button>
+        <button
+          className={`workspace-tab ${activeTab === "simulator" ? "active" : ""}`}
+          onClick={() => onTabChange("simulator")}
+        >
+          Simulación
         </button>
 
         {activeTab === "code" && (
@@ -110,16 +141,7 @@ export function AppWorkspace({
                     </tr>
                   </thead>
                   <tbody>
-                    {symbolRows.map((row, index) => (
-                      <tr key={`${row.name}-${row.scopeId}-${index}`}>
-                        <td>{row.name}</td>
-                        <td>{row.type ?? "null"}</td>
-                        <td>{row.value === null ? "null" : String(row.value)}</td>
-                        <td>{row.initialized ? t("yes") : t("no")}</td>
-                        <td>{row.used ? t("yes") : t("no")}</td>
-                        <td>{getScopeLabel(row)}</td>
-                      </tr>
-                    ))}
+                    {symbolTableRows}
                   </tbody>
                 </table>
               </div>
@@ -128,13 +150,23 @@ export function AppWorkspace({
         )}
       </div>
 
-      <div className={`code-panel ${activeTab === "code" ? "visible" : "hidden"}`}>
-        <div className="code-scroll">
-          <pre className="code-content">
-            <code>{code}</code>
-          </pre>
+      {activeTab === "code" && (
+        <div className="code-panel visible">
+          <div className="code-scroll">
+            <pre className="code-content">
+              <code>{code}</code>
+            </pre>
+          </div>
         </div>
-      </div>
+      )}
+
+      {activeTab === "simulator" && (
+        <Esp32SimulatorPanel
+          board={board}
+          workspaceVersion={workspaceVersion}
+          getSimulationSnapshot={getSimulationSnapshot}
+        />
+      )}
     </main>
   );
-}
+});

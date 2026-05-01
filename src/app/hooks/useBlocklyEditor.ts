@@ -1,14 +1,51 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type * as Blockly from "blockly";
 import i18n, { type Language } from "../../i18n";
 import type { SymbolTableRow } from "../../core/blockEngine/semantic/base/symbolTable";
-import type { EditorRuntime } from "../types";
+import type { EditorRuntime, SimulationBlock } from "../types";
 
 type UseBlocklyEditorOptions = {
   board: string;
   language: Language;
   onSymbolTableChange: (rows: SymbolTableRow[]) => void;
 };
+
+type BlocklyFieldLike = {
+  name?: string;
+  getValue: () => string;
+};
+
+function toSimulationBlock(block: Blockly.Block | null): SimulationBlock | null {
+  if (!block) {
+    return null;
+  }
+
+  const fields: Record<string, string> = {};
+
+  for (const input of block.inputList) {
+    for (const field of input.fieldRow as BlocklyFieldLike[]) {
+      if (field.name) {
+        fields[field.name] = String(field.getValue());
+      }
+    }
+  }
+
+  const inputs: Record<string, SimulationBlock | null> = {};
+
+  for (const input of block.inputList) {
+    if (input.name) {
+      inputs[input.name] = toSimulationBlock(input.connection?.targetBlock() ?? null);
+    }
+  }
+
+  return {
+    id: block.id,
+    type: block.type,
+    fields,
+    inputs,
+    next: toSimulationBlock(block.getNextBlock()),
+  };
+}
 
 export function useBlocklyEditor({
   board,
@@ -18,7 +55,9 @@ export function useBlocklyEditor({
   const blocklyDivRef = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<Blockly.Workspace | null>(null);
   const runtimeRef = useRef<EditorRuntime | null>(null);
+  const lastCodeRef = useRef("");
   const [code, setCode] = useState("");
+  const [workspaceVersion, setWorkspaceVersion] = useState(0);
   const [isEditorLoading, setIsEditorLoading] = useState(true);
   const [showEditorLoading, setShowEditorLoading] = useState(false);
   const [editorLoadError, setEditorLoadError] = useState("");
@@ -99,7 +138,11 @@ export function useBlocklyEditor({
 
         runtime.applyBlocklyLocale(language);
 
-        const scheduleCompile = () => {
+        const scheduleCompile = (event?: Blockly.Events.Abstract) => {
+          if (event?.isUiEvent) {
+            return;
+          }
+
           if (!localWorkspace) {
             return;
           }
@@ -110,6 +153,8 @@ export function useBlocklyEditor({
           if (compileTimeout) {
             clearTimeout(compileTimeout);
           }
+
+          setWorkspaceVersion((current) => current + 1);
 
           compileTimeout = setTimeout(async () => {
             if (!localWorkspace || isCancelled) {
@@ -123,7 +168,10 @@ export function useBlocklyEditor({
               workspaceRef.current === localWorkspace &&
               requestId === compileRequestId
             ) {
-              setCode(generated);
+              if (generated !== lastCodeRef.current) {
+                lastCodeRef.current = generated;
+                setCode(generated);
+              }
             }
           }, 180);
         };
@@ -148,13 +196,11 @@ export function useBlocklyEditor({
 
         setIsEditorLoading(false);
         setShowEditorLoading(false);
-      } catch (error) {
+      } catch {
         if (loadingTimeout) {
           clearTimeout(loadingTimeout);
           loadingTimeout = null;
         }
-
-        console.error("Error loading editor", error);
 
         if (!isCancelled) {
           setEditorLoadError(i18n.t("editorLoadingError"));
@@ -175,9 +221,24 @@ export function useBlocklyEditor({
     };
   }, [board, language, onSymbolTableChange]);
 
+  const getSimulationSnapshot = useCallback(() => {
+    const workspace = workspaceRef.current;
+
+    if (!workspace) {
+      return [];
+    }
+
+    return workspace
+      .getTopBlocks(true)
+      .map((block) => toSimulationBlock(block))
+      .filter((block): block is SimulationBlock => Boolean(block));
+  }, []);
+
   return {
     blocklyDivRef,
     code,
+    workspaceVersion,
+    getSimulationSnapshot,
     isEditorLoading,
     showEditorLoading,
     editorLoadError,
