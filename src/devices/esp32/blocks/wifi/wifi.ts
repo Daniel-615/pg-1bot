@@ -1,14 +1,14 @@
 import * as Blockly from "blockly";
-export function defineEsp32WifiBlocks(){
+export function defineEsp32WifiBlocks() {
     Blockly.defineBlocksWithJsonArray([
         {
             "type": "wifi_connect",
             "message0": "%{BKY_1BOT_ESP32_WIFI_CONNECT}",
-            "args0":[
+            "args0": [
                 {
                     "type": "field_input",
                     "name": "SSID",
-                    
+
                 },
                 {
                     "type": "field_input",
@@ -31,17 +31,16 @@ export function defineEsp32WifiBlocks(){
             "helpUrl": ""
         },
         {
-            type: "wifi_scan_networks",
+            "type": "wifi_scan_networks",
             "message0": "%{BKY_1BOT_ESP32_WIFI_SCAN}",
             "output": "Array",
             "colour": "#43927a",
-            "tooltip": "Devuelve un array con los SSID de las redes WiFi cercanas",
-            "helpUrl": ""
+            "tooltip": "Devuelve las redes WiFi encontradas"
         },
         {
             "type": "wifi_create_ap",
             "message0": "%{BKY_1BOT_ESP32_WIFI_AP}",
-            "args0":[
+            "args0": [
                 {
                     "type": "field_input",
                     "name": "SSID"
@@ -50,7 +49,7 @@ export function defineEsp32WifiBlocks(){
                     "type": "field_input",
                     "name": "PASSWORD"
                 },
-                
+
             ],
             "previousStatement": null,
             "nextStatement": null,

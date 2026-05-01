@@ -51,16 +51,17 @@ export function registerESP32WifiGenerator(generator: ESP32Generator) {
   generator.forBlock["wifi_scan_networks"] = function () {
     generator.addInclude("#include <WiFi.h>");
     generator.addInclude("#include <vector>");
+
     return [
       `([]() {
-        std::vector<String> _1botNetworks;
-        int _1botNetworkCount = WiFi.scanNetworks();
-        for (int _1botIndex = 0; _1botIndex < _1botNetworkCount; ++_1botIndex) {
-          _1botNetworks.push_back(WiFi.SSID(_1botIndex));
-        }
-        WiFi.scanDelete();
-        return _1botNetworks;
-      })()`,
+      std::vector<String> _1botNetworks;
+      int _1botNetworkCount = WiFi.scanNetworks();
+      for (int _1botIndex = 0; _1botIndex < _1botNetworkCount; ++_1botIndex) {
+        _1botNetworks.push_back(WiFi.SSID(_1botIndex));
+      }
+      WiFi.scanDelete();
+      return _1botNetworks;
+    })()`,
       ORDER_ATOMIC,
     ];
   };

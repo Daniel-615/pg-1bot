@@ -255,6 +255,21 @@ export function defineArduinoBlocks() {
       helpUrl: "",
     },
     {
+      type: "print_list",
+      message0: "imprimir lista %1",
+      args0: [
+        {
+          type: "input_value",
+          name: "LIST",
+          check: "Array",
+        },
+      ],
+      previousStatement: null,
+      nextStatement: null,
+      colour: 160,
+      tooltip: "Imprime todos los elementos de una lista",
+    },
+    {
       type: "number",
       message0: "%1",
       args0: [
