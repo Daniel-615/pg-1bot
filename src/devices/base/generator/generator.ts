@@ -33,6 +33,11 @@ export class ArduinoBaseGenerator extends Blockly.Generator {
 
   constructor(name: string) {
     super(name);
+    this.setupDefinitions = new Set<string>();
+    this.includes = new Set<string>();
+    this.globalDefinitions = new Set<string>();
+    this.keyedSetupDefinitions = new Map<string, string>();
+    this.keyedGlobalDefinitions = new Map<string, string>();
     this.resetGeneratorState();
     this.serialBaudRate = 9600;
     this.serialStartupDelayMs = null;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SymbolTableRow } from "./core/blockEngine/semantic/base/symbolTable";
 import i18n, { persistLanguage, type Language } from "./i18n";
 import { DEVICES } from "./app/constants";
@@ -7,6 +7,7 @@ import { AppHeader } from "./app/components/AppHeader";
 import { AppSidebar } from "./app/components/AppSidebar";
 import { AppWorkspace } from "./app/components/AppWorkspace";
 import { AppStatusBar } from "./app/components/AppStatusBar";
+import { ExamplesPanel } from "./app/components/ExamplesPanel";
 import {
   getArduinoCompileErrorMessage,
   resolveCompileTarget,
@@ -15,6 +16,8 @@ import { detectClientPlatform } from "./app/platform";
 import type { SerialPortOption } from "./app/types";
 import "./App.css";
 import { io } from "socket.io-client";
+import * as Blockly from "blockly";
+import { EXAMPLES, getExamplePath } from "./app/components/ExamplesPanel";
 
 type Toast = {
   id: number;
@@ -54,6 +57,8 @@ function App() {
   const [serialLogs, setSerialLogs] = useState<string[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [examplesOpen, setExamplesOpen] = useState(false);
+  const [hardwareValues, setHardwareValues] = useState<Record<string, string | number | boolean>>({});
 
   const {
     blocklyDivRef,
@@ -63,6 +68,7 @@ function App() {
     isEditorLoading,
     showEditorLoading,
     editorLoadError,
+    workspaceRef,
   } = useBlocklyEditor({
     board,
     language,
@@ -107,17 +113,45 @@ function App() {
     [dismissToast]
   );
 
+  const parseHardwareData = useCallback((line: string) => {
+    const trimmed = line.trim();
+    
+    if (trimmed.startsWith("VAR:")) {
+      const rest = trimmed.substring(4);
+      const eqIndex = rest.indexOf("=");
+      if (eqIndex > 0) {
+        const name = rest.substring(0, eqIndex).trim();
+        const valueStr = rest.substring(eqIndex + 1).trim();
+        
+        let value: string | number | boolean = valueStr;
+        
+        if (valueStr === "true" || valueStr === "TRUE") {
+          value = true;
+        } else if (valueStr === "false" || valueStr === "FALSE") {
+          value = false;
+        } else if (!Number.isNaN(Number(valueStr))) {
+          value = Number(valueStr);
+        }
+        
+        setHardwareValues(prev => ({ ...prev, [name]: value }));
+        return true;
+      }
+    }
+    return false;
+  }, []);
+
   useEffect(() => {
     const socket = io("http://localhost:3000");
 
-    socket.on("serial-data", (line) => {
+    socket.on("serial-data", (line: string) => {
       setSerialLogs((prev) => [...prev, line].slice(-MAX_SERIAL_LOG_LINES));
+      parseHardwareData(line);
     });
 
     return () => {
       socket.disconnect();
     };
-  }, []);
+  }, [parseHardwareData]);
 
   useEffect(() => {
     const syncFullscreenState = () => {
@@ -314,11 +348,131 @@ function App() {
     () => setDeviceMenuOpen((current) => !current),
     []
   );
-  const handleSave = useCallback(
-    () => showToast("info", "La acción Guardar todavía no está implementada."),
-    [showToast]
-  );
-  const handleFile = useCallback(() => {}, []);
+  const handleSave = useCallback(() => {
+    const workspace = workspaceRef.current;
+    if (!workspace) {
+      showToast("error", "No hay un proyecto para guardar.");
+      return;
+    }
+
+    const state = Blockly.serialization.workspaces.save(workspace);
+    const projectData = {
+      version: "1.0",
+      board,
+      projectName,
+      blocks: state,
+    };
+
+    const json = JSON.stringify(projectData, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${projectName.replace(/[^a-z0-9]/gi, "_")}.1bot.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    showToast("success", `Proyecto guardado como ${link.download}`);
+  }, [workspaceRef, board, projectName, showToast]);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleShowExamples = useCallback(() => {
+    setExamplesOpen(true);
+  }, []);
+
+const handleLoadExample = useCallback(async (exampleId: string) => {
+    const workspace = workspaceRef.current;
+    if (!workspace) {
+      showToast("error", "El editor no está listo.");
+      return;
+    }
+
+    const example = EXAMPLES.find(e => e.id === exampleId);
+    if (!example) {
+      showToast("error", "Ejemplo no encontrado.");
+      return;
+    }
+
+    const examplePath = getExamplePath(example);
+    
+    try {
+      const response = await fetch(examplePath);
+      if (!response.ok) {
+        throw new Error(`No se pudo cargar el ejemplo: ${response.status}`);
+      }
+      
+      const projectData = await response.json();
+      console.log("Cargando ejemplo:", exampleId, projectData);
+      
+      workspace.clear();
+      Blockly.serialization.workspaces.load(projectData.blocks, workspace);
+      
+      const startBlock = workspace.newBlock("program_start") as any;
+      startBlock.initSvg();
+      startBlock.render();
+      startBlock.moveBy(50, 20);
+      startBlock.setDeletable(false);
+      startBlock.setMovable(false);
+      
+      if (projectData.projectName) {
+        setProjectName(projectData.projectName);
+      }
+      
+      setExamplesOpen(false);
+      showToast("success", `Ejemplo "${projectData.projectName}" cargado`);
+    } catch (err) {
+      console.error("Error cargando ejemplo:", err);
+      showToast("error", `Error al cargar ejemplo: ${err instanceof Error ? err.message : "desconocido"}`);
+    }
+  }, [workspaceRef, showToast]);
+
+  const handleCloseExamples = useCallback(() => {
+    setExamplesOpen(false);
+  }, []);
+
+  const loadProjectFile = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const projectData = JSON.parse(e.target?.result as string);
+        
+        if (!projectData.blocks) {
+          throw new Error("Archivo de proyecto inválido");
+        }
+
+        const workspace = workspaceRef.current;
+        if (!workspace) {
+          showToast("error", "El editor no está listo para cargar el proyecto.");
+          return;
+        }
+
+        if (projectData.board && projectData.board !== board) {
+          showToast("info", `El proyecto era para ${projectData.board}, pero usarás ${board}.`);
+        }
+
+        workspace.clear();
+        const parsed = JSON.parse(JSON.stringify(projectData.blocks));
+        Blockly.serialization.workspaces.load(parsed, workspace);
+
+        if (projectData.projectName) {
+          setProjectName(projectData.projectName);
+        }
+
+        showToast("success", `Proyecto "${projectData.projectName || file.name}" cargado correctamente.`);
+      } catch (err) {
+        showToast("error", `Error al cargar el proyecto: ${err instanceof Error ? err.message : "formato inválido"}`);
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = "";
+  }, [workspaceRef, board, showToast]);
   const handleEdit = useCallback(() => {}, []);
   const handleFullscreen = useCallback(() => {
     if (!document.fullscreenEnabled) {
@@ -363,6 +517,7 @@ function App() {
         onLanguageChange={setLanguage}
         onRun={handleRun}
         onToggleDebug={handleToggleDebug}
+        onExamples={handleShowExamples}
         onSave={handleSave}
         onFile={handleFile}
         onEdit={handleEdit}
@@ -408,6 +563,7 @@ function App() {
           onDownloadCode={handleDownloadCode}
           getScopeLabel={getScopeLabel}
           t={t}
+          hardwareValues={hardwareValues}
         />
       </div>
 
@@ -448,6 +604,22 @@ function App() {
           </button>
         ))}
       </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json,.1bot.json"
+        style={{ display: "none" }}
+        onChange={loadProjectFile}
+      />
+
+      {examplesOpen && (
+        <ExamplesPanel
+          board={board}
+          onSelectExample={handleLoadExample}
+          onClose={handleCloseExamples}
+        />
+      )}
     </div>
   );
 }

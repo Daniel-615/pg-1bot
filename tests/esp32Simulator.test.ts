@@ -10,6 +10,7 @@ const inputs: SimulatorInputs = {
   touchValue: 18,
   analogReadValue: 1024,
   digitalReadValue: 1,
+  neopixelColor: "#ff0000",
 };
 
 function block(

@@ -2,6 +2,7 @@ import { memo, useEffect, useMemo, useState } from "react";
 import type { SimulationBlock } from "../types";
 import { getBoardSimulator } from "../../simulator/registry";
 import type { SimulationResult, SimulatorInputs } from "../../simulator/types";
+import i18n from "../../i18n";
 import "./Esp32SimulatorPanel.css";
 
 type Esp32SimulatorPanelProps = {
@@ -17,7 +18,52 @@ const defaultInputs: SimulatorInputs = {
   touchValue: 28,
   analogReadValue: 2048,
   digitalReadValue: 1,
+  neopixelColor: "#ff0000",
 };
+
+const ESP32_PINS_LEFT = [
+  { label: "3V3", type: "vcc" },
+  { label: "EN", type: "en" },
+  { label: "GPIO36", type: "gpio" },
+  { label: "GPIO39", type: "gpio" },
+  { label: "GPIO34", type: "gpio" },
+  { label: "GPIO35", type: "gpio" },
+  { label: "GPIO32", type: "gpio" },
+  { label: "GPIO33", type: "gpio" },
+  { label: "GPIO25", type: "gpio" },
+  { label: "GPIO26", type: "gpio" },
+  { label: "GPIO27", type: "gpio" },
+  { label: "GPIO14", type: "gpio" },
+  { label: "GPIO12", type: "gpio" },
+  { label: "GND", type: "gnd" },
+  { label: "GPIO13", type: "gpio" },
+  { label: "GPIO15", type: "gpio" },
+  { label: "GPIO2", type: "gpio" },
+  { label: "GPIO4", type: "gpio" },
+  { label: "GPIO0", type: "gpio" },
+];
+
+const ESP32_PINS_RIGHT = [
+  { label: "GND", type: "gnd" },
+  { label: "GPIO5", type: "gpio" },
+  { label: "GPIO18", type: "gpio" },
+  { label: "GPIO19", type: "gpio" },
+  { label: "GPIO21", type: "gpio" },
+  { label: "GPIO22", type: "gpio" },
+  { label: "GPIO23", type: "gpio" },
+  { label: "GND", type: "gnd" },
+  { label: "GPIO1", type: "gpio" },
+  { label: "GPIO3", type: "gpio" },
+  { label: "GPIO1", type: "gpio" },
+  { label: "GPIO3", type: "gpio" },
+  { label: "GPIO21", type: "gpio" },
+  { label: "GPIO22", type: "gpio" },
+  { label: "GPIO35", type: "gpio" },
+  { label: "GPIO35", type: "gpio" },
+  { label: "GND", type: "gnd" },
+  { label: "3V3", type: "vcc" },
+  { label: "GND", type: "gnd" },
+];
 
 function toInputNumber(value: string, fallback: number) {
   const parsed = Number(value);
@@ -57,6 +103,20 @@ export const Esp32SimulatorPanel = memo(function Esp32SimulatorPanel({
     setResult(simulator.simulate(getSimulationSnapshot(), inputs));
     setSimulatedVersion(workspaceVersion);
   };
+
+  useEffect(() => {
+    if (simulator && result !== null) {
+      setResult(simulator.simulate(getSimulationSnapshot(), inputs));
+      setSimulatedVersion(workspaceVersion);
+    }
+  }, [inputs, simulator, workspaceVersion]);
+
+  useEffect(() => {
+    if (simulator) {
+      setResult(simulator.simulate(getSimulationSnapshot(), inputs));
+      setSimulatedVersion(workspaceVersion);
+    }
+  }, [workspaceVersion]);
 
   if (!simulator) {
     return (
@@ -105,14 +165,26 @@ export const Esp32SimulatorPanel = memo(function Esp32SimulatorPanel({
               <div className="esp32-board">
                 <div className="esp32-chip">ESP32</div>
                 <div className="esp32-usb"></div>
-                <div className="esp32-pin-strip left"></div>
-                <div className="esp32-pin-strip right"></div>
+                <div className="esp32-pin-strip left">
+                  {ESP32_PINS_LEFT.slice(0, 19).map((pin, i) => (
+                    <div key={i} className={`esp32-pin ${pin.type}`}>
+                      {pin.label}
+                    </div>
+                  ))}
+                </div>
+                <div className="esp32-pin-strip right">
+                  {ESP32_PINS_RIGHT.slice(0, 19).map((pin, i) => (
+                    <div key={i} className={`esp32-pin ${pin.type}`}>
+                      {pin.label}
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {result.capabilities.neopixel && result.neopixel && (
                 <div className="component-card neopixel-component">
                   <strong>NeoPixel</strong>
-                  <span>GPIO {result.neopixel.pin}</span>
+                  <span>GPIO {result.neopixel.pin} · {result.neopixel.count} LEDs</span>
                   <div className="neopixel-strip">
                     {result.neopixel.colors.map((color, index) => (
                       <span
@@ -128,6 +200,23 @@ export const Esp32SimulatorPanel = memo(function Esp32SimulatorPanel({
                         title={`LED ${index + 1}: ${color}`}
                       />
                     ))}
+                  </div>
+                  <div className="neopixel-controls">
+                    <label className="color-picker-label">
+                      Color:
+                      <input
+                        type="color"
+                        value={inputs.neopixelColor}
+                        onChange={(event) =>
+                          setInputs((current) => ({
+                            ...current,
+                            neopixelColor: event.target.value,
+                          }))
+                        }
+                        className="color-picker"
+                      />
+                      <span className="color-hex">{inputs.neopixelColor.toUpperCase()}</span>
+                    </label>
                   </div>
                 </div>
               )}
@@ -146,17 +235,76 @@ export const Esp32SimulatorPanel = memo(function Esp32SimulatorPanel({
 
               {result.capabilities.ultrasonic && result.ultrasonic && (
                 <div className="component-card ultrasonic-component">
-                  <strong>Ultrasónico</strong>
-                  <span>{result.ultrasonic.distanceCm} cm</span>
+                  <strong>HC-SR04</strong>
                   <small>TRIG {result.ultrasonic.trigPin} · ECHO {result.ultrasonic.echoPin}</small>
+                  <div className="ultrasonic-visual">
+                    <div className="ultrasonic-icon"></div>
+                    <div className="ultrasonic-sensor">
+                      <input
+                        type="range"
+                        min="2"
+                        max="400"
+                        value={inputs.ultrasonicDistanceCm}
+                        onChange={(event) =>
+                          setInputs((current) => ({
+                            ...current,
+                            ultrasonicDistanceCm: toInputNumber(
+                              event.target.value,
+                              current.ultrasonicDistanceCm
+                            ),
+                          }))
+                        }
+                      />
+                      <div className="distance-display">{inputs.ultrasonicDistanceCm} cm</div>
+                      <div className="distance-label">Distancia</div>
+                    </div>
+                  </div>
                 </div>
               )}
 
               {result.capabilities.dht && result.dht && (
                 <div className="component-card dht-component">
                   <strong>{result.dht.type}</strong>
-                  <span>{result.dht.temperatureC} °C</span>
-                  <small>{result.dht.humidityPercent}% humedad · GPIO {result.dht.pin}</small>
+                  <small>GPIO {result.dht.pin}</small>
+                  <div className="dht-visual">
+                    <div className="dht-icon"></div>
+                    <div className="dht-values">
+                      <div className="dht-value temp">
+                        <span className="label">Temp</span>
+                        <span className="data">{inputs.temperatureC}°C</span>
+                        <input
+                          type="range"
+                          min="-10"
+                          max="60"
+                          value={inputs.temperatureC}
+                          onChange={(event) =>
+                            setInputs((current) => ({
+                              ...current,
+                              temperatureC: toInputNumber(event.target.value, current.temperatureC),
+                            }))
+                          }
+                          style={{ width: "60px", marginTop: "4px" }}
+                        />
+                      </div>
+                      <div className="dht-value humidity">
+                        <span className="label">Hum</span>
+                        <span className="data">{inputs.humidityPercent}%</span>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={inputs.humidityPercent}
+                          onChange={(event) =>
+                            setInputs((current) => ({
+                              ...current,
+                              humidityPercent: toInputNumber(event.target.value, current.humidityPercent),
+                            }))
+                          }
+                          style={{ width: "60px", marginTop: "4px" }}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -177,6 +325,32 @@ export const Esp32SimulatorPanel = memo(function Esp32SimulatorPanel({
                   <small>GPIO {result.buzzer.pin}</small>
                 </div>
               )}
+
+              {result.capabilities.pins && result.pins.filter(p => p.mode === "OUTPUT" && p.digital !== undefined).map((pin) => (
+                <div 
+                  key={`led-${pin.pin}`} 
+                  className="component-card led-component"
+                  style={{ 
+                    left: pin.pin < 20 ? `${30 + (pin.pin % 10) * 50}px` : undefined,
+                    right: pin.pin >= 20 ? `${30 + ((pin.pin - 20) % 10) * 50}px` : undefined,
+                    bottom: pin.pin % 2 === 0 ? "100px" : "60px"
+                  }}
+                >
+                  <div className="led-real">
+                    <div 
+                      className={`led-bulb ${pin.digital ? "on" : ""}`}
+                      title={`GPIO ${pin.pin}: ${pin.digital ? "Encendido" : "Apagado"}`}
+                    ></div>
+                    <div className="led-legs">
+                      <div className="led-leg anode" title="Ánodo (+)"></div>
+                      <div className="led-leg cathode" title="Cátodo (-)"></div>
+                    </div>
+                  </div>
+                  <span className={`led-label ${pin.digital ? "on" : ""}`}>
+                    GPIO {pin.pin} {pin.digital ? "ON" : "OFF"}
+                  </span>
+                </div>
+              ))}
 
               {result.capabilities.wifi && result.wifi && (
                 <div className="component-card wifi-component">
@@ -238,7 +412,7 @@ export const Esp32SimulatorPanel = memo(function Esp32SimulatorPanel({
                   </label>
 
                   <label>
-                    Humedad
+                    Humidity
                     <input
                       type="range"
                       min="0"
@@ -321,7 +495,7 @@ export const Esp32SimulatorPanel = memo(function Esp32SimulatorPanel({
 
           {result.events.length > 0 && (
             <section className="simulator-section">
-              <h3>Eventos</h3>
+              <h3>{i18n.t("simulatorEvents")}</h3>
               <ol className="simulator-events">
                 {result.events.map((event, index) => (
                   <li key={`${event.label}-${index}`}>

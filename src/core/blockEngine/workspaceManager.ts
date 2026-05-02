@@ -44,6 +44,7 @@ export function createWorkspace(
   startBlock.setMovable(false);
   analyzer.analyze(workspace);
   options.onSymbolTableChange?.(analyzer.getSymbolTableRows());
+  (workspace as any).semanticAnalyzer = analyzer;
   workspace.addChangeListener((event) => {
     /* 
       Se ejecuta el análisis semántico cada vez que se crea, borra,

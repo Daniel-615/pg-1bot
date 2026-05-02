@@ -1,5 +1,6 @@
 import type * as Blockly from "blockly";
 import { BoardFactory } from "../../boards/BoardFactory";
+import type { AnalyzerIssueRow } from "../blockEngine/semantic/arduinoSemanticAnalyzer";
 
 export function formatArduinoCode(code: string) {
   const normalized = code.replace(/\r\n/g, "\n");
@@ -49,10 +50,34 @@ export function formatArduinoCode(code: string) {
   return formattedLines.join("\n").trim();
 }
 
+export interface CompileResult {
+  success: boolean;
+  code?: string;
+  errors?: { message: string; severity: string; blockType: string }[];
+}
+
 export async function compileArduino(
   workspace: Blockly.Workspace,
   boardType: string
-) {
+): Promise<CompileResult> {
+  const analyzer = (workspace as any).semanticAnalyzer;
+  
+  if (analyzer) {
+    const issues: AnalyzerIssueRow[] = analyzer.getIssueRows(workspace);
+    const criticalErrors = issues.filter((issue: AnalyzerIssueRow) => issue.severity === "error");
+    
+    if (criticalErrors.length > 0) {
+      return {
+        success: false,
+        errors: criticalErrors.map((e: AnalyzerIssueRow) => ({
+          message: e.message,
+          severity: e.severity,
+          blockType: e.blockType
+        }))
+      };
+    }
+  }
+
   const board = await BoardFactory.create(boardType);
   const generator = board.getGenerator();
 
@@ -60,5 +85,8 @@ export async function compileArduino(
 
   const code = generator.workspaceToCode(workspace);
 
-  return formatArduinoCode(code);
+  return {
+    success: true,
+    code: formatArduinoCode(code)
+  };
 }

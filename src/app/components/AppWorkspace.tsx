@@ -22,6 +22,7 @@ type AppWorkspaceProps = {
   onDownloadCode: () => void;
   getScopeLabel: (row: SymbolTableRow) => string;
   t: (key: string, options?: Record<string, string | number>) => string;
+  hardwareValues: Record<string, string | number | boolean>;
 };
 
 export const AppWorkspace = memo(function AppWorkspace({

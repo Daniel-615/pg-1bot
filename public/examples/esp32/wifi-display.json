@@ -1,0 +1,63 @@
+{
+  "version": "1.0",
+  "board": "esp32",
+  "projectName": "WiFi + Display OLED",
+  "blocks": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "program_start",
+          "id": "start1",
+          "x": 50,
+          "y": 20,
+          "deletable": false,
+          "movable": false,
+          "inputs": {
+            "DO": {
+              "block": {
+                "type": "wifi_connect",
+                "id": "wifi1",
+                "fields": {
+                  "SSID": "MiRedWiFi",
+                  "PASSWORD": "MiPassword"
+                },
+                "next": {
+                  "block": {
+                    "type": "esp32_display_init",
+                    "id": "display1",
+                    "fields": {
+                      "SCL": "22",
+                      "SDA": "21"
+                    },
+                    "next": {
+                      "block": {
+                        "type": "esp32_display_print",
+                        "id": "print1",
+                        "fields": {
+                          "X": "0",
+                          "Y": "0"
+                        },
+                        "inputs": {
+                          "TEXT": {
+                            "block": {
+                              "type": "text",
+                              "id": "text1",
+                              "fields": {
+                                "TEXT": "Conectado!"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

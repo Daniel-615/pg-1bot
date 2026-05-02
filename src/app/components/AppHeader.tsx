@@ -13,6 +13,7 @@ type AppHeaderProps = {
   onEdit: () => void;
   onRun: () => void;
   onToggleDebug: () => void;
+  onExamples: () => void;
   isUploading: boolean;
   t: (key: string, options?: Record<string, string | number>) => string;
 };
@@ -28,6 +29,7 @@ export const AppHeader = memo(function AppHeader({
   onEdit,
   onRun,
   onToggleDebug,
+  onExamples,
   isUploading,
   t,
 }: AppHeaderProps) {
@@ -49,6 +51,9 @@ export const AppHeader = memo(function AppHeader({
           </button>
           <button className="nav-btn" onClick={onEdit}>
             <span className="nav-text">{t("navEdit")}</span>
+          </button>
+          <button className="nav-btn" onClick={onExamples}>
+            <span className="nav-text">📚 Ejemplos</span>
           </button>
         </nav>
 

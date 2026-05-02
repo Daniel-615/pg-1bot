@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "board": "uno",
+  "projectName": "Monitor Serial",
+  "blocks": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "arduino_uno_serial_print",
+          "id": "serial1",
+          "x": 200,
+          "y": 80,
+          "fields": { "CONTENT": "\"Hola Mundo\"", "NEWLINE": "TRUE" }
+        }
+      ]
+    }
+  }
+}

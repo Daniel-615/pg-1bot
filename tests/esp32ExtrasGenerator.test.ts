@@ -296,10 +296,10 @@ describe("ESP32 extra generators", () => {
       generator as never
     );
 
-    expect(getResult[0]).toContain("HTTPClient _1botHttp;");
-    expect(getResult[0]).toContain("_1botHttp.GET()");
-    expect(postResult[0]).toContain("_1botHttp.addHeader(\"Content-Type\", \"application/json\")");
-    expect(postResult[0]).toContain("_1botHttp.POST(\"{\\\"ok\\\":true}\")");
+    expect(getResult![0]).toContain("HTTPClient _1botHttp;");
+    expect(getResult![0]).toContain("_1botHttp.GET()");
+    expect(postResult![0]).toContain("_1botHttp.addHeader(\"Content-Type\", \"application/json\")");
+    expect(postResult![0]).toContain("_1botHttp.POST(\"{\\\"ok\\\":true}\")");
     expect(Array.from(generator.includes)).toContain("#include <HTTPClient.h>");
   });
 });

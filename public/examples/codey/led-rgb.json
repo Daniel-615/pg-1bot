@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "board": "codey",
+  "projectName": "LED RGB Codey",
+  "blocks": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "codey_led_rgb",
+          "id": "led1",
+          "x": 200,
+          "y": 80,
+          "fields": { "COLOR": "#ff0000" }
+        }
+      ]
+    }
+  }
+}

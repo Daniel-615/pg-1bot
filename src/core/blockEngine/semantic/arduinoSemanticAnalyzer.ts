@@ -343,6 +343,28 @@ export class ArduinoSemanticAnalyzer {
       case "logic_equal":
         this.handleOperatorLogic(block);
         break;
+
+      case "print":
+      case "print_list":
+        this.handlePrint(block);
+        break;
+
+      case "delay_ms":
+        this.handleDelay(block);
+        break;
+
+      case "led_set":
+      case "esp32_digital_write":
+        this.handleDigitalWrite(block);
+        break;
+
+      case "math_number":
+        this.handleMathNumber(block);
+        break;
+
+      case "logic_boolean":
+        this.handleLogicBoolean(block);
+        break;
     }
 
     this.getTraversal().traverseChildren(block);
@@ -412,6 +434,83 @@ export class ArduinoSemanticAnalyzer {
 
     nextValue[index] = valueToAssign;
     this.symbolTable.assign(name, nextValue, symbol.type);
+  }
+
+  private handlePrint(block: Blockly.Block) {
+    const inputName = block.type === "print_list" ? "LIST" : "TEXT";
+    const valueBlock = block.getInputTargetBlock(inputName);
+
+    if (!valueBlock) {
+      this.addIssue(block, "El bloque de imprimir no tiene ningún valor conectado", "error");
+      return;
+    }
+
+    const inferredType = this.inferType(valueBlock);
+
+    if (inferredType === "array" && block.type === "print") {
+      this.addIssue(block, "Estas usando imprimir (texto) con una lista. Usa 'imprimir lista' para listas", "suggestion");
+    }
+
+    if (inferredType === "array_string") {
+      this.addIssue(block, "Considera usar 'imprimir lista' para mostrar arrays de texto", "suggestion");
+    }
+
+    if (inferredType === null) {
+      this.addIssue(block, "El valor a imprimir no tiene un tipo definido", "warning");
+    }
+  }
+
+  private handleDelay(block: Blockly.Block) {
+    const timeValue = block.getFieldValue("TIME");
+    if (!timeValue) {
+      this.addIssue(block, "El tiempo de delay está vacío", "error");
+      return;
+    }
+
+    const time = Number(timeValue);
+    if (isNaN(time) || time <= 0) {
+      this.addIssue(block, "El tiempo de delay debe ser un número positivo", "error");
+    }
+
+    if (time > 60000) {
+      this.addIssue(block, "Delay mayor a 60 segundos puede causar timeout. Considera usar delays más cortos", "warning");
+    }
+
+    if (time === 0) {
+      this.addIssue(block, "Delay de 0ms no tendrá efecto", "suggestion");
+    }
+  }
+
+  private handleDigitalWrite(block: Blockly.Block) {
+    const pinValue = block.getFieldValue("PIN");
+    const stateValue = block.getFieldValue("STATE");
+
+    if (pinValue === undefined || pinValue === null || pinValue === "") {
+      this.addIssue(block, "No has seleccionado un pin para escribir", "error");
+    }
+
+    if (stateValue !== "HIGH" && stateValue !== "LOW") {
+      this.addIssue(block, "El estado debe ser HIGH o LOW", "warning");
+    }
+
+    const pin = Number(pinValue);
+    if (!isNaN(pin) && (pin === 0 || pin === 1 || pin === 2)) {
+      this.addIssue(block, "Los pines 0, 1 y 2 se usan para Serial (TX, RX) y LED_BUILTIN. Considera usar otros pines", "suggestion");
+    }
+  }
+
+  private handleMathNumber(block: Blockly.Block) {
+    const numValue = block.getFieldValue("NUM");
+    if (numValue === undefined || numValue === null) {
+      this.addIssue(block, "El valor numérico está vacío", "warning");
+    }
+  }
+
+  private handleLogicBoolean(block: Blockly.Block) {
+    const boolValue = block.getFieldValue("BOOL");
+    if (boolValue !== "TRUE" && boolValue !== "FALSE") {
+      this.addIssue(block, "El valor booleano debe ser verdadero o falso", "warning");
+    }
   }
 
   private handleIf(block: Blockly.Block) {

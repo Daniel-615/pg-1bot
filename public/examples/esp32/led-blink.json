@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "board": "esp32",
+  "projectName": "LED Parpadeante",
+  "blocks": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "esp32_digital_write",
+          "id": "led1",
+          "x": 200,
+          "y": 80,
+          "fields": { "PIN": "13", "STATE": "HIGH" }
+        }
+      ]
+    }
+  }
+}

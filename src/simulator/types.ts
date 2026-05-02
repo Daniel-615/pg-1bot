@@ -9,6 +9,7 @@ export type SimulatorInputs = {
   touchValue: number;
   analogReadValue: number;
   digitalReadValue: 0 | 1;
+  neopixelColor: string;
 };
 
 export type SimulatedPin = {

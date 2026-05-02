@@ -157,7 +157,7 @@ function evaluateExpression(
     }
 
     case "esp32_neopixel_color":
-      return normalizeColor(block.fields.COLOR ?? DEFAULT_NEOPIXEL_COLOR);
+      return normalizeColor(block.fields.COLOR ?? (inputs as any).neopixelColor ?? DEFAULT_NEOPIXEL_COLOR);
 
     case "esp32_dht_temperature":
       return inputs.temperatureC;

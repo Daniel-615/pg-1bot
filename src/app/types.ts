@@ -1,13 +1,14 @@
 import type * as Blockly from "blockly";
 import type { SymbolTableRow } from "../core/blockEngine/semantic/base/symbolTable";
 import type { Language } from "../i18n";
+import type { CompileResult } from "../core/codeEngine/arduinoCompiler";
 
 export type EditorRuntime = {
   applyBlocklyLocale: (language?: Language) => void;
   compileArduino: (
     workspace: Blockly.Workspace,
     boardType: string
-  ) => Promise<string>;
+  ) => Promise<CompileResult>;
   createWorkspaceManager: (
     container: HTMLDivElement,
     board: string,

@@ -161,16 +161,20 @@ export function useBlocklyEditor({
               return;
             }
 
-            const generated = await runtime.compileArduino(localWorkspace, board);
+            const result = await runtime.compileArduino(localWorkspace, board);
 
             if (
               !isCancelled &&
               workspaceRef.current === localWorkspace &&
               requestId === compileRequestId
             ) {
-              if (generated !== lastCodeRef.current) {
-                lastCodeRef.current = generated;
-                setCode(generated);
+              if (result.success && result.code) {
+                if (result.code !== lastCodeRef.current) {
+                  lastCodeRef.current = result.code;
+                  setCode(result.code);
+                }
+              } else {
+                setCode("");
               }
             }
           }, 180);
@@ -242,5 +246,6 @@ export function useBlocklyEditor({
     isEditorLoading,
     showEditorLoading,
     editorLoadError,
+    workspaceRef,
   };
 }

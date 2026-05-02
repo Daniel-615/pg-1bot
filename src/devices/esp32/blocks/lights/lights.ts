@@ -31,9 +31,9 @@ export function defineEsp32LightBlocks() {
       message0: "%{BKY_1BOT_ESP32_LIGHT_COLOR}",
       args0: [
         {
-          type: "field_input",
+          type: "field_colour",
           name: "COLOR",
-          text: "#FF00FF",
+          colour: "#FF00FF",
         },
       ],
       output: "Number",
