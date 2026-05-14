@@ -1,5 +1,5 @@
 import { memo } from "react";
-import "./AppStatusBar.css";
+import "./css/AppStatusBar.css";
 
 type AppStatusBarProps = {
   board: string;

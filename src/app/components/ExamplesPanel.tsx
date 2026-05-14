@@ -1,6 +1,6 @@
 import { memo, useState, useEffect } from "react";
 import i18n from "../../i18n";
-import "./ExamplesPanel.css";
+import "./css/ExamplesPanel.css";
 
 export type Example = {
   id: string;

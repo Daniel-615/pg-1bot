@@ -3,17 +3,19 @@ import "blockly/blocks";
 import { ArduinoSemanticAnalyzer } from "./semantic/arduinoSemanticAnalyzer";
 import type { SymbolTableRow } from "./semantic/base/symbolTable";
 import { getBaseCategories } from "../../devices/base/workspace/baseCategories";
-
+import type { BlocklyWorkspaceWithAnalyzer } from "../../app/types";
 type CreateWorkspaceOptions = {
   onSymbolTableChange?: (rows: SymbolTableRow[]) => void;
+  onSemanticErrorsChange?: (
+    errors: ReturnType<ArduinoSemanticAnalyzer["getErrors"]>
+  ) => void;
 };
 
 export function createWorkspace(
   container: HTMLDivElement,
-  extraCategories: any[] = [],
+  extraCategories: Blockly.utils.toolbox.ToolboxItemInfo[] = [],
   options: CreateWorkspaceOptions = {}
 ) {
-  //importar el analizador de errores
   const analyzer = new ArduinoSemanticAnalyzer();
   const workspace = Blockly.inject(container, {
     toolbox: {
@@ -23,12 +25,12 @@ export function createWorkspace(
         ...extraCategories
       ],
     },
-  });
+  }) as unknown as BlocklyWorkspaceWithAnalyzer;
   workspace.registerToolboxCategoryCallback("VARIABLE_EXTENDED", (targetWorkspace) => {
     const variableItems = Blockly.Variables.flyoutCategory(targetWorkspace, false) as Blockly.utils.toolbox.FlyoutItemInfoArray;
 
     return [
-      ...variableItems,
+      ...variableItems, //it returns the object with the list of blocks defined on each electronic board
       { kind: "sep" },
       { kind: "block", type: "lists_create_with" },
       { kind: "block", type: "lists_length" },
@@ -44,11 +46,10 @@ export function createWorkspace(
   startBlock.setMovable(false);
   analyzer.analyze(workspace);
   options.onSymbolTableChange?.(analyzer.getSymbolTableRows());
-  (workspace as any).semanticAnalyzer = analyzer;
+  workspace.semanticAnalyzer = analyzer;
   workspace.addChangeListener((event) => {
     /* 
-      Se ejecuta el análisis semántico cada vez que se crea, borra,
-      cambia o mueve un bloque, para detectar errores en tiempo real.
+      Execute the semantic analyze on four actions, create, delete, change or move a block, detecting errors in real time
     */
     if (event.isUiEvent) return;
     if (
@@ -59,9 +60,10 @@ export function createWorkspace(
     ) {
       setTimeout(() => {
         analyzer.analyze(workspace);
-        options.onSymbolTableChange?.(analyzer.getSymbolTableRows());
-        //analyzer.startDebug(workspace);
-        //analyzer.step(workspace)
+        options.onSymbolTableChange?.(analyzer.getSymbolTableRows()); // renderize the symbol table displayed on the screen
+        options.onSemanticErrorsChange?.(
+          analyzer.getErrors()
+        )
       }, 0);
     }
   });

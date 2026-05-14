@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it} from "vitest";
 import { ArduinoSemanticAnalyzer } from "../src/core/blockEngine/semantic/arduinoSemanticAnalyzer";
 import { createBlock, createWorkspace } from "./helpers/semanticMocks";
 import i18n from "../src/i18n";
@@ -294,33 +294,7 @@ describe("ArduinoSemanticAnalyzer", () => {
     expect(forBlock.warningText).toContain("Los valores del 'mientras' deben ser numéricos");
   });
 
-  it("permite depurar paso a paso y guarda historial", () => {
-    const analyzer = new ArduinoSemanticAnalyzer();
-    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
-    const setBlock = createBlock({
-      id: "debug-set",
-      type: "variables_set",
-      fields: { VAR: "var-debug" },
-      inputs: {
-        VALUE: createBlock({ id: "debug-value", type: "math_number", fields: { NUM: "8" } }),
-      },
-    });
-    const workspace = createWorkspace([setBlock], { "var-debug": "debugVar" });
 
-    analyzer.startDebug(workspace as never);
-    analyzer.step(workspace as never);
-    analyzer.step(workspace as never);
-    analyzer.step(workspace as never);
-
-    expect(setBlock.selected).toBe(true);
-    expect(analyzer.getHistory()).toHaveLength(2);
-    expect(analyzer.getCurrentSymbolState()[0].get("debugVar")).toMatchObject({
-      value: 8,
-      initialized: true,
-    });
-
-    logSpy.mockRestore();
-  });
 
   it("reporta errores cuando se usan neopixel y display sin inicializacion", () => {
     const analyzer = new ArduinoSemanticAnalyzer();

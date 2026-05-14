@@ -17,14 +17,10 @@ import type { SerialPortOption } from "./app/types";
 import "./App.css";
 import { io } from "socket.io-client";
 import * as Blockly from "blockly";
-import { EXAMPLES, getExamplePath } from "./app/components/ExamplesPanel";
-
-type Toast = {
-  id: number;
-  type: "success" | "error" | "info";
-  message: string;
-};
-
+import { ToastContainer, toast } from "react-toastify";
+import type {
+  Issue
+} from "./core/blockEngine/semantic/arduinoSemanticAnalyzer"
 function sanitizeFilename(value: string) {
   return value.replace(/[<>:"/\\|?*]/g, "_");
 }
@@ -35,15 +31,21 @@ const BOARD_FQBN: Record<string, string> = {
 };
 
 const MAX_SERIAL_LOG_LINES = 300;
-const TOAST_DURATION_MS = 4200;
 
 function App() {
   const [language, setLanguage] = useState<Language>(
     () => (i18n.language === "en" ? "en" : "es")
   );
+
   const [board, setBoard] = useState("esp32");
-  const [projectName, setProjectName] = useState(() => i18n.t("projectUntitled"));
-  const [activeTab, setActiveTab] = useState<"blocks" | "code" | "simulator">("blocks");
+  const [projectName, setProjectName] = useState(() =>
+    i18n.t("projectUntitled")
+  );
+
+  const [activeTab, setActiveTab] = useState<
+    "blocks" | "code" | "simulator"
+  >("blocks");
+
   const [connectionType] = useState<"usb" | "bluetooth" | "wifi">("usb");
   const [isConnected, setIsConnected] = useState(false);
   const [deviceMenuOpen, setDeviceMenuOpen] = useState(false);
@@ -51,14 +53,19 @@ function App() {
   const [debugMode, setDebugMode] = useState(false);
   const [, setLanguageVersion] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+
   const [ports, setPorts] = useState<SerialPortOption[]>([]);
   const [selectedPort, setSelectedPort] = useState("");
+
   const [serialOpen, setSerialOpen] = useState(false);
   const [serialLogs, setSerialLogs] = useState<string[]>([]);
-  const [toasts, setToasts] = useState<Toast[]>([]);
+
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [examplesOpen, setExamplesOpen] = useState(false);
-  const [hardwareValues, setHardwareValues] = useState<Record<string, string | number | boolean>>({});
+
+  const [hardwareValues, setHardwareValues] = useState<
+    Record<string, string | number | boolean>
+  >({});
 
   const {
     blocklyDivRef,
@@ -69,6 +76,7 @@ function App() {
     showEditorLoading,
     editorLoadError,
     workspaceRef,
+    semanticErrors
   } = useBlocklyEditor({
     board,
     language,
@@ -84,10 +92,12 @@ function App() {
   );
 
   const clientPlatform = useMemo(() => detectClientPlatform(), []);
+
   const compileTarget = useMemo(
     () => resolveCompileTarget(clientPlatform),
     [clientPlatform]
   );
+
   const compileTargetLabel = useMemo(
     () =>
       clientPlatform === "mobile"
@@ -95,36 +105,25 @@ function App() {
         : t("compileTargetLocal", { apiUrl: compileTarget.apiUrl }),
     [clientPlatform, compileTarget.apiUrl, t]
   );
+
   const currentDevice = useMemo(
     () => DEVICES.find((device) => device.id === board),
     [board]
   );
 
-  const dismissToast = useCallback((id: number) => {
-    setToasts((current) => current.filter((toast) => toast.id !== id));
-  }, []);
-
-  const showToast = useCallback(
-    (type: Toast["type"], message: string) => {
-      const id = Date.now() + Math.random();
-      setToasts((current) => [...current, { id, type, message }].slice(-4));
-      window.setTimeout(() => dismissToast(id), TOAST_DURATION_MS);
-    },
-    [dismissToast]
-  );
-
   const parseHardwareData = useCallback((line: string) => {
     const trimmed = line.trim();
-    
+
     if (trimmed.startsWith("VAR:")) {
       const rest = trimmed.substring(4);
       const eqIndex = rest.indexOf("=");
+
       if (eqIndex > 0) {
         const name = rest.substring(0, eqIndex).trim();
         const valueStr = rest.substring(eqIndex + 1).trim();
-        
+
         let value: string | number | boolean = valueStr;
-        
+
         if (valueStr === "true" || valueStr === "TRUE") {
           value = true;
         } else if (valueStr === "false" || valueStr === "FALSE") {
@@ -132,11 +131,16 @@ function App() {
         } else if (!Number.isNaN(Number(valueStr))) {
           value = Number(valueStr);
         }
-        
-        setHardwareValues(prev => ({ ...prev, [name]: value }));
+
+        setHardwareValues((prev) => ({
+          ...prev,
+          [name]: value,
+        }));
+
         return true;
       }
     }
+
     return false;
   }, []);
 
@@ -158,35 +162,43 @@ function App() {
       setIsFullscreen(Boolean(document.fullscreenElement));
     };
 
-    document.addEventListener("fullscreenchange", syncFullscreenState);
-    return () => document.removeEventListener("fullscreenchange", syncFullscreenState);
+    document.addEventListener(
+      "fullscreenchange",
+      syncFullscreenState
+    );
+
+    return () =>
+      document.removeEventListener(
+        "fullscreenchange",
+        syncFullscreenState
+      );
   }, []);
 
   const fetchPorts = useCallback(async () => {
     try {
-      const res = await fetch("http://localhost:3000/api/arduino/ports");
+      const res = await fetch(
+        "http://localhost:3000/api/arduino/ports"
+      );
+
       const data = await res.json();
 
       if (data.ok) {
         setPorts(data.ports);
-        showToast("success", "Puertos COM actualizados correctamente.");
+        toast.success("Puertos COM actualizados correctamente.");
         return;
       }
 
-      showToast(
-        "error",
+      toast.error(
         data.error ||
-          "No se pudieron cargar los puertos COM. Verifica que el servicio local esté ejecutándose."
+        "No se pudieron cargar los puertos COM."
       );
     } catch (err) {
-      showToast(
-        "error",
-        `No se pudo conectar con el servicio local de Arduino para leer puertos. Detalle: ${
-          err instanceof Error ? err.message : "error desconocido"
+      toast.error(
+        `No se pudo conectar con el servicio local. ${err instanceof Error ? err.message : ""
         }`
       );
     }
-  }, [showToast]);
+  }, []);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -198,18 +210,26 @@ function App() {
 
   const startSerialMonitor = useCallback(async () => {
     if (!selectedPort) {
-      showToast("error", "Selecciona un puerto COM antes de abrir el monitor serial.");
+      toast.error(
+        "Selecciona un puerto COM antes de abrir el monitor serial."
+      );
       return;
     }
 
     try {
-      const res = await fetch("http://localhost:3000/api/arduino/monitor/start", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ port: selectedPort, baud: 115200 }),
-      });
+      const res = await fetch(
+        "http://localhost:3000/api/arduino/monitor/start",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            port: selectedPort,
+            baud: 115200,
+          }),
+        }
+      );
 
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
@@ -217,76 +237,104 @@ function App() {
 
       setSerialLogs([]);
       setSerialOpen(true);
-      showToast("success", `Monitor serial abierto en ${selectedPort}.`);
+
+      toast.success(
+        `Monitor serial abierto en ${selectedPort}.`
+      );
     } catch (err) {
-      showToast(
-        "error",
-        `No se pudo abrir el monitor serial en ${selectedPort}. Detalle: ${
-          err instanceof Error ? err.message : "error desconocido"
+      toast.error(
+        `No se pudo abrir el monitor serial. ${err instanceof Error ? err.message : ""
         }`
       );
     }
-  }, [selectedPort, showToast]);
+  }, [selectedPort]);
 
   const stopSerialMonitor = useCallback(async () => {
     try {
-      const res = await fetch("http://localhost:3000/api/arduino/monitor/stop", {
-        method: "POST",
-      });
+      const res = await fetch(
+        "http://localhost:3000/api/arduino/monitor/stop",
+        {
+          method: "POST",
+        }
+      );
 
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
 
       setSerialOpen(false);
-      showToast("success", "Monitor serial cerrado.");
+
+      toast.success("Monitor serial cerrado.");
     } catch (err) {
-      showToast(
-        "error",
-        `No se pudo cerrar el monitor serial. Detalle: ${
-          err instanceof Error ? err.message : "error desconocido"
+      toast.error(
+        `No se pudo cerrar el monitor serial. ${err instanceof Error ? err.message : ""
         }`
       );
     }
-  }, [showToast]);
+  }, []);
 
   useEffect(() => {
     void i18n.changeLanguage(language).then(() => {
       setLanguageVersion((current) => current + 1);
     });
+
     persistLanguage(language);
   }, [language]);
 
   const downloadGeneratedCode = useCallback(
     (filename: string) => {
-      const blob = new Blob([code], { type: "text/plain" });
+      const blob = new Blob([code], {
+        type: "text/plain",
+      });
+
       const url = URL.createObjectURL(blob);
+
       const link = document.createElement("a");
+
       link.href = url;
       link.download = filename;
       link.click();
+
       URL.revokeObjectURL(url);
     },
     [code]
   );
 
   const compileAndUpload = useCallback(async () => {
+
     if (!code.trim()) {
-      showToast(
-        "error",
-        "No hay código generado para compilar. Agrega bloques antes de correr el programa."
+      toast.error(
+        "No hay código generado para compilar."
       );
       return;
     }
-
+    const hasErrors = Array.from(
+      semanticErrors.values()
+    ).some((issues: Issue[]) =>
+      issues.some((i) => i.severity === "error")
+    )
+    if (hasErrors) {
+      toast.error(
+        "No puedes compilar mientras existan errores semánticos."
+      );
+      return;
+    }
     const filename = `${sanitizeFilename(projectName)}.ino`;
+
     setIsUploading(true);
 
     try {
       const formData = new FormData();
-      const fqbn = BOARD_FQBN[board] || "esp32:esp32:esp32";
 
-      formData.append("file", new Blob([code]), filename);
+      const fqbn =
+        BOARD_FQBN[board] || "esp32:esp32:esp32";
+
+      formData.append(
+        "file",
+        new Blob([code]),
+        filename
+      );
+
       formData.append("upload", "true");
       formData.append("fqbn", fqbn);
 
@@ -294,29 +342,37 @@ function App() {
         formData.append("port", selectedPort);
       }
 
-      const res = await fetch("http://localhost:3000/api/arduino/compile", {
-        method: "POST",
-        body: formData,
-      });
+      const res = await fetch(
+        "http://localhost:3000/api/arduino/compile",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
       const result = await res.json();
 
       if (result.ok) {
         setIsConnected(true);
-        showToast("success", result.message || "Programa compilado y cargado correctamente.");
+
+        toast.success(
+          result.message ||
+          "Programa compilado y cargado correctamente."
+        );
+
         return;
       }
 
-      showToast(
-        "error",
+      toast.error(
         result.error ||
-          "La compilación falló. Revisa la placa seleccionada, el puerto COM y el código generado."
+        "La compilación falló."
       );
     } catch (err) {
-      showToast("error", getArduinoCompileErrorMessage(err));
+      toast.error(getArduinoCompileErrorMessage(err));
     } finally {
       setIsUploading(false);
     }
-  }, [board, code, projectName, selectedPort, showToast]);
+  }, [board, code, projectName, selectedPort]);
 
   const handleRun = useCallback(() => {
     void compileAndUpload();
@@ -325,37 +381,53 @@ function App() {
   const handleCopyCode = useCallback(() => {
     void navigator.clipboard
       .writeText(code)
-      .then(() => showToast("success", "Código copiado al portapapeles."))
+      .then(() =>
+        toast.success(
+          "Código copiado al portapapeles."
+        )
+      )
       .catch((err) =>
-        showToast(
-          "error",
-          `No se pudo copiar el código al portapapeles. Detalle: ${
-            err instanceof Error ? err.message : "permiso denegado"
+        toast.error(
+          `No se pudo copiar el código. ${err instanceof Error ? err.message : ""
           }`
         )
       );
-  }, [code, showToast]);
+  }, [code]);
 
   const handleDownloadCode = useCallback(() => {
     const filename = `${projectName}.ino`;
-    downloadGeneratedCode(filename);
-    showToast("success", `Archivo ${filename} descargado.`);
-  }, [downloadGeneratedCode, projectName, showToast]);
 
-  const getScopeLabel = useCallback((row: SymbolTableRow) => row.scopeKind, []);
-  const handleToggleDebug = useCallback(() => setDebugMode((current) => !current), []);
+    downloadGeneratedCode(filename);
+
+    toast.success(`Archivo ${filename} descargado.`);
+  }, [downloadGeneratedCode, projectName]);
+
+  const getScopeLabel = useCallback(
+    (row: SymbolTableRow) => row.scopeKind,
+    []
+  );
+
+  const handleToggleDebug = useCallback(
+    () => setDebugMode((current) => !current),
+    []
+  );
+
   const handleToggleDeviceMenu = useCallback(
     () => setDeviceMenuOpen((current) => !current),
     []
   );
+
   const handleSave = useCallback(() => {
     const workspace = workspaceRef.current;
+
     if (!workspace) {
-      showToast("error", "No hay un proyecto para guardar.");
+      toast.error("No hay un proyecto para guardar.");
       return;
     }
 
-    const state = Blockly.serialization.workspaces.save(workspace);
+    const state =
+      Blockly.serialization.workspaces.save(workspace);
+
     const projectData = {
       version: "1.0",
       board,
@@ -364,15 +436,30 @@ function App() {
     };
 
     const json = JSON.stringify(projectData, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
+
+    const blob = new Blob([json], {
+      type: "application/json",
+    });
+
     const url = URL.createObjectURL(blob);
+
     const link = document.createElement("a");
+
     link.href = url;
-    link.download = `${projectName.replace(/[^a-z0-9]/gi, "_")}.1bot.json`;
+
+    link.download = `${projectName.replace(
+      /[^a-z0-9]/gi,
+      "_"
+    )}.1bot.json`;
+
     link.click();
+
     URL.revokeObjectURL(url);
-    showToast("success", `Proyecto guardado como ${link.download}`);
-  }, [workspaceRef, board, projectName, showToast]);
+
+    toast.success(
+      `Proyecto guardado como ${link.download}`
+    );
+  }, [workspaceRef, board, projectName]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -384,99 +471,18 @@ function App() {
     setExamplesOpen(true);
   }, []);
 
-const handleLoadExample = useCallback(async (exampleId: string) => {
-    const workspace = workspaceRef.current;
-    if (!workspace) {
-      showToast("error", "El editor no está listo.");
-      return;
-    }
-
-    const example = EXAMPLES.find(e => e.id === exampleId);
-    if (!example) {
-      showToast("error", "Ejemplo no encontrado.");
-      return;
-    }
-
-    const examplePath = getExamplePath(example);
-    
-    try {
-      const response = await fetch(examplePath);
-      if (!response.ok) {
-        throw new Error(`No se pudo cargar el ejemplo: ${response.status}`);
-      }
-      
-      const projectData = await response.json();
-      console.log("Cargando ejemplo:", exampleId, projectData);
-      
-      workspace.clear();
-      Blockly.serialization.workspaces.load(projectData.blocks, workspace);
-      
-      const startBlock = workspace.newBlock("program_start") as any;
-      startBlock.initSvg();
-      startBlock.render();
-      startBlock.moveBy(50, 20);
-      startBlock.setDeletable(false);
-      startBlock.setMovable(false);
-      
-      if (projectData.projectName) {
-        setProjectName(projectData.projectName);
-      }
-      
-      setExamplesOpen(false);
-      showToast("success", `Ejemplo "${projectData.projectName}" cargado`);
-    } catch (err) {
-      console.error("Error cargando ejemplo:", err);
-      showToast("error", `Error al cargar ejemplo: ${err instanceof Error ? err.message : "desconocido"}`);
-    }
-  }, [workspaceRef, showToast]);
-
   const handleCloseExamples = useCallback(() => {
     setExamplesOpen(false);
   }, []);
 
-  const loadProjectFile = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleEdit = useCallback(() => { }, []);
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const projectData = JSON.parse(e.target?.result as string);
-        
-        if (!projectData.blocks) {
-          throw new Error("Archivo de proyecto inválido");
-        }
-
-        const workspace = workspaceRef.current;
-        if (!workspace) {
-          showToast("error", "El editor no está listo para cargar el proyecto.");
-          return;
-        }
-
-        if (projectData.board && projectData.board !== board) {
-          showToast("info", `El proyecto era para ${projectData.board}, pero usarás ${board}.`);
-        }
-
-        workspace.clear();
-        const parsed = JSON.parse(JSON.stringify(projectData.blocks));
-        Blockly.serialization.workspaces.load(parsed, workspace);
-
-        if (projectData.projectName) {
-          setProjectName(projectData.projectName);
-        }
-
-        showToast("success", `Proyecto "${projectData.projectName || file.name}" cargado correctamente.`);
-      } catch (err) {
-        showToast("error", `Error al cargar el proyecto: ${err instanceof Error ? err.message : "formato inválido"}`);
-      }
-    };
-    reader.readAsText(file);
-    event.target.value = "";
-  }, [workspaceRef, board, showToast]);
-  const handleEdit = useCallback(() => {}, []);
   const handleFullscreen = useCallback(() => {
     if (!document.fullscreenEnabled) {
-      showToast("error", "Tu navegador no permite activar pantalla completa desde esta página.");
+      toast.error(
+        "Tu navegador no permite activar pantalla completa."
+      );
+
       return;
     }
 
@@ -486,26 +492,31 @@ const handleLoadExample = useCallback(async (exampleId: string) => {
 
     void fullscreenAction
       .then(() => {
-        const active = Boolean(document.fullscreenElement);
+        const active = Boolean(
+          document.fullscreenElement
+        );
+
         setIsFullscreen(active);
-        showToast(
-          "success",
-          active ? "Pantalla completa activada." : "Pantalla completa desactivada."
+
+        toast.success(
+          active
+            ? "Pantalla completa activada."
+            : "Pantalla completa desactivada."
         );
       })
       .catch((err) => {
-        showToast(
-          "error",
-          `No se pudo cambiar el modo de pantalla completa. Detalle: ${
-            err instanceof Error ? err.message : "permiso denegado por el navegador"
+        toast.error(
+          `No se pudo cambiar pantalla completa. ${err instanceof Error ? err.message : ""
           }`
         );
       });
-  }, [showToast]);
-  const handleRotate = useCallback(
-    () => showToast("info", "La acción de rotar todavía no está implementada."),
-    [showToast]
-  );
+  }, []);
+
+  const handleRotate = useCallback(() => {
+    toast.info(
+      "La acción de rotar todavía no está implementada."
+    );
+  }, []);
 
   return (
     <div className="app-container">
@@ -571,7 +582,11 @@ const handleLoadExample = useCallback(async (exampleId: string) => {
         board={board}
         connectionType={connectionType}
         isConnected={isConnected}
-        compileTargetLabel={isConnected ? "Arduino conectado" : compileTargetLabel}
+        compileTargetLabel={
+          isConnected
+            ? "Arduino conectado"
+            : compileTargetLabel
+        }
         t={t}
       />
 
@@ -579,7 +594,9 @@ const handleLoadExample = useCallback(async (exampleId: string) => {
         <div className="serial-monitor">
           <div className="serial-header">
             Serial Monitor
-            <button onClick={stopSerialMonitor}>Cerrar</button>
+            <button onClick={stopSerialMonitor}>
+              Cerrar
+            </button>
           </div>
 
           <div className="serial-body">
@@ -590,36 +607,31 @@ const handleLoadExample = useCallback(async (exampleId: string) => {
         </div>
       )}
 
-      <div className="toast-region" aria-live="polite" aria-relevant="additions">
-        {toasts.map((toast) => (
-          <button
-            key={toast.id}
-            className={`toast toast-${toast.type}`}
-            onClick={() => dismissToast(toast.id)}
-          >
-            <span className="toast-title">
-              {toast.type === "success" ? "Listo" : toast.type === "error" ? "Error" : "Info"}
-            </span>
-            <span className="toast-message">{toast.message}</span>
-          </button>
-        ))}
-      </div>
-
       <input
         ref={fileInputRef}
         type="file"
         accept=".json,.1bot.json"
         style={{ display: "none" }}
-        onChange={loadProjectFile}
+        onChange={() => { }}
       />
 
       {examplesOpen && (
         <ExamplesPanel
           board={board}
-          onSelectExample={handleLoadExample}
+          onSelectExample={() => { }}
           onClose={handleCloseExamples}
         />
       )}
+
+      <ToastContainer
+        position="bottom-right"
+        autoClose={4200}
+        newestOnTop
+        closeOnClick
+        pauseOnHover
+        draggable
+        theme="dark"
+      />
     </div>
   );
 }

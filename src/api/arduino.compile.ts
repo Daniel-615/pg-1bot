@@ -1,7 +1,7 @@
 import axios from "axios";
 import type { ClientPlatform } from "../app/platform";
 
-const DEFAULT_LOCAL_API_URL = "http://localhost:3000";
+
 const DEFAULT_BACKEND_API_URL = "http://localhost:3000";
 
 type CompileSketchParams = {
@@ -71,6 +71,9 @@ export class ArduinoApi {
   }
 
   async postCompile({ code, board, filename }: CompileSketchParams): Promise<CompileSketchResult> {
+    /*
+      Converts code to arduino sketch (ino), and call the api to compile this returns a status and message
+    */
     const formData = new FormData();
     const resolvedFilename = normalizeFilename(filename);
     const file = new Blob([code], { type: "text/plain" });
@@ -99,7 +102,7 @@ export function resolveCompileTarget(platform: ClientPlatform): CompileTarget {
   if (platform === "mobile") {
     return {
       apiUrl: normalizeApiUrl(
-        import.meta.env.VITE_ARDUINO_BACKEND_API_URL as string | undefined,
+        import.meta.env.VITE_ARDUINO_BACKEND_API_URL as string,
       ),
       transport: "backend",
       platform,
@@ -108,7 +111,7 @@ export function resolveCompileTarget(platform: ClientPlatform): CompileTarget {
 
   return {
     apiUrl: normalizeApiUrl(
-      (import.meta.env.VITE_ARDUINO_LOCAL_API_URL as string | undefined) ?? DEFAULT_LOCAL_API_URL,
+      (import.meta.env.VITE_ARDUINO_LOCAL_API_URL as string),
     ),
     transport: "local",
     platform,
@@ -126,6 +129,9 @@ export async function compileSketch(
 }
 
 export function getArduinoCompileErrorMessage(error: unknown) {
+  /*
+    Call the backend api, and start compiling if get an error it shown on screen with TOAST
+   */
   if (axios.isAxiosError(error)) {
     const payload = error.response?.data as BackendErrorPayload | undefined;
     if (payload?.message && payload?.error) {

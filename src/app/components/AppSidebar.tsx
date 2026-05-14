@@ -1,6 +1,6 @@
 import { memo, useState } from "react";
 import type { DeviceOption, SerialPortOption } from "../types";
-import "./AppSidebar.css";
+import "./css/AppSidebar.css";
 
 type SidebarTab = "devices" | "ports" | "background";
 

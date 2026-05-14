@@ -84,7 +84,6 @@ export async function compileArduino(
   generator.init(workspace);
 
   const code = generator.workspaceToCode(workspace);
-
   return {
     success: true,
     code: formatArduinoCode(code)

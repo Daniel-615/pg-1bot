@@ -18,9 +18,9 @@ import { SensoresArduinoSemantic } from "./arduino/sensores/sensoresArduinoSeman
 import { DatosArduinoSemantic } from "./arduino/datos/datosArduinoSemantic";
 import { SerialArduinoSemantic } from "./arduino/serial/serialArduinoSemantic";
 
-type Severity = "error" | "warning" | "suggestion";
+type Severity = "error" | "warning" | "suggestion"; 
 
-interface Issue {
+export interface Issue {
   message: string;
   severity: Severity;
 }
@@ -55,6 +55,12 @@ export class ArduinoSemanticAnalyzer {
   private history: Array<Map<string, unknown>[]> = [];
   private currentIndex = 0;
 
+  public getErrors(){
+    /*
+      System to return errors in case with severity 'error', not gonna compile. 
+     */
+    return this.errors;
+  }
   private getTraversal() {
     return new WorkspaceTraversal({
       debugMode: this.debugMode,
@@ -78,17 +84,6 @@ export class ArduinoSemanticAnalyzer {
 
     this.checkUnusedVariables(workspace);
     this.renderWarnings(workspace);
-  }
-
-  startDebug(workspace: Blockly.Workspace) {
-    this.debugMode = true;
-    this.initializeState();
-    this.blocksQueue = [];
-    this.history = [];
-    this.currentIndex = 0;
-
-    const topBlocks = workspace.getTopBlocks(true);
-    this.blocksQueue.push(...topBlocks);
   }
 
   step(workspace: Blockly.Workspace) {

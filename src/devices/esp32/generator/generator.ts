@@ -25,6 +25,10 @@ export class ESP32Generator extends ArduinoBaseGenerator {
     );
 
     this.registerEsp32Generators();
+    this.forBlock["text"] =(block: Blockly.Block)=>{
+      const text=block.getFieldValue("TEXT") || "";
+      return [`"${text}"`, 0];
+    }
     this.forBlock["program_start"] = (block: Blockly.Block) => {
       const body = this.statementToCode(block, "DO");
 

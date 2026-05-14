@@ -3,7 +3,7 @@ import type * as Blockly from "blockly";
 import i18n, { type Language } from "../../i18n";
 import type { SymbolTableRow } from "../../core/blockEngine/semantic/base/symbolTable";
 import type { EditorRuntime, SimulationBlock } from "../types";
-
+import type { Issue } from "../../core/blockEngine/semantic/arduinoSemanticAnalyzer";
 type UseBlocklyEditorOptions = {
   board: string;
   language: Language;
@@ -52,6 +52,10 @@ export function useBlocklyEditor({
   language,
   onSymbolTableChange,
 }: UseBlocklyEditorOptions) {
+  /*
+    The core of the software, it has the logic to show TOAST errors, to renderize arduino uno, nano, esp32, codey, etc.
+    It also has interaction with Blockly technology
+  */
   const blocklyDivRef = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<Blockly.Workspace | null>(null);
   const runtimeRef = useRef<EditorRuntime | null>(null);
@@ -61,7 +65,9 @@ export function useBlocklyEditor({
   const [isEditorLoading, setIsEditorLoading] = useState(true);
   const [showEditorLoading, setShowEditorLoading] = useState(false);
   const [editorLoadError, setEditorLoadError] = useState("");
-
+  const [semanticErrors, setSemanticErrors] = useState<
+    Map<string, Issue[]>
+  >(new Map());
   useEffect(() => {
     if (!blocklyDivRef.current) return;
 
@@ -182,6 +188,7 @@ export function useBlocklyEditor({
 
         localWorkspace = await runtime.createWorkspaceManager(blocklyDivRef.current, board, {
           onSymbolTableChange,
+          onSemanticErrorsChange: setSemanticErrors
         });
 
         if (isCancelled) {
@@ -247,5 +254,6 @@ export function useBlocklyEditor({
     showEditorLoading,
     editorLoadError,
     workspaceRef,
+    semanticErrors,
   };
 }

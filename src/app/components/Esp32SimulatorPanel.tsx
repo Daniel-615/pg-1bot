@@ -3,7 +3,7 @@ import type { SimulationBlock } from "../types";
 import { getBoardSimulator } from "../../simulator/registry";
 import type { SimulationResult, SimulatorInputs } from "../../simulator/types";
 import i18n from "../../i18n";
-import "./Esp32SimulatorPanel.css";
+import "./css/Esp32SimulatorPanel.css";
 
 type Esp32SimulatorPanelProps = {
   board: string;

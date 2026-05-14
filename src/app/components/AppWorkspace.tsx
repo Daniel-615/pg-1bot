@@ -3,7 +3,7 @@ import type { RefObject } from "react";
 import type { SymbolTableRow } from "../../core/blockEngine/semantic/base/symbolTable";
 import type { SimulationBlock } from "../types";
 import { Esp32SimulatorPanel } from "./Esp32SimulatorPanel";
-import "./AppWorkspace.css";
+import "./css/AppWorkspace.css";
 
 type AppWorkspaceProps = {
   activeTab: "blocks" | "code" | "simulator";
@@ -43,6 +43,7 @@ export const AppWorkspace = memo(function AppWorkspace({
   getScopeLabel,
   t,
 }: AppWorkspaceProps) {
+  console.log(code)
   const symbolTableRows = useMemo(
     () =>
       symbolRows.map((row, index) => (
