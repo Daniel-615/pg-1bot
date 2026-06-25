@@ -53,7 +53,7 @@ export const AppHeader = memo(function AppHeader({
             <span className="nav-text">{t("navEdit")}</span>
           </button>
           <button className="nav-btn" onClick={onExamples}>
-            <span className="nav-text">📚 Ejemplos</span>
+            <span className="nav-text">📚 {t("examples")}</span>
           </button>
         </nav>
 
@@ -88,12 +88,16 @@ export const AppHeader = memo(function AppHeader({
 
       <div className="header-right">
         <button className="action-btn run-btn" onClick={onRun} disabled={isUploading}>
-          <span className="btn-text">{isUploading ? "Cargando..." : t("run")}</span>
+          <span className={`action-icon ${isUploading ? "robot-walk" : ""}`}>
+            {isUploading ? <img src="logo.webp" alt="1bot" /> : "▶"}
+          </span>
+          <span className="btn-text">{isUploading ? t("uploading") : t("run")}</span>
         </button>
         <button
           className={`action-btn debug-btn ${debugMode ? "active" : ""}`}
           onClick={onToggleDebug}
         >
+          <span className="action-icon">⌁</span>
           <span className="btn-text">{debugMode ? t("exitDebug") : t("debug")}</span>
         </button>
       </div>

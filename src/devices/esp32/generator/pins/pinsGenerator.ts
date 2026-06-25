@@ -37,26 +37,18 @@ export function registerESP32PinGenerator(generator: ESP32Generator) {
     const pin = block.getFieldValue("PIN") || "22";
     const frequency = block.getFieldValue("FREQUENCY") || "1000";
     const duty = block.getFieldValue("DUTY") || "128";
-    const channel = generator.getPwmChannelForPin(pin);
 
-    generator.addSetupDefinition(`
-      ledcSetup(${channel}, ${frequency}, 8);
-      ledcAttachPin(${pin}, ${channel});
-    `);
+    generator.addSetupDefinition(`ledcAttach(${pin}, ${frequency}, 8);`);
 
-    return `ledcWrite(${channel}, ${duty});\n`;
+    return `ledcWrite(${pin}, ${duty});\n`;
   };
 
   generator.forBlock["esp32_analog_write"] = (block: Blockly.Block) => {
     const pin = block.getFieldValue("PIN") || "22";
     const value = block.getFieldValue("VALUE") || "128";
-    const channel = generator.getPwmChannelForPin(pin);
 
-    generator.addSetupDefinition(`
-      ledcSetup(${channel}, 5000, 8);
-      ledcAttachPin(${pin}, ${channel});
-    `);
+    generator.addSetupDefinition(`ledcAttach(${pin}, 5000, 8);`);
 
-    return `ledcWrite(${channel}, ${value});\n`;
+    return `ledcWrite(${pin}, ${value});\n`;
   };
 }

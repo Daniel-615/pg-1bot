@@ -1,9 +1,12 @@
 import axios from "axios";
 import type { ClientPlatform } from "../app/platform";
-
-
-const DEFAULT_BACKEND_API_URL = "http://localhost:3000";
-
+import { toast } from "react-toastify";
+const DEFAULT_BACKEND_API_URL = import.meta.env.VITE_ARDUINO_API_URL;
+if (!DEFAULT_BACKEND_API_URL) {
+  toast.error(
+    "La URL del servicio de compilación no está configurado"
+  )
+}
 type CompileSketchParams = {
   code: string;
   board: string;
@@ -96,6 +99,7 @@ export class ArduinoApi {
       data: response.data,
     };
   }
+
 }
 
 export function resolveCompileTarget(platform: ClientPlatform): CompileTarget {

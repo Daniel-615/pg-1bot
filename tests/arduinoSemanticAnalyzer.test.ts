@@ -294,6 +294,20 @@ describe("ArduinoSemanticAnalyzer", () => {
     expect(forBlock.warningText).toContain("Los valores del 'mientras' deben ser numéricos");
   });
 
+  it("no bloquea FOR_RANGE cuando los límites todavía están vacíos", () => {
+    const analyzer = new ArduinoSemanticAnalyzer();
+    const forBlock = createBlock({
+      id: "for-empty",
+      type: "for_range",
+      fields: { VAR: "var-i" },
+    });
+    const workspace = createWorkspace([forBlock], { "var-i": "i" });
+
+    analyzer.analyze(workspace as never);
+
+    expect(forBlock.warningText).not.toContain("Los valores del 'mientras' deben ser numéricos");
+  });
+
 
 
   it("reporta errores cuando se usan neopixel y display sin inicializacion", () => {

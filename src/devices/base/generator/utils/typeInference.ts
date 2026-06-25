@@ -25,6 +25,7 @@ export function inferListCppType(block: Blockly.Block | null) {
     const checks = inferExpressionChecks(itemBlock);
 
     if (
+      itemBlock?.type === "wifi_scan_networks" ||
       itemBlock?.type === "string" ||
       itemBlock?.type === "json_object" ||
       checks.includes("String")

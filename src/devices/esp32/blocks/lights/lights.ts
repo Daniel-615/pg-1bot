@@ -1,5 +1,27 @@
 import * as Blockly from "blockly";
 
+const ESP32_OUTPUT_PIN_OPTIONS = [
+  ["GPIO 2", "2"],
+  ["GPIO 4", "4"],
+  ["GPIO 5", "5"],
+  ["GPIO 12", "12"],
+  ["GPIO 13", "13"],
+  ["GPIO 14", "14"],
+  ["GPIO 15", "15"],
+  ["GPIO 16", "16"],
+  ["GPIO 17", "17"],
+  ["GPIO 18", "18"],
+  ["GPIO 19", "19"],
+  ["GPIO 21", "21"],
+  ["GPIO 22", "22"],
+  ["GPIO 23", "23"],
+  ["GPIO 25", "25"],
+  ["GPIO 26", "26"],
+  ["GPIO 27", "27"],
+  ["GPIO 32", "32"],
+  ["GPIO 33", "33"],
+] as const;
+
 export function defineEsp32LightBlocks() {
   Blockly.defineBlocksWithJsonArray([
     {
@@ -7,11 +29,9 @@ export function defineEsp32LightBlocks() {
       message0: "%{BKY_1BOT_ESP32_LIGHT_INIT}",
       args0: [
         {
-          type: "field_number",
+          type: "field_dropdown",
           name: "PIN",
-          value: 4,
-          min: 0,
-          max: 39,
+          options: ESP32_OUTPUT_PIN_OPTIONS,
         },
         {
           type: "field_number",

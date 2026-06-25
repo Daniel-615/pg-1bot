@@ -8,7 +8,7 @@ export function registerControlGenerators(generator: ArduinoBaseGenerator) {
 
     const ifCode =
       generator.statementToCode(block, "IF_BODY");
-     console.log("IF generated:", `if(${condition}) {\n${ifCode}}`);  // DEBU
+
     return `if(${condition}) {\n${ifCode}}\n`;
   }
   generator.forBlock["if_else"] = (block) => {

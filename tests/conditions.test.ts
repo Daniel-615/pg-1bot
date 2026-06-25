@@ -18,14 +18,14 @@ function createAnalyzerMock() {
 }
 
 describe("Conditions", () => {
-  it("marca warning por condición vacía y error por cuerpo vacío en IF", () => {
+  it("marca warning por condición y cuerpo vacíos en IF", () => {
     const analyzer = createAnalyzerMock();
     const conditions = new Conditions(new SymbolTable(), analyzer as never);
     const block = createBlock({ id: "if-1", type: "if" });
 
     const result = conditions.handleIf(block as never, null);
 
-    expect(result).toBe(false);
+    expect(result).toBe(true);
     expect(analyzer.addIssuePublic).toHaveBeenNthCalledWith(
       1,
       block,
@@ -36,7 +36,7 @@ describe("Conditions", () => {
       2,
       block,
       "El cuerpo del si está vacío",
-      "error"
+      "warning"
     );
   });
 
@@ -102,7 +102,7 @@ describe("Conditions", () => {
     expect(analyzer.addIssuePublic).toHaveBeenCalledWith(
       block,
       "El cuerpo del entonces está vacío.",
-      "error"
+      "warning"
     );
     expect(analyzer.addIssuePublic).toHaveBeenCalledWith(
       block,
@@ -118,16 +118,16 @@ describe("Conditions", () => {
 
     const result = conditions.handleWhile(block as never, null);
 
-    expect(result).toBe(false);
+    expect(result).toBe(true);
     expect(analyzer.addIssuePublic).toHaveBeenCalledWith(
       block,
       "La condición del mientras está vacía.",
-      "error"
+      "warning"
     );
     expect(analyzer.addIssuePublic).toHaveBeenCalledWith(
       block,
       "El cuerpo del mientras está vacío",
-      "error"
+      "warning"
     );
   });
 
@@ -138,16 +138,16 @@ describe("Conditions", () => {
 
     const result = conditions.handleDoWhile(block as never);
 
-    expect(result).toBe(false);
+    expect(result).toBe(true);
     expect(analyzer.addIssuePublic).toHaveBeenCalledWith(
       block,
       "El cuerpo de hacer no debe estar vacío.",
-      "error"
+      "warning"
     );
     expect(analyzer.addIssuePublic).toHaveBeenCalledWith(
       block,
       "La condición de mientras no debe estar vacía.",
-      "error"
+      "warning"
     );
   });
 
@@ -175,7 +175,7 @@ describe("Conditions", () => {
     expect(analyzer.addIssuePublic).toHaveBeenCalledWith(
       block,
       "el cuerpo de 'hacer' no debe estar vacío.",
-      "error"
+      "warning"
     );
     expect(symbolTable.lookup("i")).toBeNull();
   });

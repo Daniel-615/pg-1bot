@@ -64,7 +64,7 @@ describe("registerESP32PinGenerator", () => {
     expect(result).toEqual(["analogRead(32)", 0]);
   });
 
-  it("genera PWM con un canal estable asignado al pin", () => {
+  it("genera PWM usando el API actual de LEDC por pin", () => {
     const generator = new ESP32Generator();
     registerESP32PinGenerator(generator);
 
@@ -77,12 +77,11 @@ describe("registerESP32PinGenerator", () => {
       generator as never
     );
 
-    expect(result).toBe("ledcWrite(0, 200);\n");
-    expect(Array.from(generator.setupDefinitions).join("\n")).toContain("ledcSetup(0, 1000, 8);");
-    expect(Array.from(generator.setupDefinitions).join("\n")).toContain("ledcAttachPin(22, 0);");
+    expect(result).toBe("ledcWrite(22, 200);\n");
+    expect(Array.from(generator.setupDefinitions)).toContain("ledcAttach(22, 1000, 8);");
   });
 
-  it("asigna canales distintos a pines distintos y reutiliza el canal del mismo pin", () => {
+  it("genera PWM para pines distintos sin usar canales LEDC manuales", () => {
     const generator = new ESP32Generator();
     registerESP32PinGenerator(generator);
 
@@ -113,15 +112,14 @@ describe("registerESP32PinGenerator", () => {
       generator as never
     );
 
-    expect(firstPin).toBe("ledcWrite(0, 200);\n");
-    expect(secondPin).toBe("ledcWrite(1, 100);\n");
-    expect(sameFirstPin).toBe("ledcWrite(0, 50);\n");
+    expect(firstPin).toBe("ledcWrite(22, 200);\n");
+    expect(secondPin).toBe("ledcWrite(23, 100);\n");
+    expect(sameFirstPin).toBe("ledcWrite(22, 50);\n");
 
     const setupCode = Array.from(generator.setupDefinitions).join("\n");
-    expect(setupCode).toContain("ledcSetup(0, 1000, 8);");
-    expect(setupCode).toContain("ledcAttachPin(22, 0);");
-    expect(setupCode).toContain("ledcSetup(1, 1000, 8);");
-    expect(setupCode).toContain("ledcAttachPin(23, 1);");
+    expect(setupCode).toContain("ledcAttach(22, 1000, 8);");
+    expect(setupCode).toContain("ledcAttach(23, 1000, 8);");
+    expect(setupCode).toContain("ledcAttach(22, 500, 8);");
   });
 
   it("genera salida analoga friendly usando PWM", () => {
@@ -133,8 +131,7 @@ describe("registerESP32PinGenerator", () => {
       generator as never
     );
 
-    expect(result).toBe("ledcWrite(0, 64);\n");
-    expect(Array.from(generator.setupDefinitions).join("\n")).toContain("ledcSetup(0, 5000, 8);");
-    expect(Array.from(generator.setupDefinitions).join("\n")).toContain("ledcAttachPin(21, 0);");
+    expect(result).toBe("ledcWrite(21, 64);\n");
+    expect(Array.from(generator.setupDefinitions)).toContain("ledcAttach(21, 5000, 8);");
   });
 });

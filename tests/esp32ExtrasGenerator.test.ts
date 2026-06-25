@@ -68,6 +68,19 @@ describe("ESP32 extra generators", () => {
     expect(result).toEqual(["0x12ABEF", 0]);
   });
 
+  it("genera color desde la paleta conectada al bloque neopixel", () => {
+    const generator = new ESP32Generator();
+    registerESP32LightGenerator(generator);
+    generator.valueToCode = vi.fn(() => "0x12ABEF") as never;
+
+    const result = generator.forBlock["esp32_neopixel_set_color"](
+      createBlockMock({ INDEX: "1" }) as never,
+      generator as never
+    );
+
+    expect(result).toBe("_1botEsp32Strip.setPixelColor((1) - 1, 0x12ABEF);\n_1botEsp32Strip.show();\n");
+  });
+
   it("genera lectura touch", () => {
     const generator = new ESP32Generator();
     registerESP32SensorGenerator(generator);
@@ -145,9 +158,10 @@ describe("ESP32 extra generators", () => {
       generator as never
     );
 
-    expect(result).toContain("ledcWriteTone(0, 440);");
+    expect(result).toContain("ledcWriteTone(25, 440);");
     expect(result).toContain("delay(200);");
-    expect(result).toContain("ledcWriteTone(0, 0);");
+    expect(result).toContain("ledcWriteTone(25, 0);");
+    expect(Array.from(generator.setupDefinitions)).toContain("ledcAttach(25, 440, 8);");
   });
 
   it("genera distancia ultrasonica y configura pines", () => {

@@ -18,6 +18,15 @@ export function registerListGenerators(generator: ArduinoBaseGenerator) {
     const listBlock = block as Blockly.Block & { itemCount_?: number };
     const itemCount = listBlock.itemCount_ ?? 0;
 
+    if (itemCount === 1) {
+      const itemBlock = block.getInputTargetBlock("ADD0");
+      const itemChecks = itemBlock?.outputConnection?.getCheck() ?? [];
+
+      if (itemBlock?.type === "wifi_scan_networks" || itemChecks.includes("Array")) {
+        return [generator.valueToCode(block, "ADD0", ORDER_NONE) || "std::vector<int>{}", ORDER_ATOMIC];
+      }
+    }
+
     for (let i = 0; i < itemCount; i += 1) {
       const itemCode = generator.valueToCode(block, `ADD${i}`, ORDER_NONE) || "0";
       items.push(itemCode);

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
 import type { SymbolTableRow } from "./core/blockEngine/semantic/base/symbolTable";
 import i18n, { persistLanguage, type Language } from "./i18n";
 import { DEVICES } from "./app/constants";
@@ -14,6 +15,20 @@ import {
 } from "./api/arduino.compile";
 import { detectClientPlatform } from "./app/platform";
 import type { SerialPortOption } from "./app/types";
+import {
+  createWokwiProjectFiles,
+  emptyWokwiSimulationState,
+  getWokwiNewProjectUrl,
+  type WokwiProjectFiles,
+  type WokwiSimulationState,
+} from "./simulator/wokwi";
+import {
+  getInitialWorkspaceId,
+  loadWorkspaceProject,
+  normalizeWorkspaceId,
+  saveWorkspaceProject,
+  type StoredWorkspaceProject,
+} from "./app/workspaceStorage";
 import "./App.css";
 import { io } from "socket.io-client";
 import * as Blockly from "blockly";
@@ -21,6 +36,7 @@ import { ToastContainer, toast } from "react-toastify";
 import type {
   Issue
 } from "./core/blockEngine/semantic/arduinoSemanticAnalyzer"
+
 function sanitizeFilename(value: string) {
   return value.replace(/[<>:"/\\|?*]/g, "_");
 }
@@ -32,16 +48,40 @@ const BOARD_FQBN: Record<string, string> = {
 
 const MAX_SERIAL_LOG_LINES = 300;
 
+type ProjectFileData = {
+  version?: string;
+  board?: string;
+  projectName?: string;
+  blocks?: unknown;
+};
+
+function getInitialWorkspaceSnapshot() {
+  const workspaceId = getInitialWorkspaceId();
+  const project = loadWorkspaceProject(workspaceId);
+
+  return {
+    workspaceId,
+    board: project?.board ?? "esp32",
+    projectName: project?.projectName ?? i18n.t("projectUntitled"),
+    blocks: project?.blocks ?? null,
+  };
+}
+
 function App() {
+  const [initialWorkspace] = useState(getInitialWorkspaceSnapshot);
   const [language, setLanguage] = useState<Language>(
     () => (i18n.language === "en" ? "en" : "es")
   );
 
-  const [board, setBoard] = useState("esp32");
-  const [projectName, setProjectName] = useState(() =>
-    i18n.t("projectUntitled")
+  const [workspaceId] = useState(initialWorkspace.workspaceId);
+  const [projectLoadVersion, setProjectLoadVersion] = useState(0);
+  const [workspaceBlocks, setWorkspaceBlocks] = useState<unknown | null>(
+    initialWorkspace.blocks
   );
+  const [board, setBoard] = useState(initialWorkspace.board);
+  const [projectName, setProjectName] = useState(initialWorkspace.projectName);
 
+  // ❌ SIMULADOR REMOVIDO
   const [activeTab, setActiveTab] = useState<
     "blocks" | "code" | "simulator"
   >("blocks");
@@ -53,6 +93,9 @@ function App() {
   const [debugMode, setDebugMode] = useState(false);
   const [, setLanguageVersion] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [wokwiState, setWokwiState] = useState<WokwiSimulationState>(
+    emptyWokwiSimulationState
+  );
 
   const [ports, setPorts] = useState<SerialPortOption[]>([]);
   const [selectedPort, setSelectedPort] = useState("");
@@ -63,15 +106,11 @@ function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [examplesOpen, setExamplesOpen] = useState(false);
 
-  const [hardwareValues, setHardwareValues] = useState<
-    Record<string, string | number | boolean>
-  >({});
 
   const {
     blocklyDivRef,
     code,
     workspaceVersion,
-    getSimulationSnapshot,
     isEditorLoading,
     showEditorLoading,
     editorLoadError,
@@ -80,7 +119,20 @@ function App() {
   } = useBlocklyEditor({
     board,
     language,
+    workspaceKey: `${workspaceId}:${projectLoadVersion}`,
+    initialBlocks: workspaceBlocks,
     onSymbolTableChange: setSymbolRows,
+    onWorkspaceChange: (blocks) => {
+      setWorkspaceBlocks(blocks);
+      saveWorkspaceProject({
+        version: "1.0",
+        workspaceId,
+        projectName,
+        board,
+        blocks,
+        updatedAt: new Date().toISOString(),
+      });
+    },
   });
 
   const t = useCallback(
@@ -111,51 +163,95 @@ function App() {
     [board]
   );
 
-  const parseHardwareData = useCallback((line: string) => {
-    const trimmed = line.trim();
-
-    if (trimmed.startsWith("VAR:")) {
-      const rest = trimmed.substring(4);
-      const eqIndex = rest.indexOf("=");
-
-      if (eqIndex > 0) {
-        const name = rest.substring(0, eqIndex).trim();
-        const valueStr = rest.substring(eqIndex + 1).trim();
-
-        let value: string | number | boolean = valueStr;
-
-        if (valueStr === "true" || valueStr === "TRUE") {
-          value = true;
-        } else if (valueStr === "false" || valueStr === "FALSE") {
-          value = false;
-        } else if (!Number.isNaN(Number(valueStr))) {
-          value = Number(valueStr);
-        }
-
-        setHardwareValues((prev) => ({
-          ...prev,
-          [name]: value,
-        }));
-
-        return true;
-      }
+  const wokwiPreviewFiles = useMemo<WokwiProjectFiles | null>(() => {
+    if (!code.trim()) {
+      return null;
     }
 
-    return false;
-  }, []);
+    try {
+      return createWokwiProjectFiles({ board, code });
+    } catch {
+      return null;
+    }
+  }, [board, code]);
+
+  const getCurrentWorkspaceBlocks = useCallback(() => {
+    const workspace = workspaceRef.current;
+
+    if (!workspace) {
+      return workspaceBlocks;
+    }
+
+    return Blockly.serialization.workspaces.save(workspace);
+  }, [workspaceBlocks, workspaceRef]);
+
+  const persistWorkspace = useCallback(
+    (overrides: Partial<StoredWorkspaceProject> = {}) => {
+      const nextWorkspaceId = normalizeWorkspaceId(
+        overrides.workspaceId ?? workspaceId
+      );
+      const blocks = overrides.blocks ?? getCurrentWorkspaceBlocks();
+
+      saveWorkspaceProject({
+        version: "1.0",
+        workspaceId: nextWorkspaceId,
+        projectName: overrides.projectName ?? projectName,
+        board: overrides.board ?? board,
+        blocks,
+        wokwiProjectId: overrides.wokwiProjectId,
+        updatedAt: new Date().toISOString(),
+      });
+
+    },
+    [board, getCurrentWorkspaceBlocks, projectName, workspaceId]
+  );
+
+  const resetSimulation = useCallback(
+    (nextBoard: string) => {
+      setWokwiState({
+        ...emptyWokwiSimulationState(),
+        board: nextBoard,
+      });
+    },
+    []
+  );
+
+  const handleProjectNameChange = useCallback(
+    (value: string) => {
+      setProjectName(value);
+      persistWorkspace({ projectName: value });
+    },
+    [persistWorkspace]
+  );
+
+  const handleBoardChange = useCallback(
+    (value: string) => {
+      setBoard(value);
+      resetSimulation(value);
+      persistWorkspace({ board: value });
+    },
+    [persistWorkspace, resetSimulation]
+  );
 
   useEffect(() => {
-    const socket = io("http://localhost:3000");
+    const backendUrl = import.meta.env.VITE_ARDUINO_API_URL;
+    if (!backendUrl) {
+      toast.error(
+        "La URL del servicio de compilación no está configurada"
+      );
+    }
+    const socket = io(backendUrl);
 
     socket.on("serial-data", (line: string) => {
-      setSerialLogs((prev) => [...prev, line].slice(-MAX_SERIAL_LOG_LINES));
-      parseHardwareData(line);
+      setSerialLogs((prev) =>
+        [...prev, line].slice(-MAX_SERIAL_LOG_LINES)
+      );
     });
 
     return () => {
       socket.disconnect();
     };
-  }, [parseHardwareData]);
+  }, []);
 
   useEffect(() => {
     const syncFullscreenState = () => {
@@ -308,17 +404,20 @@ function App() {
       );
       return;
     }
+
     const hasErrors = Array.from(
       semanticErrors.values()
     ).some((issues: Issue[]) =>
       issues.some((i) => i.severity === "error")
     )
+
     if (hasErrors) {
       toast.error(
         "No puedes compilar mientras existan errores semánticos."
       );
       return;
     }
+
     const filename = `${sanitizeFilename(projectName)}.ino`;
 
     setIsUploading(true);
@@ -372,7 +471,7 @@ function App() {
     } finally {
       setIsUploading(false);
     }
-  }, [board, code, projectName, selectedPort]);
+  }, [board, code, projectName, selectedPort, semanticErrors]);
 
   const handleRun = useCallback(() => {
     void compileAndUpload();
@@ -401,6 +500,32 @@ function App() {
 
     toast.success(`Archivo ${filename} descargado.`);
   }, [downloadGeneratedCode, projectName]);
+
+  const handleCopyDiagramJson = useCallback(() => {
+    const files = wokwiPreviewFiles ?? wokwiState.files;
+
+    if (!files) {
+      toast.error("No hay diagram.json para copiar todavía.");
+      return;
+    }
+
+    const diagramJson = JSON.stringify(files.diagram, null, 2);
+
+    void navigator.clipboard
+      .writeText(diagramJson)
+      .then(() => toast.success("diagram.json copiado al portapapeles."))
+      .catch((err) =>
+        toast.error(
+          `No se pudo copiar diagram.json. ${err instanceof Error ? err.message : ""}`
+        )
+      );
+  }, [wokwiPreviewFiles, wokwiState.files]);
+
+  const handleOpenWokwi = useCallback(() => {
+    const url = wokwiState.projectUrl ?? getWokwiNewProjectUrl(board);
+
+    window.open(url, "_blank", "noopener,noreferrer");
+  }, [board, wokwiState.projectUrl]);
 
   const getScopeLabel = useCallback(
     (row: SymbolTableRow) => row.scopeKind,
@@ -467,6 +592,52 @@ function App() {
     fileInputRef.current?.click();
   }, []);
 
+  const handleProjectFileChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+
+      event.target.value = "";
+
+      if (!file) {
+        return;
+      }
+
+      void file
+        .text()
+        .then((content) => {
+          const project = JSON.parse(content) as ProjectFileData;
+
+          if (!project.blocks || typeof project.blocks !== "object") {
+            throw new Error("El archivo no contiene bloques Blockly válidos.");
+          }
+
+          const nextBoard = project.board || "esp32";
+          const nextProjectName = project.projectName || file.name.replace(/\.1bot\.json$|\.json$/i, "");
+
+          setBoard(nextBoard);
+          setProjectName(nextProjectName);
+          setWorkspaceBlocks(project.blocks);
+          setProjectLoadVersion((current) => current + 1);
+          resetSimulation(nextBoard);
+          saveWorkspaceProject({
+            version: "1.0",
+            workspaceId,
+            projectName: nextProjectName,
+            board: nextBoard,
+            blocks: project.blocks,
+            updatedAt: new Date().toISOString(),
+          });
+          toast.success(`Proyecto ${nextProjectName} cargado.`);
+        })
+        .catch((error) => {
+          toast.error(
+            `No se pudo abrir el proyecto. ${error instanceof Error ? error.message : ""}`
+          );
+        });
+    },
+    [resetSimulation, workspaceId]
+  );
+
   const handleShowExamples = useCallback(() => {
     setExamplesOpen(true);
   }, []);
@@ -520,12 +691,12 @@ function App() {
 
   return (
     <div className="app-container">
-      <AppHeader
-        language={language}
-        projectName={projectName}
-        debugMode={debugMode}
-        onProjectNameChange={setProjectName}
-        onLanguageChange={setLanguage}
+        <AppHeader
+          language={language}
+          projectName={projectName}
+          debugMode={debugMode}
+          onProjectNameChange={handleProjectNameChange}
+          onLanguageChange={setLanguage}
         onRun={handleRun}
         onToggleDebug={handleToggleDebug}
         onExamples={handleShowExamples}
@@ -543,7 +714,7 @@ function App() {
           deviceMenuOpen={deviceMenuOpen}
           currentDevice={currentDevice}
           devices={DEVICES}
-          onBoardChange={setBoard}
+          onBoardChange={handleBoardChange}
           onToggleDeviceMenu={handleToggleDeviceMenu}
           onFullscreen={handleFullscreen}
           onRotate={handleRotate}
@@ -568,13 +739,15 @@ function App() {
           showEditorLoading={showEditorLoading}
           editorLoadError={editorLoadError}
           blocklyDivRef={blocklyDivRef}
-          getSimulationSnapshot={getSimulationSnapshot}
+          wokwiState={wokwiState}
+          wokwiPreviewFiles={wokwiPreviewFiles}
           onTabChange={setActiveTab}
           onCopyCode={handleCopyCode}
           onDownloadCode={handleDownloadCode}
+          onCopyDiagramJson={handleCopyDiagramJson}
+          onOpenWokwi={handleOpenWokwi}
           getScopeLabel={getScopeLabel}
           t={t}
-          hardwareValues={hardwareValues}
         />
       </div>
 
@@ -612,7 +785,7 @@ function App() {
         type="file"
         accept=".json,.1bot.json"
         style={{ display: "none" }}
-        onChange={() => { }}
+        onChange={handleProjectFileChange}
       />
 
       {examplesOpen && (

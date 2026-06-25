@@ -12,11 +12,17 @@ return [
       },
       {
         kind: "block",
-        type: "esp32_neopixel_color",
-      },
-      {
-        kind: "block",
         type: "esp32_neopixel_set_color",
+        inputs: {
+          COLOR: {
+            shadow: {
+              type: "esp32_neopixel_color",
+              fields: {
+                COLOR: "#FF00FF",
+              },
+            },
+          },
+        },
       },
       {
         kind: "block",

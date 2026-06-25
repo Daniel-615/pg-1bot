@@ -82,20 +82,15 @@ export function registerESP32SensorGenerator(generator: ESP32Generator) {
     const pin = block.getFieldValue("PIN") || "25";
     const frequency = block.getFieldValue("FREQUENCY") || "440";
     const duration = block.getFieldValue("DURATION") || "200";
-    const channel = generator.getPwmChannelForPin(`tone_${pin}`);
 
-    generator.addSetupDefinition(`
-      ledcSetup(${channel}, ${frequency}, 8);
-      ledcAttachPin(${pin}, ${channel});
-    `);
+    generator.addSetupDefinition(`ledcAttach(${pin}, ${frequency}, 8);`);
 
-    return `ledcWriteTone(${channel}, ${frequency});\ndelay(${duration});\nledcWriteTone(${channel}, 0);\n`;
+    return `ledcWriteTone(${pin}, ${frequency});\ndelay(${duration});\nledcWriteTone(${pin}, 0);\n`;
   };
 
   generator.forBlock["esp32_tone_stop"] = (block: Blockly.Block) => {
     const pin = block.getFieldValue("PIN") || "25";
-    const channel = generator.getPwmChannelForPin(`tone_${pin}`);
 
-    return `ledcWriteTone(${channel}, 0);\n`;
+    return `ledcWriteTone(${pin}, 0);\n`;
   };
 }

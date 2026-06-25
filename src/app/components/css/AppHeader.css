@@ -151,7 +151,68 @@
 }
 
 .action-btn {
-  padding: 10px 18px;
+  position: relative;
+  min-height: 42px;
+  padding: 11px 18px;
+  overflow: hidden;
+  border: 1px solid rgba(14, 165, 233, 0.28);
+  border-radius: 999px;
+  box-shadow: 0 10px 24px rgba(14, 165, 233, 0.16);
+  letter-spacing: 0.01em;
+}
+
+.action-btn::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.24), transparent 42%);
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.action-icon,
+.btn-text {
+  position: relative;
+  z-index: 1;
+}
+
+.action-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  color: white;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.robot-walk {
+  font-size: 18px;
+  background: rgba(255, 255, 255, 0.24);
+  animation: robot-walk 0.72s ease-in-out infinite;
+}
+
+.robot-walk img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+@keyframes robot-walk {
+  0% {
+    transform: translateX(-1px) rotate(-5deg);
+  }
+
+  50% {
+    transform: translateX(2px) rotate(5deg);
+  }
+
+  100% {
+    transform: translateX(-1px) rotate(-5deg);
+  }
 }
 
 .save-btn:active,
@@ -167,22 +228,36 @@
 }
 
 .run-btn {
-  background: linear-gradient(135deg, #4ade80, #22c55e);
+  background: linear-gradient(135deg, #0ea5e9, #38bdf8);
   color: white;
 }
 
 .debug-btn {
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
-  color: white;
+  background: #f8fafc;
+  border-color: rgba(14, 165, 233, 0.3);
+  color: #0369a1;
 }
 
 .debug-btn.active {
-  background: linear-gradient(135deg, #1f2937, #111827);
+  background: #075985;
+  border-color: #075985;
+  color: white;
+}
+
+.debug-btn .action-icon {
+  background: rgba(14, 165, 233, 0.12);
+  color: #0284c7;
+}
+
+.debug-btn.active .action-icon {
+  background: rgba(255, 255, 255, 0.18);
+  color: white;
 }
 
 .run-btn:hover,
 .debug-btn:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(14, 165, 233, 0.22);
 }
 
 @media (max-width: 1200px) {

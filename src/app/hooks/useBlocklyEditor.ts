@@ -1,56 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type * as Blockly from "blockly";
+import { useEffect, useRef, useState } from "react";
+import * as Blockly from "blockly";
 import i18n, { type Language } from "../../i18n";
 import type { SymbolTableRow } from "../../core/blockEngine/semantic/base/symbolTable";
-import type { EditorRuntime, SimulationBlock } from "../types";
+import type { EditorRuntime} from "../types";
 import type { Issue } from "../../core/blockEngine/semantic/arduinoSemanticAnalyzer";
 type UseBlocklyEditorOptions = {
   board: string;
   language: Language;
+  workspaceKey: string;
+  initialBlocks: unknown | null;
   onSymbolTableChange: (rows: SymbolTableRow[]) => void;
+  onWorkspaceChange?: (blocks: unknown) => void;
 };
 
-type BlocklyFieldLike = {
-  name?: string;
-  getValue: () => string;
-};
 
-function toSimulationBlock(block: Blockly.Block | null): SimulationBlock | null {
-  if (!block) {
-    return null;
-  }
-
-  const fields: Record<string, string> = {};
-
-  for (const input of block.inputList) {
-    for (const field of input.fieldRow as BlocklyFieldLike[]) {
-      if (field.name) {
-        fields[field.name] = String(field.getValue());
-      }
-    }
-  }
-
-  const inputs: Record<string, SimulationBlock | null> = {};
-
-  for (const input of block.inputList) {
-    if (input.name) {
-      inputs[input.name] = toSimulationBlock(input.connection?.targetBlock() ?? null);
-    }
-  }
-
-  return {
-    id: block.id,
-    type: block.type,
-    fields,
-    inputs,
-    next: toSimulationBlock(block.getNextBlock()),
-  };
-}
 
 export function useBlocklyEditor({
   board,
   language,
+  workspaceKey,
+  initialBlocks,
   onSymbolTableChange,
+  onWorkspaceChange,
 }: UseBlocklyEditorOptions) {
   /*
     The core of the software, it has the logic to show TOAST errors, to renderize arduino uno, nano, esp32, codey, etc.
@@ -59,7 +30,9 @@ export function useBlocklyEditor({
   const blocklyDivRef = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<Blockly.Workspace | null>(null);
   const runtimeRef = useRef<EditorRuntime | null>(null);
+  const initialBlocksRef = useRef(initialBlocks);
   const lastCodeRef = useRef("");
+  const onWorkspaceChangeRef = useRef(onWorkspaceChange);
   const [code, setCode] = useState("");
   const [workspaceVersion, setWorkspaceVersion] = useState(0);
   const [isEditorLoading, setIsEditorLoading] = useState(true);
@@ -68,6 +41,10 @@ export function useBlocklyEditor({
   const [semanticErrors, setSemanticErrors] = useState<
     Map<string, Issue[]>
   >(new Map());
+
+  initialBlocksRef.current = initialBlocks;
+  onWorkspaceChangeRef.current = onWorkspaceChange;
+
   useEffect(() => {
     if (!blocklyDivRef.current) return;
 
@@ -144,6 +121,16 @@ export function useBlocklyEditor({
 
         runtime.applyBlocklyLocale(language);
 
+        const notifyWorkspaceChange = () => {
+          if (!localWorkspace) {
+            return;
+          }
+
+          onWorkspaceChangeRef.current?.(
+            Blockly.serialization.workspaces.save(localWorkspace)
+          );
+        };
+
         const scheduleCompile = (event?: Blockly.Events.Abstract) => {
           if (event?.isUiEvent) {
             return;
@@ -161,6 +148,7 @@ export function useBlocklyEditor({
           }
 
           setWorkspaceVersion((current) => current + 1);
+          notifyWorkspaceChange();
 
           compileTimeout = setTimeout(async () => {
             if (!localWorkspace || isCancelled) {
@@ -191,6 +179,13 @@ export function useBlocklyEditor({
           onSemanticErrorsChange: setSemanticErrors
         });
 
+        if (initialBlocksRef.current) {
+          Blockly.serialization.workspaces.load(
+            initialBlocksRef.current as Parameters<typeof Blockly.serialization.workspaces.load>[0],
+            localWorkspace
+          );
+        }
+
         if (isCancelled) {
           cleanupWorkspace();
           return;
@@ -207,7 +202,8 @@ export function useBlocklyEditor({
 
         setIsEditorLoading(false);
         setShowEditorLoading(false);
-      } catch {
+      } catch (error) {
+        console.error("Failed to load Blockly editor", error);
         if (loadingTimeout) {
           clearTimeout(loadingTimeout);
           loadingTimeout = null;
@@ -230,26 +226,12 @@ export function useBlocklyEditor({
       setIsEditorLoading(false);
       setShowEditorLoading(false);
     };
-  }, [board, language, onSymbolTableChange]);
-
-  const getSimulationSnapshot = useCallback(() => {
-    const workspace = workspaceRef.current;
-
-    if (!workspace) {
-      return [];
-    }
-
-    return workspace
-      .getTopBlocks(true)
-      .map((block) => toSimulationBlock(block))
-      .filter((block): block is SimulationBlock => Boolean(block));
-  }, []);
+  }, [board, language, onSymbolTableChange, workspaceKey]);
 
   return {
     blocklyDivRef,
     code,
     workspaceVersion,
-    getSimulationSnapshot,
     isEditorLoading,
     showEditorLoading,
     editorLoadError,

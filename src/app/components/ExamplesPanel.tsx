@@ -1,5 +1,5 @@
 import { memo, useState, useEffect } from "react";
-import i18n from "../../i18n";
+import { useTranslation } from "react-i18next";
 import "./css/ExamplesPanel.css";
 
 export type Example = {
@@ -121,6 +121,7 @@ export const ExamplesPanel = memo(function ExamplesPanel({
   onSelectExample,
   onClose
 }: ExamplesPanelProps) {
+  const { t } = useTranslation();
   const [filter, setFilter] = useState<string>(board);
 
   const filteredExamples = EXAMPLES.filter(ex => 
@@ -130,8 +131,6 @@ export const ExamplesPanel = memo(function ExamplesPanel({
   useEffect(() => {
     setFilter(board);
   }, [board]);
-
-  const t = (key: string) => i18n.t(key);
 
   return (
     <div className="examples-overlay" onClick={onClose}>

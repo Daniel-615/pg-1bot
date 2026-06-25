@@ -298,6 +298,148 @@
   background: var(--bg-darker);
 }
 
+.code-panel.visible {
+  display: flex;
+}
+
+.code-panel.hidden {
+  display: none;
+}
+
+.simulator-panel {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg-darker);
+}
+
+.diagram-preview {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #020617;
+  border: none;
+  color: inherit;
+  text-align: left;
+  cursor: default;
+}
+
+.diagram-preview.disabled {
+  cursor: default;
+}
+
+.diagram-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  gap: 16px;
+  background: linear-gradient(90deg, rgba(14, 165, 233, 0.16), rgba(34, 197, 94, 0.1));
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.diagram-preview-header div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.diagram-preview-header span,
+.diagram-preview-header small {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.diagram-preview-header strong {
+  color: #e2e8f0;
+  font-size: 16px;
+}
+
+.diagram-preview-code {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 20px;
+  overflow: auto;
+  color: #a7f3d0;
+  background:
+    radial-gradient(circle at top right, rgba(34, 211, 238, 0.12), transparent 32%),
+    linear-gradient(180deg, #020617 0%, #0f172a 100%);
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.simulator-panel.visible {
+  display: flex;
+}
+
+.simulator-panel.hidden {
+  display: none;
+}
+
+.simulator-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 24px;
+  background: rgba(2, 6, 23, 0.82);
+  backdrop-filter: blur(8px);
+}
+
+.simulator-error > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.simulator-error p {
+  color: #ef4444;
+  font-size: 14px;
+  text-align: center;
+  max-width: 400px;
+}
+
+.simulator-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 24px;
+  color: var(--text-secondary);
+  font-size: 16px;
+}
+
+.simulator-ready {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.code-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.simulator-runtime-label {
+  padding: 8px 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .code-scroll {
   flex: 1;
   min-width: 0;
@@ -385,6 +527,7 @@
     padding: 12px;
     font-size: 11px;
   }
+
 }
 
 @media (max-width: 480px) {

@@ -46,8 +46,8 @@ export class Conditions {
 
     const ifBody = block.getInputTargetBlock("IF_BODY");
     if (!ifBody) {
-      this.getArduinoSemantic().addIssuePublic(block, "El cuerpo del si está vacío", "error");
-      return false;
+      this.getArduinoSemantic().addIssuePublic(block, "El cuerpo del si está vacío", "warning");
+      return true;
     }
 
     try {
@@ -86,7 +86,7 @@ export class Conditions {
         this.getArduinoSemantic().addIssuePublic(
           block,
           "El cuerpo del entonces está vacío.",
-          "error"
+          "warning"
         );
       }
       if (!doElse) {
@@ -96,8 +96,6 @@ export class Conditions {
           "warning"
         );
       }
-
-      if (!doBlock && doElse) return false;
 
       if (doBlock) {
         this.runInScope(() => {
@@ -122,7 +120,7 @@ export class Conditions {
       this.getArduinoSemantic().addIssuePublic(
         block,
         "La condición del mientras está vacía.",
-        "error"
+        "warning"
       );
     } else if (type !== "boolean") {
       this.getArduinoSemantic().addIssuePublic(
@@ -137,9 +135,9 @@ export class Conditions {
       this.getArduinoSemantic().addIssuePublic(
         block,
         "El cuerpo del mientras está vacío",
-        "error"
+        "warning"
       );
-      return false;
+      return true;
     }
 
     try {
@@ -159,7 +157,7 @@ export class Conditions {
       this.getArduinoSemantic().addIssuePublic(
         block,
         "El cuerpo de hacer no debe estar vacío.",
-        "error"
+        "warning"
       );
     }
 
@@ -168,11 +166,11 @@ export class Conditions {
       this.getArduinoSemantic().addIssuePublic(
         block,
         "La condición de mientras no debe estar vacía.",
-        "error"
+        "warning"
       );
     }
 
-    if (!doBlock || !condition) return false;
+    if (!doBlock || !condition) return true;
 
     try {
       this.runInScope(() => {
@@ -213,7 +211,7 @@ export class Conditions {
           this.getArduinoSemantic().addIssuePublic(
             block,
             "el cuerpo de 'hacer' no debe estar vacío.",
-            "error"
+            "warning"
           );
           return;
         }

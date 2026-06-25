@@ -94,6 +94,46 @@ describe("ArduinoBaseGenerator", () => {
     expect(Array.from(generator.includes)).toContain("#include <vector>");
   });
 
+  it("usa directamente una expresion que ya devuelve lista", () => {
+    const generator = new ArduinoBaseGenerator("Arduino");
+    const scanBlock = {
+      type: "wifi_scan_networks",
+      outputConnection: {
+        getCheck: () => ["Array"],
+      },
+    };
+    const block = {
+      ...createBlockMock(),
+      itemCount_: 1,
+      getInputTargetBlock: (inputName: string) => (inputName === "ADD0" ? scanBlock : null),
+    };
+
+    generator.valueToCode = vi.fn(() => "scanNetworks()") as never;
+
+    const result = generator.forBlock["lists_create_with"](block as never, generator as never);
+
+    expect(result).toEqual(["scanNetworks()", 0]);
+    expect(Array.from(generator.includes)).toContain("#include <vector>");
+  });
+
+  it("declara listas de redes WiFi como vector de texto", () => {
+    const generator = new ArduinoBaseGenerator("Arduino");
+    const scanListBlock = {
+      type: "lists_create_with",
+      itemCount_: 1,
+      getInputTargetBlock: (inputName: string) => (
+        inputName === "ADD0" ? { type: "wifi_scan_networks" } : null
+      ),
+    };
+    const variableBlock = {
+      getInputTargetBlock: (inputName: string) => (inputName === "VALUE" ? scanListBlock : null),
+    };
+
+    const result = generator.getCppVariableDeclaration(variableBlock as never, "lista_redes");
+
+    expect(result).toBe("std::vector<String> lista_redes{};");
+  });
+
   it("genera size() para lists_length con fallback de lista vacia", () => {
     const generator = new ArduinoBaseGenerator("Arduino");
     const block = createBlockMock();

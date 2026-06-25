@@ -552,10 +552,12 @@ export class ArduinoSemanticAnalyzer {
     const varName = this.getVariableName(block);
     if (!varName) return;
 
-    const fromType = this.inferType(block.getInputTargetBlock("FROM"));
-    const toType = this.inferType(block.getInputTargetBlock("TO"));
+    const fromBlock = block.getInputTargetBlock("FROM");
+    const toBlock = block.getInputTargetBlock("TO");
+    const fromType = this.inferType(fromBlock);
+    const toType = this.inferType(toBlock);
 
-    if (fromType !== "number" || toType !== "number") {
+    if ((fromBlock && fromType !== "number") || (toBlock && toType !== "number")) {
       this.addIssue(block, "Los valores del 'mientras' deben ser numéricos", "error");
     }
 

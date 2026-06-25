@@ -42,7 +42,10 @@ export function registerESP32LightGenerator(generator: ESP32Generator) {
 
   generator.forBlock["esp32_neopixel_set_color"] = (block: Blockly.Block) => {
     const index = block.getFieldValue("INDEX") || "1";
-    const color = generator.valueToCode(block, "COLOR", ORDER_ATOMIC) || "0x000000";
+    const fieldColor = block.getFieldValue("COLOR");
+    const color = fieldColor
+      ? hexToCppColor(fieldColor)
+      : generator.valueToCode(block, "COLOR", ORDER_ATOMIC) || "0x000000";
 
     generator.addInclude("#include <Adafruit_NeoPixel.h>");
     return `${STRIP_INSTANCE}.setPixelColor((${index}) - 1, ${color});\n${STRIP_INSTANCE}.show();\n`;
