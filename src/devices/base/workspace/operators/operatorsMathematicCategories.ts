@@ -18,6 +18,14 @@ export const operatorsMathematicCategories = [
     },
     {
         kind: "block",
+        type: "math_sqrt"
+    },
+    {
+        kind: "block",
+        type: "math_power"
+    },
+    {
+        kind: "block",
         type: "math_random",
         inputs: {
             MIN: {

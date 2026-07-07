@@ -17,6 +17,7 @@ type AppSidebarProps = {
   onToggleDeviceMenu: () => void;
   onFullscreen: () => void;
   onRotate: () => void;
+  previewRotation: number;
   t: (key: string, options?: Record<string, string | number>) => string;
   ports: SerialPortOption[];
   selectedPort: string;
@@ -40,6 +41,7 @@ export const AppSidebar = memo(function AppSidebar({
   onToggleDeviceMenu,
   onFullscreen,
   onRotate,
+  previewRotation,
   t,
   ports,
   selectedPort,
@@ -64,7 +66,10 @@ export const AppSidebar = memo(function AppSidebar({
   return (
     <aside className="sidebar-left">
       <div className="device-preview">
-        <div className="device-image">
+        <div
+          className="device-image"
+          style={{ transform: `rotate(${previewRotation}deg)` }}
+        >
           {editorMode === "background" ? (
             <BackgroundStage actor={backgroundActor} />
           ) : (

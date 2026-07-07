@@ -11,10 +11,12 @@ type AppHeaderProps = {
   onSave: () => void;
   onFile: () => void;
   onEdit: () => void;
+  onExtensions: () => void;
   onRun: () => void;
   onToggleDebug: () => void;
   onExamples: () => void;
   onLogout: () => void;
+  canManageExtensions: boolean;
   isUploading: boolean;
   userName: string;
   t: (key: string, options?: Record<string, string | number>) => string;
@@ -29,10 +31,12 @@ export const AppHeader = memo(function AppHeader({
   onSave,
   onFile,
   onEdit,
+  onExtensions,
   onRun,
   onToggleDebug,
   onExamples,
   onLogout,
+  canManageExtensions,
   isUploading,
   userName,
   t,
@@ -57,8 +61,13 @@ export const AppHeader = memo(function AppHeader({
             <span className="nav-text">{t("navEdit")}</span>
           </button>
           <button className="nav-btn" onClick={onExamples}>
-            <span className="nav-text">📚 {t("examples")}</span>
+            <span className="nav-text">{t("examples")}</span>
           </button>
+          {canManageExtensions && (
+            <button className="nav-btn" onClick={onExtensions}>
+              <span className="nav-text">Extensiones</span>
+            </button>
+          )}
         </nav>
 
         <div className="project-name-container">
@@ -101,7 +110,6 @@ export const AppHeader = memo(function AppHeader({
           className={`action-btn debug-btn ${debugMode ? "active" : ""}`}
           onClick={onToggleDebug}
         >
-          <span className="action-icon">⌁</span>
           <span className="btn-text">{debugMode ? t("exitDebug") : t("debug")}</span>
         </button>
 

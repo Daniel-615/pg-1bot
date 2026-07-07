@@ -1,6 +1,7 @@
 import type * as Blockly from "blockly";
 import type { SymbolTableRow } from "../../../core/blockEngine/semantic/base/symbolTable";
 import { registerBaseBlocks } from "../register";
+import { loadDynamicExtensionCategories } from "../../../extensions/dynamicExtensions";
 
 type CreateWorkspaceManagerOptions = {
   onSymbolTableChange?: (rows: SymbolTableRow[]) => void;
@@ -19,6 +20,8 @@ export async function createWorkspaceManager(
     return createBackgroundWorkspace(container);
   }
 
+  const extensionCategories = await loadDynamicExtensionCategories(board);
+
   switch (board) {
     case "uno": {
       const [{ createWorkspaceUno }, { ArduinoUnoBoard }] = await Promise.all([
@@ -26,7 +29,7 @@ export async function createWorkspaceManager(
         import("../../arduinoUno/register"),
       ]);
       new ArduinoUnoBoard().registerBlocks?.();
-      return createWorkspaceUno(container, options);
+      return createWorkspaceUno(container, options, extensionCategories);
     }
     case "nano": {
       const [{ createWorkspaceNano }, { ArduinoNanoBoard }] = await Promise.all([
@@ -34,7 +37,7 @@ export async function createWorkspaceManager(
         import("../../arduinoNano/register"),
       ]);
       new ArduinoNanoBoard().registerBlocks?.();
-      return createWorkspaceNano(container, options);
+      return createWorkspaceNano(container, options, extensionCategories);
     }
     case "esp32": {
       const [{ createWorkspaceEsp32 }, { ESP32Board }] = await Promise.all([
@@ -42,7 +45,7 @@ export async function createWorkspaceManager(
         import("../../esp32/register"),
       ]);
       new ESP32Board().registerBlocks?.();
-      return createWorkspaceEsp32(container, options);
+      return createWorkspaceEsp32(container, options, extensionCategories);
     }
     case "mega": {
       const [{ createWorkspaceMega }, { ArduinoMegaBoard }] = await Promise.all([
@@ -50,7 +53,7 @@ export async function createWorkspaceManager(
         import("../../arduinoMega/register"),
       ]);
       new ArduinoMegaBoard().registerBlocks?.();
-      return createWorkspaceMega(container, options);
+      return createWorkspaceMega(container, options, extensionCategories);
     }
     case "codey": {
       const [{ createWorkspaceCodey }, { CodeyBoard }] = await Promise.all([
@@ -58,11 +61,11 @@ export async function createWorkspaceManager(
         import("../../codey/register"),
       ]);
       new CodeyBoard().registerBlocks?.();
-      return createWorkspaceCodey(container, options);
+      return createWorkspaceCodey(container, options, extensionCategories);
     }
     default: {
       const { createWorkspace } = await import("../../../core/blockEngine/workspaceManager");
-      return createWorkspace(container, [], options);
+      return createWorkspace(container, extensionCategories, options);
     }
   }
 }

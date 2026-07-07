@@ -36,6 +36,13 @@
   background-size: 18px 18px;
 }
 
+.scene-custom {
+  background-color: #f8fafc;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
 .stage-grid {
   position: absolute;
   inset: 0;
@@ -52,6 +59,19 @@
   transition: transform 0.28s ease;
   transform-origin: center;
   z-index: 2;
+}
+
+.background-robot.custom-actor {
+  width: 54px;
+  height: 54px;
+}
+
+.background-robot.custom-actor img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 10px rgba(15, 23, 42, 0.22));
 }
 
 .robot-antenna {
@@ -172,6 +192,24 @@
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
+}
+
+.import-background-btn {
+  display: grid;
+  min-height: 34px;
+  place-items: center;
+  padding: 8px 10px;
+  border: 1px dashed rgba(124, 58, 237, 0.45);
+  border-radius: var(--radius-sm);
+  background: rgba(124, 58, 237, 0.08);
+  color: #6d28d9;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.background-file-input {
+  display: none;
 }
 
 .background-controls-panel button:disabled {

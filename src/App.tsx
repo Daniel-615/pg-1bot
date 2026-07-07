@@ -8,7 +8,7 @@ import { AppHeader } from "./app/components/AppHeader";
 import { AppSidebar } from "./app/components/AppSidebar";
 import { AppWorkspace } from "./app/components/AppWorkspace";
 import { AppStatusBar } from "./app/components/AppStatusBar";
-import { ExamplesPanel } from "./app/components/ExamplesPanel";
+import { EXAMPLES, ExamplesPanel, getExamplePath } from "./app/components/ExamplesPanel";
 import {
   getArduinoCompileErrorMessage,
   resolveCompileTarget,
@@ -27,12 +27,14 @@ import { io } from "socket.io-client";
 import * as Blockly from "blockly";
 import { ToastContainer, toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import {
   Logout,
   refreshTokenRequest,
   verifySessionRequest,
   type AuthUser,
 } from "./api/auth";
+import { ExtensionFormScreen } from "./extensions/ExtensionFormScreen";
 import type {
   Issue
 } from "./core/blockEngine/semantic/arduinoSemanticAnalyzer"
@@ -57,6 +59,12 @@ type ProjectFileData = {
 
 type EditorMode = "device" | "background";
 
+function hasAdminRole(user: AuthUser | null) {
+  const roles = Array.isArray(user?.rol) ? user.rol : user?.rol ? [user.rol] : [];
+
+  return roles.some((role) => String(role).toLowerCase() === "admin");
+}
+
 function getInitialWorkspaceSnapshot() {
   return {
     board: "esp32",
@@ -67,6 +75,7 @@ function getInitialWorkspaceSnapshot() {
 
 function App() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [initialWorkspace] = useState(getInitialWorkspaceSnapshot);
   const [language, setLanguage] = useState<Language>(
     () => (i18n.language === "en" ? "en" : "es")
@@ -103,9 +112,12 @@ function App() {
   const [serialLogs, setSerialLogs] = useState<string[]>([]);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [previewRotation, setPreviewRotation] = useState(0);
   const [examplesOpen, setExamplesOpen] = useState(false);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const isExtensionsPage = location.pathname === "/extensions";
+  const canManageExtensions = hasAdminRole(authUser);
 
 
   const {
@@ -651,7 +663,59 @@ function App() {
     setExamplesOpen(false);
   }, []);
 
+  const handleSelectExample = useCallback(
+    (exampleId: string) => {
+      const example = EXAMPLES.find((item) => item.id === exampleId);
+
+      if (!example) {
+        toast.error("No se encontró el ejemplo seleccionado.");
+        return;
+      }
+
+      void fetch(getExamplePath(example))
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          return response.json() as Promise<ProjectFileData>;
+        })
+        .then((project) => {
+          if (!project.blocks || typeof project.blocks !== "object") {
+            throw new Error("El ejemplo no contiene bloques Blockly válidos.");
+          }
+
+          const nextBoard = project.board || example.boards[0] || "esp32";
+          const nextProjectName = project.projectName || example.filename.replace(/\.json$/i, "");
+
+          setBoard(nextBoard);
+          setProjectName(nextProjectName);
+          setDeviceWorkspaceBlocks(project.blocks);
+          setEditorMode("device");
+          setActiveTab("blocks");
+          setProjectLoadVersion((current) => current + 1);
+          resetSimulation(nextBoard);
+          setExamplesOpen(false);
+          toast.success(`Ejemplo ${nextProjectName} cargado.`);
+        })
+        .catch((error) => {
+          toast.error(
+            `No se pudo cargar el ejemplo. ${error instanceof Error ? error.message : ""}`
+          );
+        });
+    },
+    [resetSimulation]
+  );
+
   const handleEdit = useCallback(() => { }, []);
+
+  const handleExtensions = useCallback(() => {
+    navigate("/extensions");
+  }, [navigate]);
+
+  const handleBackToEditor = useCallback(() => {
+    navigate("/");
+  }, [navigate]);
 
   const handleFullscreen = useCallback(() => {
     if (!document.fullscreenEnabled) {
@@ -689,9 +753,7 @@ function App() {
   }, []);
 
   const handleRotate = useCallback(() => {
-    toast.info(
-      "La acción de rotar todavía no está implementada."
-    );
+    setPreviewRotation((current) => (current + 90) % 360);
   }, []);
 
   const handleLogout = useCallback(async () => {
@@ -738,12 +800,21 @@ function App() {
         onSave={handleSave}
         onFile={handleFile}
         onEdit={handleEdit}
+        onExtensions={handleExtensions}
         isUploading={isUploading}
         userName={authUser?.nombre ?? authUser?.email ?? "Usuario"}
         onLogout={handleLogout}
+        canManageExtensions={canManageExtensions}
         t={t}
       />
 
+      {isExtensionsPage ? (
+        <ExtensionFormScreen
+          user={authUser}
+          isAdmin={canManageExtensions}
+          onBack={handleBackToEditor}
+        />
+      ) : (
       <div className="main-content">
         <AppSidebar
           board={board}
@@ -755,6 +826,7 @@ function App() {
           onToggleDeviceMenu={handleToggleDeviceMenu}
           onFullscreen={handleFullscreen}
           onRotate={handleRotate}
+          previewRotation={previewRotation}
           t={t}
           ports={ports}
           selectedPort={selectedPort}
@@ -790,6 +862,7 @@ function App() {
           t={t}
         />
       </div>
+      )}
 
       <AppStatusBar
         board={board}
@@ -831,7 +904,7 @@ function App() {
       {examplesOpen && (
         <ExamplesPanel
           board={board}
-          onSelectExample={() => { }}
+          onSelectExample={handleSelectExample}
           onClose={handleCloseExamples}
         />
       )}

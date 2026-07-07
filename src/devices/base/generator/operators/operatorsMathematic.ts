@@ -22,6 +22,15 @@ export function registerOperatorsMathematicsGenerator(generator: ArduinoBaseGene
       const B= generator.valueToCode(block, "B",ORDER_ATOMIC) || "0";
       return [`${A} / ${B}`, ORDER_ATOMIC];
     }
+    generator.forBlock["math_sqrt"] = (block) => {
+      const value = generator.valueToCode(block, "VALUE", ORDER_ATOMIC) || "0";
+      return [`sqrt(${value})`, ORDER_ATOMIC];
+    };
+    generator.forBlock["math_power"] = (block) => {
+      const base = generator.valueToCode(block, "BASE", ORDER_ATOMIC) || "0";
+      const exponent = generator.valueToCode(block, "EXPONENT", ORDER_ATOMIC) || "1";
+      return [`pow(${base}, ${exponent})`, ORDER_ATOMIC];
+    };
     generator.forBlock["math_random"] = (block) => {
       const min = generator.valueToCode(block, "MIN", ORDER_NONE) || "0";
       const max = generator.valueToCode(block, "MAX", ORDER_NONE) || "10";

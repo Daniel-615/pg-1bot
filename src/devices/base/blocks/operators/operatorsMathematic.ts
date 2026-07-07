@@ -95,6 +95,39 @@ export function defineArdunoOperatorMathematicBlocks(){
             "inputsInline":true,
             "output": "Number",
             "colour":"#1a840a"
+        },
+        {
+            "type": "math_sqrt",
+            "message0": "raiz cuadrada de %1",
+            "args0": [
+                {
+                    "type": "input_value",
+                    "name": "VALUE",
+                    "check": "Number"
+                }
+            ],
+            "inputsInline": true,
+            "output": "Number",
+            "colour":"#1a840a",
+        },
+        {
+            "type": "math_power",
+            "message0": "%1 elevado a %2",
+            "args0": [
+                {
+                    "type": "input_value",
+                    "name": "BASE",
+                    "check": "Number"
+                },
+                {
+                    "type": "input_value",
+                    "name": "EXPONENT",
+                    "check": "Number"
+                }
+            ],
+            "inputsInline": true,
+            "output": "Number",
+            "colour":"#1a840a",
         }
     ])
 }

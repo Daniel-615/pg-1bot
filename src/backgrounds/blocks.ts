@@ -17,9 +17,9 @@ export function defineBackgroundBlocks() {
       message0: "mover robot %1 pasos",
       args0: [
         {
-          type: "field_number",
+          type: "input_value",
           name: "STEPS",
-          value: 20,
+          check: "Number",
         },
       ],
       previousStatement: null,
@@ -33,9 +33,9 @@ export function defineBackgroundBlocks() {
       message0: "girar robot %1 grados",
       args0: [
         {
-          type: "field_number",
+          type: "input_value",
           name: "DEGREES",
-          value: 15,
+          check: "Number",
         },
       ],
       previousStatement: null,
@@ -49,14 +49,14 @@ export function defineBackgroundBlocks() {
       message0: "ir a x %1 y %2",
       args0: [
         {
-          type: "field_number",
+          type: "input_value",
           name: "X",
-          value: 0,
+          check: "Number",
         },
         {
-          type: "field_number",
+          type: "input_value",
           name: "Y",
-          value: 0,
+          check: "Number",
         },
       ],
       previousStatement: null,
@@ -70,9 +70,9 @@ export function defineBackgroundBlocks() {
       message0: "cambiar x por %1",
       args0: [
         {
-          type: "field_number",
+          type: "input_value",
           name: "DX",
-          value: 10,
+          check: "Number",
         },
       ],
       previousStatement: null,
@@ -86,9 +86,9 @@ export function defineBackgroundBlocks() {
       message0: "cambiar y por %1",
       args0: [
         {
-          type: "field_number",
+          type: "input_value",
           name: "DY",
-          value: 10,
+          check: "Number",
         },
       ],
       previousStatement: null,
@@ -102,15 +102,34 @@ export function defineBackgroundBlocks() {
       message0: "decir %1",
       args0: [
         {
-          type: "field_input",
+          type: "input_value",
           name: "TEXT",
-          text: "Hola, soy 1bot",
+          check: ["String", "Number", "Boolean"],
         },
       ],
       previousStatement: null,
       nextStatement: null,
       colour: BACKGROUND_COLOR,
       tooltip: "Muestra un mensaje sobre el robot",
+      helpUrl: "",
+    },
+    {
+      type: "background_set_actor",
+      message0: "cambiar personaje a %1",
+      args0: [
+        {
+          type: "field_dropdown",
+          name: "ACTOR",
+          options: [
+            ["robot 1bot", "robot"],
+            ["personaje importado", "custom"],
+          ],
+        },
+      ],
+      previousStatement: null,
+      nextStatement: null,
+      colour: BACKGROUND_COLOR,
+      tooltip: "Cambia el personaje visible en el fondo",
       helpUrl: "",
     },
     {
@@ -124,6 +143,7 @@ export function defineBackgroundBlocks() {
             ["aula", "classroom"],
             ["espacio", "space"],
             ["cuadricula", "grid"],
+            ["imagen importada", "custom"],
           ],
         },
       ],
@@ -138,10 +158,9 @@ export function defineBackgroundBlocks() {
       message0: "esperar %1 ms",
       args0: [
         {
-          type: "field_number",
+          type: "input_value",
           name: "TIME",
-          value: 300,
-          min: 0,
+          check: "Number",
         },
       ],
       previousStatement: null,
