@@ -22,17 +22,17 @@ import {
   type WokwiProjectFiles,
   type WokwiSimulationState,
 } from "./simulator/wokwi";
-import {
-  getInitialWorkspaceId,
-  loadWorkspaceProject,
-  normalizeWorkspaceId,
-  saveWorkspaceProject,
-  type StoredWorkspaceProject,
-} from "./app/workspaceStorage";
 import "./App.css";
 import { io } from "socket.io-client";
 import * as Blockly from "blockly";
 import { ToastContainer, toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
+import {
+  Logout,
+  refreshTokenRequest,
+  verifySessionRequest,
+  type AuthUser,
+} from "./api/auth";
 import type {
   Issue
 } from "./core/blockEngine/semantic/arduinoSemanticAnalyzer"
@@ -55,33 +55,32 @@ type ProjectFileData = {
   blocks?: unknown;
 };
 
-function getInitialWorkspaceSnapshot() {
-  const workspaceId = getInitialWorkspaceId();
-  const project = loadWorkspaceProject(workspaceId);
+type EditorMode = "device" | "background";
 
+function getInitialWorkspaceSnapshot() {
   return {
-    workspaceId,
-    board: project?.board ?? "esp32",
-    projectName: project?.projectName ?? i18n.t("projectUntitled"),
-    blocks: project?.blocks ?? null,
+    board: "esp32",
+    projectName: i18n.t("projectUntitled"),
+    blocks: null,
   };
 }
 
 function App() {
+  const navigate = useNavigate();
   const [initialWorkspace] = useState(getInitialWorkspaceSnapshot);
   const [language, setLanguage] = useState<Language>(
     () => (i18n.language === "en" ? "en" : "es")
   );
 
-  const [workspaceId] = useState(initialWorkspace.workspaceId);
   const [projectLoadVersion, setProjectLoadVersion] = useState(0);
-  const [workspaceBlocks, setWorkspaceBlocks] = useState<unknown | null>(
+  const [deviceWorkspaceBlocks, setDeviceWorkspaceBlocks] = useState<unknown | null>(
     initialWorkspace.blocks
   );
+  const [backgroundWorkspaceBlocks, setBackgroundWorkspaceBlocks] = useState<unknown | null>(null);
+  const [editorMode, setEditorMode] = useState<EditorMode>("device");
   const [board, setBoard] = useState(initialWorkspace.board);
   const [projectName, setProjectName] = useState(initialWorkspace.projectName);
 
-  // ❌ SIMULADOR REMOVIDO
   const [activeTab, setActiveTab] = useState<
     "blocks" | "code" | "simulator"
   >("blocks");
@@ -105,12 +104,15 @@ function App() {
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [examplesOpen, setExamplesOpen] = useState(false);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
 
 
   const {
     blocklyDivRef,
     code,
     workspaceVersion,
+    workspace,
     isEditorLoading,
     showEditorLoading,
     editorLoadError,
@@ -118,20 +120,19 @@ function App() {
     semanticErrors
   } = useBlocklyEditor({
     board,
+    editorMode,
     language,
-    workspaceKey: `${workspaceId}:${projectLoadVersion}`,
-    initialBlocks: workspaceBlocks,
+    workspaceKey: `${editorMode}:${projectLoadVersion}`,
+    initialBlocks: editorMode === "background" ? backgroundWorkspaceBlocks : deviceWorkspaceBlocks,
+    enabled: !isCheckingSession,
     onSymbolTableChange: setSymbolRows,
     onWorkspaceChange: (blocks) => {
-      setWorkspaceBlocks(blocks);
-      saveWorkspaceProject({
-        version: "1.0",
-        workspaceId,
-        projectName,
-        board,
-        blocks,
-        updatedAt: new Date().toISOString(),
-      });
+      if (editorMode === "background") {
+        setBackgroundWorkspaceBlocks(blocks);
+        return;
+      }
+
+      setDeviceWorkspaceBlocks(blocks);
     },
   });
 
@@ -142,6 +143,50 @@ function App() {
     },
     [language]
   );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const verifySession = async () => {
+      const session = await verifySessionRequest();
+
+      if (session.success) {
+        if (isMounted) {
+          setAuthUser(session.data);
+          setIsCheckingSession(false);
+        }
+
+        return;
+      }
+
+      const refreshed = await refreshTokenRequest();
+
+      if (refreshed.success) {
+        const retrySession = await verifySessionRequest();
+
+        if (retrySession.success) {
+          if (isMounted) {
+            setAuthUser(retrySession.data);
+            setIsCheckingSession(false);
+          }
+
+          return;
+        }
+      }
+
+      if (isMounted) {
+        setAuthUser(null);
+        setIsCheckingSession(false);
+        navigate("/login", { replace: true });
+      }
+    };
+
+    void verifySession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate]);
 
   const clientPlatform = useMemo(() => detectClientPlatform(), []);
 
@@ -175,37 +220,6 @@ function App() {
     }
   }, [board, code]);
 
-  const getCurrentWorkspaceBlocks = useCallback(() => {
-    const workspace = workspaceRef.current;
-
-    if (!workspace) {
-      return workspaceBlocks;
-    }
-
-    return Blockly.serialization.workspaces.save(workspace);
-  }, [workspaceBlocks, workspaceRef]);
-
-  const persistWorkspace = useCallback(
-    (overrides: Partial<StoredWorkspaceProject> = {}) => {
-      const nextWorkspaceId = normalizeWorkspaceId(
-        overrides.workspaceId ?? workspaceId
-      );
-      const blocks = overrides.blocks ?? getCurrentWorkspaceBlocks();
-
-      saveWorkspaceProject({
-        version: "1.0",
-        workspaceId: nextWorkspaceId,
-        projectName: overrides.projectName ?? projectName,
-        board: overrides.board ?? board,
-        blocks,
-        wokwiProjectId: overrides.wokwiProjectId,
-        updatedAt: new Date().toISOString(),
-      });
-
-    },
-    [board, getCurrentWorkspaceBlocks, projectName, workspaceId]
-  );
-
   const resetSimulation = useCallback(
     (nextBoard: string) => {
       setWokwiState({
@@ -219,18 +233,16 @@ function App() {
   const handleProjectNameChange = useCallback(
     (value: string) => {
       setProjectName(value);
-      persistWorkspace({ projectName: value });
     },
-    [persistWorkspace]
+    []
   );
 
   const handleBoardChange = useCallback(
     (value: string) => {
       setBoard(value);
       resetSimulation(value);
-      persistWorkspace({ board: value });
     },
-    [persistWorkspace, resetSimulation]
+    [resetSimulation]
   );
 
   useEffect(() => {
@@ -616,17 +628,10 @@ function App() {
 
           setBoard(nextBoard);
           setProjectName(nextProjectName);
-          setWorkspaceBlocks(project.blocks);
+          setDeviceWorkspaceBlocks(project.blocks);
+          setEditorMode("device");
           setProjectLoadVersion((current) => current + 1);
           resetSimulation(nextBoard);
-          saveWorkspaceProject({
-            version: "1.0",
-            workspaceId,
-            projectName: nextProjectName,
-            board: nextBoard,
-            blocks: project.blocks,
-            updatedAt: new Date().toISOString(),
-          });
           toast.success(`Proyecto ${nextProjectName} cargado.`);
         })
         .catch((error) => {
@@ -635,7 +640,7 @@ function App() {
           );
         });
     },
-    [resetSimulation, workspaceId]
+    [resetSimulation]
   );
 
   const handleShowExamples = useCallback(() => {
@@ -689,6 +694,36 @@ function App() {
     );
   }, []);
 
+  const handleLogout = useCallback(async () => {
+    const response = await Logout();
+
+    if (!response.success) {
+      toast.error(response.error);
+    } else {
+      toast.success("Sesión cerrada");
+    }
+
+    setAuthUser(null);
+    navigate("/login", { replace: true });
+  }, [navigate]);
+
+  if (isCheckingSession) {
+    return (
+      <div className="app-container">
+        <div className="app-loading">Validando sesión...</div>
+        <ToastContainer
+          position="bottom-right"
+          autoClose={4200}
+          newestOnTop
+          closeOnClick
+          pauseOnHover
+          draggable
+          theme="dark"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="app-container">
         <AppHeader
@@ -704,6 +739,8 @@ function App() {
         onFile={handleFile}
         onEdit={handleEdit}
         isUploading={isUploading}
+        userName={authUser?.nombre ?? authUser?.email ?? "Usuario"}
+        onLogout={handleLogout}
         t={t}
       />
 
@@ -726,6 +763,9 @@ function App() {
           serialOpen={serialOpen}
           startSerialMonitor={startSerialMonitor}
           stopSerialMonitor={stopSerialMonitor}
+          workspace={workspace}
+          editorMode={editorMode}
+          onEditorModeChange={setEditorMode}
         />
 
         <AppWorkspace

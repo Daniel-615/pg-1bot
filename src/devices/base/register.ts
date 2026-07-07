@@ -1,4 +1,5 @@
 import { defineArduinoBlocks } from "./blocks/blocks";
+import { defineBackgroundBlocks } from "../../backgrounds/blocks";
 
 let baseBlocksRegistered = false;
 
@@ -8,6 +9,7 @@ export function registerBaseBlocks() {
   }
 
   defineArduinoBlocks();
+  defineBackgroundBlocks();
   baseBlocksRegistered = true;
 }
 

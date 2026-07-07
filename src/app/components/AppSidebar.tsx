@@ -1,5 +1,8 @@
 import { memo, useState } from "react";
+import type * as Blockly from "blockly";
 import type { DeviceOption, SerialPortOption } from "../types";
+import { BackgroundPanel, BackgroundStage } from "../../backgrounds/BackgroundPanel";
+import { initialBackgroundState, type BackgroundActorState } from "../../backgrounds/runtime";
 import "./css/AppSidebar.css";
 
 type SidebarTab = "devices" | "ports" | "background";
@@ -22,6 +25,9 @@ type AppSidebarProps = {
   serialOpen: boolean;
   startSerialMonitor: () => void;
   stopSerialMonitor: () => void;
+  workspace: Blockly.Workspace | null;
+  editorMode: "device" | "background";
+  onEditorModeChange: (mode: "device" | "background") => void;
 };
 
 export const AppSidebar = memo(function AppSidebar({
@@ -42,14 +48,28 @@ export const AppSidebar = memo(function AppSidebar({
   serialOpen,
   startSerialMonitor,
   stopSerialMonitor,
+  workspace,
+  editorMode,
+  onEditorModeChange,
 }: AppSidebarProps) {
   const [activeTab, setActiveTab] = useState<SidebarTab>("devices");
+  const [backgroundActor, setBackgroundActor] = useState<BackgroundActorState>(initialBackgroundState);
+  const [isBackgroundRunning, setIsBackgroundRunning] = useState(false);
+
+  const selectTab = (tab: SidebarTab) => {
+    setActiveTab(tab);
+    onEditorModeChange(tab === "background" ? "background" : "device");
+  };
 
   return (
     <aside className="sidebar-left">
       <div className="device-preview">
         <div className="device-image">
-          <img className="device-logo" src="/logo.webp" alt="1bot" />
+          {editorMode === "background" ? (
+            <BackgroundStage actor={backgroundActor} />
+          ) : (
+            <img className="device-logo" src="/logo.webp" alt="1bot" />
+          )}
         </div>
       </div>
 
@@ -80,19 +100,19 @@ export const AppSidebar = memo(function AppSidebar({
         <div className="tabs">
           <button
             className={`tab ${activeTab === "devices" ? "active" : ""}`}
-            onClick={() => setActiveTab("devices")}
+            onClick={() => selectTab("devices")}
           >
             {t("devices")}
           </button>
           <button
             className={`tab ${activeTab === "ports" ? "active" : ""}`}
-            onClick={() => setActiveTab("ports")}
+            onClick={() => selectTab("ports")}
           >
             Puerto COM
           </button>
           <button
             className={`tab ${activeTab === "background" ? "active" : ""}`}
-            onClick={() => setActiveTab("background")}
+            onClick={() => selectTab("background")}
           >
             {t("background")}
           </button>
@@ -173,7 +193,13 @@ export const AppSidebar = memo(function AppSidebar({
           )}
 
           {activeTab === "background" && (
-            <div className="sidebar-empty-state">{t("background")}</div>
+            <BackgroundPanel
+              workspace={workspace}
+              actor={backgroundActor}
+              isRunning={isBackgroundRunning}
+              setActor={setBackgroundActor}
+              setIsRunning={setIsBackgroundRunning}
+            />
           )}
         </div>
       </div>

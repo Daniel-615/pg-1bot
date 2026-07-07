@@ -6,6 +6,7 @@ import { registerJsonGenerators } from "./register/json";
 import { registerListGenerators } from "./register/lists";
 import { registerProgramGenerators } from "./register/program";
 import { registerVariableGenerators } from "./register/variables";
+import { registerBackgroundGenerators } from "../../../backgrounds/generator";
 import { cppStringLiteral } from "./utils/cppLiterals";
 import { inferExpressionChecks, inferListCppType } from "./utils/typeInference";
 
@@ -20,6 +21,7 @@ const baseRegistrars: GeneratorRegistrar[] = [
   registerControlGenerators,
   registerOperatorsLogicGenerator,
   registerOperatorsMathematicsGenerator,
+  registerBackgroundGenerators,
 ];
 
 export class ArduinoBaseGenerator extends Blockly.Generator {

@@ -70,6 +70,15 @@ select:focus-visible {
   overflow: hidden;
 }
 
+.app-loading {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .serial-monitor {
   position: fixed;
   bottom: 28px;

@@ -4,6 +4,7 @@ import { registerBaseBlocks } from "../register";
 
 type CreateWorkspaceManagerOptions = {
   onSymbolTableChange?: (rows: SymbolTableRow[]) => void;
+  editorMode?: "device" | "background";
 };
 
 export async function createWorkspaceManager(
@@ -12,6 +13,11 @@ export async function createWorkspaceManager(
   options: CreateWorkspaceManagerOptions = {}
 ) : Promise<Blockly.Workspace> {
   registerBaseBlocks();
+
+  if (options.editorMode === "background") {
+    const { createBackgroundWorkspace } = await import("../../../backgrounds/workspace");
+    return createBackgroundWorkspace(container);
+  }
 
   switch (board) {
     case "uno": {

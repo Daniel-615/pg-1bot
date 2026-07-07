@@ -14,7 +14,9 @@ type AppHeaderProps = {
   onRun: () => void;
   onToggleDebug: () => void;
   onExamples: () => void;
+  onLogout: () => void;
   isUploading: boolean;
+  userName: string;
   t: (key: string, options?: Record<string, string | number>) => string;
 };
 
@@ -30,7 +32,9 @@ export const AppHeader = memo(function AppHeader({
   onRun,
   onToggleDebug,
   onExamples,
+  onLogout,
   isUploading,
+  userName,
   t,
 }: AppHeaderProps) {
   return (
@@ -100,6 +104,13 @@ export const AppHeader = memo(function AppHeader({
           <span className="action-icon">⌁</span>
           <span className="btn-text">{debugMode ? t("exitDebug") : t("debug")}</span>
         </button>
+
+        <div className="user-menu">
+          <span className="user-name">{userName}</span>
+          <button className="logout-btn" onClick={onLogout}>
+            Salir
+          </button>
+        </div>
       </div>
     </header>
   );

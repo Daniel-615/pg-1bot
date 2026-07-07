@@ -6,9 +6,11 @@ import type { EditorRuntime} from "../types";
 import type { Issue } from "../../core/blockEngine/semantic/arduinoSemanticAnalyzer";
 type UseBlocklyEditorOptions = {
   board: string;
+  editorMode: "device" | "background";
   language: Language;
   workspaceKey: string;
   initialBlocks: unknown | null;
+  enabled?: boolean;
   onSymbolTableChange: (rows: SymbolTableRow[]) => void;
   onWorkspaceChange?: (blocks: unknown) => void;
 };
@@ -17,9 +19,11 @@ type UseBlocklyEditorOptions = {
 
 export function useBlocklyEditor({
   board,
+  editorMode,
   language,
   workspaceKey,
   initialBlocks,
+  enabled = true,
   onSymbolTableChange,
   onWorkspaceChange,
 }: UseBlocklyEditorOptions) {
@@ -38,15 +42,18 @@ export function useBlocklyEditor({
   const [isEditorLoading, setIsEditorLoading] = useState(true);
   const [showEditorLoading, setShowEditorLoading] = useState(false);
   const [editorLoadError, setEditorLoadError] = useState("");
+  const [workspace, setWorkspace] = useState<Blockly.Workspace | null>(null);
   const [semanticErrors, setSemanticErrors] = useState<
     Map<string, Issue[]>
   >(new Map());
 
-  initialBlocksRef.current = initialBlocks;
-  onWorkspaceChangeRef.current = onWorkspaceChange;
+  useEffect(() => {
+    initialBlocksRef.current = initialBlocks;
+    onWorkspaceChangeRef.current = onWorkspaceChange;
+  }, [initialBlocks, onWorkspaceChange]);
 
   useEffect(() => {
-    if (!blocklyDivRef.current) return;
+    if (!enabled || !blocklyDivRef.current) return;
 
     let isCancelled = false;
     let compileTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -73,6 +80,8 @@ export function useBlocklyEditor({
       if (workspaceRef.current) {
         workspaceRef.current = null;
       }
+
+      setWorkspace(null);
     };
 
     const loadEditorRuntime = async () => {
@@ -175,6 +184,7 @@ export function useBlocklyEditor({
         };
 
         localWorkspace = await runtime.createWorkspaceManager(blocklyDivRef.current, board, {
+          editorMode,
           onSymbolTableChange,
           onSemanticErrorsChange: setSemanticErrors
         });
@@ -192,6 +202,7 @@ export function useBlocklyEditor({
         }
 
         workspaceRef.current = localWorkspace;
+        setWorkspace(localWorkspace);
         localWorkspace.addChangeListener(scheduleCompile);
         scheduleCompile();
 
@@ -226,12 +237,13 @@ export function useBlocklyEditor({
       setIsEditorLoading(false);
       setShowEditorLoading(false);
     };
-  }, [board, language, onSymbolTableChange, workspaceKey]);
+  }, [board, editorMode, enabled, language, onSymbolTableChange, workspaceKey]);
 
   return {
     blocklyDivRef,
     code,
     workspaceVersion,
+    workspace,
     isEditorLoading,
     showEditorLoading,
     editorLoadError,
