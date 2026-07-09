@@ -1,6 +1,6 @@
 import { memo } from "react";
 import type { Language } from "../../i18n";
-import "./css/AppHeader.css";
+import "../../styles/AppHeader.css";
 
 type AppHeaderProps = {
   language: Language;

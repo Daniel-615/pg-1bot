@@ -1,72 +1,83 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getRoles, getRolById, deleteRol, updateRol, createRol, type Rol } from "../../services/rol.service";
+import type { Rol } from "../../services/rol.service";
+import { useCreateRol, useDeleteRol, useRol, useRoles, useUpdateRol } from "../../hooks/roles/rolesHook";
 import { ArrowLeft, Plus, Edit2, Search, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { getPaginationRange, normalizePagination, paginateRows } from "../pagination";
+import { QueryFreshness } from "../components/QueryFreshness";
 import "../../styles/rol.css";
 
+function getErrorMessage(error: unknown, fallback: string) {
+    return error instanceof Error ? error.message : fallback;
+}
+
 function RolScreen() {
-    const [roles, setRoles] = useState<Rol[]>([]);
     const [rolEditando, setRolEditando] = useState<Rol | null>(null);
-    const [rolBuscado, setRolBuscado] = useState<Rol | null>(null);
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
-    const [total, setTotal] = useState(0);
-    const [totalPages, setTotalPages] = useState(1);
-    const [serverPaginated, setServerPaginated] = useState(false);
     const [nombreEditado, setNombreEditado] = useState("");
     const [nombreNuevo, setNombreNuevo] = useState("");
     const [idBusqueda, setIdBusqueda] = useState("");
+    const [idRolBuscado, setIdRolBuscado] = useState<string | null>(null);
 
     const navigate = useNavigate();
 
-    const cargarRoles = async (nextPage = page, nextLimit = limit) => {
-        const response = await getRoles(nextPage, nextLimit);
+    const rolesQuery = useRoles(page, limit);
+    const rolBuscadoQuery = useRol(idRolBuscado);
+    const createRolMutation = useCreateRol();
+    const updateRolMutation = useUpdateRol();
+    const deleteRolMutation = useDeleteRol();
 
-        if (response.ok && response.data) {
-            const pagination = normalizePagination(response.data, response, nextPage, nextLimit);
-
-            setRoles(pagination.rows);
-            setPage(pagination.page);
-            setTotal(pagination.total);
-            setTotalPages(pagination.totalPages);
-            setServerPaginated(pagination.serverPaginated);
-        } else {
-            toast.error(response.message || "Error al cargar los roles");
-        }
-    };
+    const rolesResponse = rolesQuery.data;
+    const pagination = rolesResponse?.ok
+        ? normalizePagination<Rol>(rolesResponse.data, rolesResponse, page, limit)
+        : normalizePagination<Rol>(undefined, {}, page, limit);
+    const roles = pagination.rows;
+    const total = pagination.total;
+    const totalPages = pagination.totalPages;
+    const serverPaginated = pagination.serverPaginated;
+    const rolBuscadoResponse = rolBuscadoQuery.data;
+    const rolBuscado = rolBuscadoResponse?.ok
+        ? rolBuscadoResponse.data || rolBuscadoResponse.rol || null
+        : null;
 
     const handleEliminar = async (id: string | number) => {
         if (!window.confirm("¿Está seguro de eliminar este rol?")) return;
 
-        const response = await deleteRol(id);
+        try {
+            const response = await deleteRolMutation.mutateAsync(id);
 
-        if (response.ok) {
-            toast.success("Rol eliminado correctamente");
-            if (!serverPaginated && rolesVisibles.length === 1 && page > 1) {
-                setPage(page - 1);
+            if (response.ok) {
+                toast.success("Rol eliminado correctamente");
+                if (!serverPaginated && rolesVisibles.length === 1 && page > 1) {
+                    setPage(page - 1);
+                }
             } else {
-                cargarRoles(page, limit);
+                toast.error(response.message || "Error al eliminar el rol");
             }
-        } else {
-            toast.error(response.message || "Error al eliminar el rol");
+        } catch (error) {
+            toast.error(getErrorMessage(error, "Error al eliminar el rol"));
         }
     };
 
     const handleGuardarEdicion = async () => {
         if (!rolEditando?.id) return;
 
-        const response = await updateRol(rolEditando.id, {
-            nombre: nombreEditado,
-        });
+        try {
+            const response = await updateRolMutation.mutateAsync({
+                id: rolEditando.id,
+                data: { nombre: nombreEditado },
+            });
 
-        if (response.ok) {
-            toast.success("Rol actualizado");
-            setRolEditando(null);
-            cargarRoles(page, limit);
-        } else {
-            toast.error(response.message || "Error al actualizar el rol");
+            if (response.ok) {
+                toast.success("Rol actualizado");
+                setRolEditando(null);
+            } else {
+                toast.error(response.message || "Error al actualizar el rol");
+            }
+        } catch (error) {
+            toast.error(getErrorMessage(error, "Error al actualizar el rol"));
         }
     };
 
@@ -76,18 +87,20 @@ function RolScreen() {
             return;
         }
 
-        const response = await createRol({ nombre: nombreNuevo });
+        try {
+            const response = await createRolMutation.mutateAsync({ nombre: nombreNuevo });
 
-        if (response.ok) {
-            toast.success("Rol creado correctamente");
-            setNombreNuevo("");
-            if (page === 1) {
-                cargarRoles(1, limit);
+            if (response.ok) {
+                toast.success("Rol creado correctamente");
+                setNombreNuevo("");
+                if (page !== 1) {
+                    setPage(1);
+                }
             } else {
-                setPage(1);
+                toast.error(response.message || "Error al crear el rol");
             }
-        } else {
-            toast.error(response.message || "Error al crear el rol");
+        } catch (error) {
+            toast.error(getErrorMessage(error, "Error al crear el rol"));
         }
     };
 
@@ -97,32 +110,48 @@ function RolScreen() {
             return;
         }
 
-        const response = await getRolById(idBusqueda);
-        const rol = response.data || response.rol || null;
+        const nextId = idBusqueda.trim();
 
-        if (response.ok && rol) {
-            setRolBuscado(rol);
+        if (idRolBuscado === nextId && rolBuscadoQuery.data) {
+            const rol = rolBuscadoQuery.data.data || rolBuscadoQuery.data.rol || null;
+
+            if (!rolBuscadoQuery.data.ok || !rol) {
+                toast.error(rolBuscadoQuery.data.message || "Rol no encontrado");
+            }
         } else {
-            setRolBuscado(null);
-            toast.error(response.message || "Rol no encontrado");
+            setIdRolBuscado(nextId);
         }
     };
 
     useEffect(() => {
-        void getRoles(page, limit).then((response) => {
-            if (response.ok && response.data) {
-                const pagination = normalizePagination(response.data, response, page, limit);
+        if (rolesResponse && !rolesResponse.ok) {
+            toast.error(rolesResponse.message || "Error al cargar los roles");
+        }
+    }, [rolesResponse]);
 
-                setRoles(pagination.rows);
-                setPage(pagination.page);
-                setTotal(pagination.total);
-                setTotalPages(pagination.totalPages);
-                setServerPaginated(pagination.serverPaginated);
-            } else {
-                toast.error(response.message || "Error al cargar los roles");
-            }
-        });
-    }, [page, limit]);
+    useEffect(() => {
+        if (rolesQuery.error) {
+            toast.error(getErrorMessage(rolesQuery.error, "Error al cargar los roles"));
+        }
+    }, [rolesQuery.error]);
+
+    useEffect(() => {
+        const response = rolBuscadoResponse;
+
+        if (!idRolBuscado || !response) return;
+
+        const rol = response.data || response.rol || null;
+
+        if (!response.ok || !rol) {
+            toast.error(response.message || "Rol no encontrado");
+        }
+    }, [idRolBuscado, rolBuscadoResponse]);
+
+    useEffect(() => {
+        if (rolBuscadoQuery.error) {
+            toast.error(getErrorMessage(rolBuscadoQuery.error, "Rol no encontrado"));
+        }
+    }, [rolBuscadoQuery.error]);
 
     const rolesVisibles = paginateRows(roles, page, limit, serverPaginated);
     const { first: primerRol, last: ultimoRol } = getPaginationRange(total, page, limit);
@@ -141,6 +170,7 @@ function RolScreen() {
                     <div className="rol-title">
                         <h1>Gestión de Roles</h1>
                         <p>Administra los roles disponibles dentro del sistema.</p>
+                        <QueryFreshness updatedAt={rolesQuery.dataUpdatedAt} isFetching={rolesQuery.isFetching} />
                     </div>
                 </header>
 

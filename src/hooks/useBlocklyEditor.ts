@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import * as Blockly from "blockly";
-import i18n, { type Language } from "../../i18n";
-import type { SymbolTableRow } from "../../core/blockEngine/semantic/base/symbolTable";
-import type { EditorRuntime} from "../types";
-import type { Issue } from "../../core/blockEngine/semantic/arduinoSemanticAnalyzer";
+import i18n, { type Language } from "../i18n";
+import type { SymbolTableRow } from "../core/blockEngine/semantic/base/symbolTable";
+import type { EditorRuntime} from "../screens/types";
+import type { Issue } from "../core/blockEngine/semantic/arduinoSemanticAnalyzer";
 type UseBlocklyEditorOptions = {
   board: string;
   editorMode: "device" | "background";
@@ -91,9 +91,9 @@ export function useBlocklyEditor({
 
       const [{ applyBlocklyLocale }, { compileArduino }, { createWorkspaceManager }] =
         await Promise.all([
-          import("../../blockly/messages"),
-          import("../../core/codeEngine/arduinoCompiler"),
-          import("../../devices/base/workspace/managerWorkspace"),
+          import("../blockly/messages"),
+          import("../core/codeEngine/arduinoCompiler"),
+          import("../devices/base/workspace/managerWorkspace"),
         ]);
 
       runtimeRef.current = {

@@ -3,7 +3,7 @@ import "blockly/blocks";
 import { ArduinoSemanticAnalyzer } from "./semantic/arduinoSemanticAnalyzer";
 import type { SymbolTableRow } from "./semantic/base/symbolTable";
 import { getBaseCategories } from "../../devices/base/workspace/baseCategories";
-import type { BlocklyWorkspaceWithAnalyzer } from "../../app/types";
+import type { BlocklyWorkspaceWithAnalyzer } from "../../screens/types";
 type CreateWorkspaceOptions = {
   onSymbolTableChange?: (rows: SymbolTableRow[]) => void;
   onSemanticErrorsChange?: (

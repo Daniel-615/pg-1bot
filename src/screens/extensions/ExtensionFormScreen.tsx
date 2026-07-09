@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { toast } from "react-toastify";
 import type { AuthUser } from "../../services/auth.service";
-import { createExtension } from "../../services/extensions.service";
+import { useCreateExtension } from "../../hooks/extensions/extensionsHook";
 import "./ExtensionFormScreen.css";
 
 type ExtensionFormScreenProps = {
@@ -15,7 +15,8 @@ export function ExtensionFormScreen({ user, isAdmin, onBack }: ExtensionFormScre
   const [descripcion, setDescripcion] = useState("");
   const [version, setVersion] = useState("1.0.0");
   const [estadoId, setEstadoId] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const createExtensionMutation = useCreateExtension();
+  const isSubmitting = createExtensionMutation.isPending;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -37,10 +38,8 @@ export function ExtensionFormScreen({ user, isAdmin, onBack }: ExtensionFormScre
       return;
     }
 
-    setIsSubmitting(true);
-
     try {
-      const result = await createExtension({
+      const result = await createExtensionMutation.mutateAsync({
         nombre: nombre.trim(),
         descripcion: descripcion.trim() || undefined,
         version: version.trim(),
@@ -60,8 +59,6 @@ export function ExtensionFormScreen({ user, isAdmin, onBack }: ExtensionFormScre
       setEstadoId("");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al crear la extensión.");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 

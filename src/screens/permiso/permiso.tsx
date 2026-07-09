@@ -1,42 +1,44 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-    createPermiso,
-    deletePermiso,
-    getPermisoById,
-    getPermisos,
-    updatePermiso,
-    type Permiso,
-} from "../../services/permiso.service";
+import type { Permiso } from "../../services/permiso.service";
+import { useCreatePermiso } from "../../hooks/permisos/createPermisoHook";
+import { useDeletePermiso } from "../../hooks/permisos/deletePermiso.Hook";
+import { usePermiso } from "../../hooks/permisos/permisoGetByIdHook";
+import { usePermisos } from "../../hooks/permisos/permisosHook";
+import { useUpdatePermiso } from "../../hooks/permisos/updatePermisoHook";
 import { ArrowLeft, Edit2, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
+import { QueryFreshness } from "../components/QueryFreshness";
 import "../../styles/rol.css";
 
+function getErrorMessage(error: unknown, fallback: string) {
+    return error instanceof Error ? error.message : fallback;
+}
+
 function PermisoScreen() {
-    const [permisos, setPermisos] = useState<Permiso[]>([]);
     const [permisoEditando, setPermisoEditando] = useState<Permiso | null>(null);
-    const [permisoBuscado, setPermisoBuscado] = useState<Permiso | null>(null);
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
-    const [total, setTotal] = useState(0);
-    const [totalPages, setTotalPages] = useState(1);
     const [nombreEditado, setNombreEditado] = useState("");
     const [nombreNuevo, setNombreNuevo] = useState("");
     const [idBusqueda, setIdBusqueda] = useState("");
+    const [idPermisoBuscado, setIdPermisoBuscado] = useState<string | null>(null);
     const navigate = useNavigate();
 
-    const cargarPermisos = async (nextPage = page, nextLimit = limit) => {
-        const response = await getPermisos(nextPage, nextLimit);
+    const permisosQuery = usePermisos(page, limit);
+    const permisoBuscadoQuery = usePermiso(idPermisoBuscado);
+    const createPermisoMutation = useCreatePermiso();
+    const updatePermisoMutation = useUpdatePermiso();
+    const deletePermisoMutation = useDeletePermiso();
 
-        if (response.ok && response.data) {
-            setPermisos(response.data.rows);
-            setPage(response.data.page);
-            setTotal(response.data.total);
-            setTotalPages(response.data.totalPages || 1);
-        } else {
-            toast.error(response.message || "Error al cargar los permisos");
-        }
-    };
+    const permisosResponse = permisosQuery.data;
+    const permisos = permisosResponse?.ok && permisosResponse.data ? permisosResponse.data.rows : [];
+    const total = permisosResponse?.ok && permisosResponse.data ? permisosResponse.data.total : 0;
+    const totalPages = permisosResponse?.ok && permisosResponse.data ? permisosResponse.data.totalPages || 1 : 1;
+    const permisoBuscadoResponse = permisoBuscadoQuery.data;
+    const permisoBuscado = permisoBuscadoResponse?.ok
+        ? permisoBuscadoResponse.data || permisoBuscadoResponse.permiso || null
+        : null;
 
     const handleCrearPermiso = async () => {
         if (!nombreNuevo.trim()) {
@@ -44,18 +46,20 @@ function PermisoScreen() {
             return;
         }
 
-        const response = await createPermiso({ nombre: nombreNuevo });
+        try {
+            const response = await createPermisoMutation.mutateAsync({ nombre: nombreNuevo });
 
-        if (response.ok) {
-            toast.success("Permiso creado correctamente");
-            setNombreNuevo("");
-            if (page === 1) {
-                cargarPermisos(1, limit);
+            if (response.ok) {
+                toast.success("Permiso creado correctamente");
+                setNombreNuevo("");
+                if (page !== 1) {
+                    setPage(1);
+                }
             } else {
-                setPage(1);
+                toast.error(response.message || "Error al crear el permiso");
             }
-        } else {
-            toast.error(response.message || "Error al crear el permiso");
+        } catch (error) {
+            toast.error(getErrorMessage(error, "Error al crear el permiso"));
         }
     };
 
@@ -65,30 +69,36 @@ function PermisoScreen() {
             return;
         }
 
-        const response = await getPermisoById(idBusqueda);
-        const permiso = response.data || response.permiso || null;
+        const nextId = idBusqueda.trim();
 
-        if (response.ok && permiso) {
-            setPermisoBuscado(permiso);
+        if (idPermisoBuscado === nextId && permisoBuscadoQuery.data) {
+            const permiso = permisoBuscadoQuery.data.data || permisoBuscadoQuery.data.permiso || null;
+
+            if (!permisoBuscadoQuery.data.ok || !permiso) {
+                toast.error(permisoBuscadoQuery.data.message || "Permiso no encontrado");
+            }
         } else {
-            setPermisoBuscado(null);
-            toast.error(response.message || "Permiso no encontrado");
+            setIdPermisoBuscado(nextId);
         }
     };
 
     const handleGuardarEdicion = async () => {
         if (!permisoEditando?.id) return;
 
-        const response = await updatePermiso(permisoEditando.id, {
-            nombre: nombreEditado,
-        });
+        try {
+            const response = await updatePermisoMutation.mutateAsync({
+                id: permisoEditando.id,
+                data: { nombre: nombreEditado },
+            });
 
-        if (response.ok) {
-            toast.success("Permiso actualizado");
-            setPermisoEditando(null);
-            cargarPermisos(page, limit);
-        } else {
-            toast.error(response.message || "Error al actualizar el permiso");
+            if (response.ok) {
+                toast.success("Permiso actualizado");
+                setPermisoEditando(null);
+            } else {
+                toast.error(response.message || "Error al actualizar el permiso");
+            }
+        } catch (error) {
+            toast.error(getErrorMessage(error, "Error al actualizar el permiso"));
         }
     };
 
@@ -96,32 +106,51 @@ function PermisoScreen() {
         if (!id) return;
         if (!window.confirm("¿Está seguro de eliminar este permiso?")) return;
 
-        const response = await deletePermiso(id);
+        try {
+            const response = await deletePermisoMutation.mutateAsync(id);
 
-        if (response.ok) {
-            toast.success("Permiso eliminado correctamente");
-            if (permisos.length === 1 && page > 1) {
-                setPage(page - 1);
+            if (response.ok) {
+                toast.success("Permiso eliminado correctamente");
+                if (permisos.length === 1 && page > 1) {
+                    setPage(page - 1);
+                }
             } else {
-                cargarPermisos(page, limit);
+                toast.error(response.message || "Error al eliminar el permiso");
             }
-        } else {
-            toast.error(response.message || "Error al eliminar el permiso");
+        } catch (error) {
+            toast.error(getErrorMessage(error, "Error al eliminar el permiso"));
         }
     };
 
     useEffect(() => {
-        void getPermisos(page, limit).then((response) => {
-            if (response.ok && response.data) {
-                setPermisos(response.data.rows);
-                setPage(response.data.page);
-                setTotal(response.data.total);
-                setTotalPages(response.data.totalPages || 1);
-            } else {
-                toast.error(response.message || "Error al cargar los permisos");
-            }
-        });
-    }, [page, limit]);
+        if (permisosResponse && !permisosResponse.ok) {
+            toast.error(permisosResponse.message || "Error al cargar los permisos");
+        }
+    }, [permisosResponse]);
+
+    useEffect(() => {
+        if (permisosQuery.error) {
+            toast.error(getErrorMessage(permisosQuery.error, "Error al cargar los permisos"));
+        }
+    }, [permisosQuery.error]);
+
+    useEffect(() => {
+        const response = permisoBuscadoResponse;
+
+        if (!idPermisoBuscado || !response) return;
+
+        const permiso = response.data || response.permiso || null;
+
+        if (!response.ok || !permiso) {
+            toast.error(response.message || "Permiso no encontrado");
+        }
+    }, [idPermisoBuscado, permisoBuscadoResponse]);
+
+    useEffect(() => {
+        if (permisoBuscadoQuery.error) {
+            toast.error(getErrorMessage(permisoBuscadoQuery.error, "Permiso no encontrado"));
+        }
+    }, [permisoBuscadoQuery.error]);
 
     const primerPermiso = total === 0 ? 0 : (page - 1) * limit + 1;
     const ultimoPermiso = Math.min(page * limit, total);
@@ -137,6 +166,7 @@ function PermisoScreen() {
                     <div className="rol-title">
                         <h1>Gestión de Permisos</h1>
                         <p>Administra los permisos disponibles dentro del sistema.</p>
+                        <QueryFreshness updatedAt={permisosQuery.dataUpdatedAt} isFetching={permisosQuery.isFetching} />
                     </div>
                 </header>
 

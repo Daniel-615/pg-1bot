@@ -1,5 +1,5 @@
 import { memo } from "react";
-import "./css/AppStatusBar.css";
+import "../../styles/AppStatusBar.css";
 
 type AppStatusBarProps = {
   board: string;
@@ -23,9 +23,9 @@ export const AppStatusBar = memo(function AppStatusBar({
         <span className="status-text">
           {isConnected
             ? t("connectedStatus", {
-                board: board.toUpperCase(),
-                connection: connectionType.toUpperCase(),
-              })
+              board: board.toUpperCase(),
+              connection: connectionType.toUpperCase(),
+            })
             : t("noConnection")}
         </span>
       </div>

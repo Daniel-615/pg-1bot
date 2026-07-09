@@ -7,7 +7,7 @@ export function useUpdatePermiso() {
             id,
             data
         }: {
-            id: number;
+            id: number | string;
             data: { nombre: string };
         }) => updatePermiso(id, data),
         onSuccess: (_, variables) => {

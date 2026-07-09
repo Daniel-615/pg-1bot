@@ -2,19 +2,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import type { SymbolTableRow } from "./core/blockEngine/semantic/base/symbolTable";
 import i18n, { persistLanguage, type Language } from "./i18n";
-import { DEVICES } from "./app/constants";
-import { useBlocklyEditor } from "./app/hooks/useBlocklyEditor";
-import { AppHeader } from "./app/components/AppHeader";
-import { AppSidebar } from "./app/components/AppSidebar";
-import { AppWorkspace } from "./app/components/AppWorkspace";
-import { AppStatusBar } from "./app/components/AppStatusBar";
-import { EXAMPLES, ExamplesPanel, getExamplePath } from "./app/components/ExamplesPanel";
+import { DEVICES } from "./screens/constants";
+import { useBlocklyEditor } from "./hooks/useBlocklyEditor";
+import { AppHeader } from "./screens/components/AppHeader";
+import { AppSidebar } from "../src/screens/components/AppSidebar";
+import { AppWorkspace } from "../src/screens/components/AppWorkspace";
+import { AppStatusBar } from "../src/screens/components/AppStatusBar";
+import { EXAMPLES, ExamplesPanel, getExamplePath } from "../src/screens/components/ExamplesPanel";
 import {
   getArduinoCompileErrorMessage,
   resolveCompileTarget,
 } from "./services/arduino.compile.service";
-import { detectClientPlatform } from "./app/platform";
-import type { SerialPortOption } from "./app/types";
+import { detectClientPlatform } from "./screens/platform";
+import type { SerialPortOption } from "./screens/types";
 import {
   createWokwiProjectFiles,
   emptyWokwiSimulationState,

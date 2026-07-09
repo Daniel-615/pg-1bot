@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { ClientPlatform } from "../app/platform";
+import type { ClientPlatform } from "../screens/platform";
 import { toast } from "react-toastify";
 const DEFAULT_BACKEND_API_URL = import.meta.env.VITE_ARDUINO_API_URL;
 if (!DEFAULT_BACKEND_API_URL) {

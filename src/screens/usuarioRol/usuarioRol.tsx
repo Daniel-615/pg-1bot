@@ -1,46 +1,52 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import type { UsuarioRol } from "../../services/usuario.rol.sevice";
 import {
-    createUsuarioRol,
-    deleteUsuarioRol,
-    getUsuarioRolById,
-    getUsuarioRoles,
-    type UsuarioRol,
-} from "../../services/usuario.rol.sevice";
+    useCreateUsuarioRol,
+    useDeleteUsuarioRol,
+    useUsuarioRol,
+    useUsuarioRoles,
+} from "../../hooks/usuarioRoles/usuarioRolesHook";
 import { ArrowLeft, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { getPaginationRange, normalizePagination, paginateRows } from "../pagination";
+import { QueryFreshness } from "../components/QueryFreshness";
 import "../../styles/rol.css";
 
+function getErrorMessage(error: unknown, fallback: string) {
+    return error instanceof Error ? error.message : fallback;
+}
+
 function UsuarioRolScreen() {
-    const [relaciones, setRelaciones] = useState<UsuarioRol[]>([]);
-    const [relacionBuscada, setRelacionBuscada] = useState<UsuarioRol | null>(null);
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
-    const [total, setTotal] = useState(0);
-    const [totalPages, setTotalPages] = useState(1);
-    const [serverPaginated, setServerPaginated] = useState(false);
     const [usuarioIdNuevo, setUsuarioIdNuevo] = useState("");
     const [rolIdNuevo, setRolIdNuevo] = useState("");
     const [usuarioIdBusqueda, setUsuarioIdBusqueda] = useState("");
     const [rolIdBusqueda, setRolIdBusqueda] = useState("");
+    const [idsRelacionBuscada, setIdsRelacionBuscada] = useState<{ usuarioId: string; rolId: string } | null>(null);
     const navigate = useNavigate();
 
-    const cargarRelaciones = async (nextPage = page, nextLimit = limit) => {
-        const response = await getUsuarioRoles(nextPage, nextLimit);
+    const relacionesQuery = useUsuarioRoles(page, limit);
+    const relacionBuscadaQuery = useUsuarioRol(
+        idsRelacionBuscada?.usuarioId ?? null,
+        idsRelacionBuscada?.rolId ?? null
+    );
+    const createRelacionMutation = useCreateUsuarioRol();
+    const deleteRelacionMutation = useDeleteUsuarioRol();
 
-        if (response.ok && response.data) {
-            const pagination = normalizePagination<UsuarioRol>(response.data, response, nextPage, nextLimit);
-
-            setRelaciones(pagination.rows);
-            setPage(pagination.page);
-            setTotal(pagination.total);
-            setTotalPages(pagination.totalPages);
-            setServerPaginated(pagination.serverPaginated);
-        } else {
-            toast.error(response.message || "Error al cargar las relaciones usuario-rol");
-        }
-    };
+    const relacionesResponse = relacionesQuery.data;
+    const pagination = relacionesResponse?.ok
+        ? normalizePagination<UsuarioRol>(relacionesResponse.data, relacionesResponse, page, limit)
+        : normalizePagination<UsuarioRol>(undefined, {}, page, limit);
+    const relaciones = pagination.rows;
+    const total = pagination.total;
+    const totalPages = pagination.totalPages;
+    const serverPaginated = pagination.serverPaginated;
+    const relacionBuscadaResponse = relacionBuscadaQuery.data;
+    const relacionBuscada = relacionBuscadaResponse?.ok
+        ? relacionBuscadaResponse.data ?? null
+        : null;
 
     const handleCrearRelacion = async () => {
         const rolId = Number(rolIdNuevo);
@@ -50,19 +56,21 @@ function UsuarioRolScreen() {
             return;
         }
 
-        const response = await createUsuarioRol({ usuarioId: usuarioIdNuevo, rolId });
+        try {
+            const response = await createRelacionMutation.mutateAsync({ usuarioId: usuarioIdNuevo, rolId });
 
-        if (response.ok) {
-            toast.success("Rol asignado al usuario correctamente");
-            setUsuarioIdNuevo("");
-            setRolIdNuevo("");
-            if (page === 1) {
-                cargarRelaciones(1, limit);
+            if (response.ok) {
+                toast.success("Rol asignado al usuario correctamente");
+                setUsuarioIdNuevo("");
+                setRolIdNuevo("");
+                if (page !== 1) {
+                    setPage(1);
+                }
             } else {
-                setPage(1);
+                toast.error(response.message || "Error al asignar el rol al usuario");
             }
-        } else {
-            toast.error(response.message || "Error al asignar el rol al usuario");
+        } catch (error) {
+            toast.error(getErrorMessage(error, "Error al asignar el rol al usuario"));
         }
     };
 
@@ -72,48 +80,70 @@ function UsuarioRolScreen() {
             return;
         }
 
-        const response = await getUsuarioRolById(usuarioIdBusqueda, rolIdBusqueda);
+        const nextIds = {
+            usuarioId: usuarioIdBusqueda.trim(),
+            rolId: rolIdBusqueda.trim(),
+        };
 
-        if (response.ok && response.data) {
-            setRelacionBuscada(response.data);
+        if (
+            idsRelacionBuscada?.usuarioId === nextIds.usuarioId &&
+            idsRelacionBuscada.rolId === nextIds.rolId &&
+            relacionBuscadaQuery.data
+        ) {
+            if (!relacionBuscadaQuery.data.ok || !relacionBuscadaQuery.data.data) {
+                toast.error(relacionBuscadaQuery.data.message || "Relación usuario-rol no encontrada");
+            }
         } else {
-            setRelacionBuscada(null);
-            toast.error(response.message || "Relación usuario-rol no encontrada");
+            setIdsRelacionBuscada(nextIds);
         }
     };
 
     const handleEliminar = async (usuarioId: string, rolId: number) => {
         if (!window.confirm("¿Está seguro de eliminar esta relación usuario-rol?")) return;
 
-        const response = await deleteUsuarioRol(usuarioId, rolId);
+        try {
+            const response = await deleteRelacionMutation.mutateAsync({ usuarioId, rolId });
 
-        if (response.ok) {
-            toast.success("Relación eliminada correctamente");
-            if (relacionesVisibles.length === 1 && page > 1) {
-                setPage(page - 1);
+            if (response.ok) {
+                toast.success("Relación eliminada correctamente");
+                if (relacionesVisibles.length === 1 && page > 1) {
+                    setPage(page - 1);
+                }
             } else {
-                cargarRelaciones(page, limit);
+                toast.error(response.message || "Error al eliminar la relación usuario-rol");
             }
-        } else {
-            toast.error(response.message || "Error al eliminar la relación usuario-rol");
+        } catch (error) {
+            toast.error(getErrorMessage(error, "Error al eliminar la relación usuario-rol"));
         }
     };
 
     useEffect(() => {
-        void getUsuarioRoles(page, limit).then((response) => {
-            if (response.ok && response.data) {
-                const pagination = normalizePagination<UsuarioRol>(response.data, response, page, limit);
+        if (relacionesResponse && !relacionesResponse.ok) {
+            toast.error(relacionesResponse.message || "Error al cargar las relaciones usuario-rol");
+        }
+    }, [relacionesResponse]);
 
-                setRelaciones(pagination.rows);
-                setPage(pagination.page);
-                setTotal(pagination.total);
-                setTotalPages(pagination.totalPages);
-                setServerPaginated(pagination.serverPaginated);
-            } else {
-                toast.error(response.message || "Error al cargar las relaciones usuario-rol");
-            }
-        });
-    }, [page, limit]);
+    useEffect(() => {
+        if (relacionesQuery.error) {
+            toast.error(getErrorMessage(relacionesQuery.error, "Error al cargar las relaciones usuario-rol"));
+        }
+    }, [relacionesQuery.error]);
+
+    useEffect(() => {
+        const response = relacionBuscadaResponse;
+
+        if (!idsRelacionBuscada || !response) return;
+
+        if (!response.ok || !response.data) {
+            toast.error(response.message || "Relación usuario-rol no encontrada");
+        }
+    }, [idsRelacionBuscada, relacionBuscadaResponse]);
+
+    useEffect(() => {
+        if (relacionBuscadaQuery.error) {
+            toast.error(getErrorMessage(relacionBuscadaQuery.error, "Relación usuario-rol no encontrada"));
+        }
+    }, [relacionBuscadaQuery.error]);
 
     const relacionesVisibles = paginateRows(relaciones, page, limit, serverPaginated);
     const { first: primeraRelacion, last: ultimaRelacion } = getPaginationRange(total, page, limit);
@@ -129,6 +159,7 @@ function UsuarioRolScreen() {
                     <div className="rol-title">
                         <h1>Gestión de Usuario Rol</h1>
                         <p>Asigna y consulta roles relacionados con cada usuario.</p>
+                        <QueryFreshness updatedAt={relacionesQuery.dataUpdatedAt} isFetching={relacionesQuery.isFetching} />
                     </div>
                 </header>
 

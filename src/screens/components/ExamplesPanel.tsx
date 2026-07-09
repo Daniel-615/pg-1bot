@@ -1,6 +1,6 @@
 import { memo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import "./css/ExamplesPanel.css";
+import "../../styles/ExamplesPanel.css";
 
 export type Example = {
   id: string;
@@ -124,7 +124,7 @@ export const ExamplesPanel = memo(function ExamplesPanel({
   const { t } = useTranslation();
   const [filter, setFilter] = useState<string>(board);
 
-  const filteredExamples = EXAMPLES.filter(ex => 
+  const filteredExamples = EXAMPLES.filter(ex =>
     filter === "all" || ex.boards.includes(filter)
   );
 

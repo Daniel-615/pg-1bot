@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { registerRequest } from "../services/auth.service";
+import { useRegister } from "../hooks/auth/registerHook";
 import "../styles/LoginScreen.css";
 
 type RegisterScreenProps = {
@@ -16,7 +16,8 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
     const [lastname, setLastname] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const registerMutation = useRegister();
+    const isSubmitting = registerMutation.isPending;
 
     const handleRegister = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -34,16 +35,12 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
             return;
         }
 
-        setIsSubmitting(true);
-
-        const response = await registerRequest({
+        const response = await registerMutation.mutateAsync({
             nombre: trimmedNombre,
             email: trimmedEmail,
             apellido: trimmedLastName,
             password,
         });
-
-        setIsSubmitting(false);
 
         if (!response.success) {
             toast.error(response.error);

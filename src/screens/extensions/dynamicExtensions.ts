@@ -1,6 +1,7 @@
 import * as Blockly from "blockly";
 import type { ArduinoBaseGenerator } from "../../devices/base/generator/generator";
-import { getExtensionBlocks, type ExtensionBlockDefinition, type ExtensionBlockParameter } from "../../services/extensions.service";
+import type { ExtensionBlockDefinition, ExtensionBlockParameter } from "../../services/extensions.service";
+import { fetchExtensionBlocks } from "../../hooks/extensions/extensionsHook";
 
 const dynamicBlockTypes = new Map<string, ExtensionBlockDefinition>();
 
@@ -100,7 +101,7 @@ function defineDynamicBlocks(blocks: ExtensionBlockDefinition[]) {
 
 export async function loadDynamicExtensionCategories(board: string): Promise<Blockly.utils.toolbox.ToolboxItemInfo[]> {
   try {
-    const blocks = (await getExtensionBlocks()).filter((block) => boardMatches(block, board));
+    const blocks = (await fetchExtensionBlocks()).filter((block) => boardMatches(block, board));
 
     if (blocks.length === 0) {
       return [];

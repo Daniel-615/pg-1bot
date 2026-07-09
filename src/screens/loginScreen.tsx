@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { LoginRequest } from "../services/auth.service";
+import { useLogin } from "../hooks/auth/loginHook";
 import "../styles/LoginScreen.css";
 
 type LoginScreenProps = {
@@ -13,7 +13,8 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const loginMutation = useLogin();
+    const isSubmitting = loginMutation.isPending;
 
     const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -25,14 +26,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             return;
         }
 
-        setIsSubmitting(true);
-
-        const response = await LoginRequest({
-            email: trimmedEmail,
-            password,
-        });
-
-        setIsSubmitting(false);
+        const response = await loginMutation.mutateAsync({ email: trimmedEmail, password });
 
         if (!response.success) {
             toast.error(response.error);

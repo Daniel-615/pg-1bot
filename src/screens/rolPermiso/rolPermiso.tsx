@@ -1,46 +1,52 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import type { RolPermiso } from "../../services/rol.permiso.service";
 import {
-    createRolPermiso,
-    deleteRolPermiso,
-    getRolPermisoById,
-    getRolPermisos,
-    type RolPermiso,
-} from "../../services/rol.permiso.service";
+    useCreateRolPermiso,
+    useDeleteRolPermiso,
+    useRolPermiso,
+    useRolPermisos,
+} from "../../hooks/rolPermisos/rolPermisosHook";
 import { ArrowLeft, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { getPaginationRange, normalizePagination, paginateRows } from "../pagination";
+import { QueryFreshness } from "../components/QueryFreshness";
 import "../../styles/rol.css";
 
+function getErrorMessage(error: unknown, fallback: string) {
+    return error instanceof Error ? error.message : fallback;
+}
+
 function RolPermisoScreen() {
-    const [relaciones, setRelaciones] = useState<RolPermiso[]>([]);
-    const [relacionBuscada, setRelacionBuscada] = useState<RolPermiso | null>(null);
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
-    const [total, setTotal] = useState(0);
-    const [totalPages, setTotalPages] = useState(1);
-    const [serverPaginated, setServerPaginated] = useState(false);
     const [rolIdNuevo, setRolIdNuevo] = useState("");
     const [permisoIdNuevo, setPermisoIdNuevo] = useState("");
     const [rolIdBusqueda, setRolIdBusqueda] = useState("");
     const [permisoIdBusqueda, setPermisoIdBusqueda] = useState("");
+    const [idsRelacionBuscada, setIdsRelacionBuscada] = useState<{ rolId: string; permisoId: string } | null>(null);
     const navigate = useNavigate();
 
-    const cargarRelaciones = async (nextPage = page, nextLimit = limit) => {
-        const response = await getRolPermisos(nextPage, nextLimit);
+    const relacionesQuery = useRolPermisos(page, limit);
+    const relacionBuscadaQuery = useRolPermiso(
+        idsRelacionBuscada?.rolId ?? null,
+        idsRelacionBuscada?.permisoId ?? null
+    );
+    const createRelacionMutation = useCreateRolPermiso();
+    const deleteRelacionMutation = useDeleteRolPermiso();
 
-        if ((response.ok || response.success) && response.data) {
-            const pagination = normalizePagination<RolPermiso>(response.data, response, nextPage, nextLimit);
-
-            setRelaciones(pagination.rows);
-            setPage(pagination.page);
-            setTotal(pagination.total);
-            setTotalPages(pagination.totalPages);
-            setServerPaginated(pagination.serverPaginated);
-        } else {
-            toast.error(response.message || "Error al cargar las relaciones rol-permiso");
-        }
-    };
+    const relacionesResponse = relacionesQuery.data;
+    const pagination = relacionesResponse?.ok || relacionesResponse?.success
+        ? normalizePagination<RolPermiso>(relacionesResponse.data, relacionesResponse, page, limit)
+        : normalizePagination<RolPermiso>(undefined, {}, page, limit);
+    const relaciones = pagination.rows;
+    const total = pagination.total;
+    const totalPages = pagination.totalPages;
+    const serverPaginated = pagination.serverPaginated;
+    const relacionBuscadaResponse = relacionBuscadaQuery.data;
+    const relacionBuscada = (relacionBuscadaResponse?.ok || relacionBuscadaResponse?.success)
+        ? relacionBuscadaResponse.data ?? null
+        : null;
 
     const handleCrearRelacion = async () => {
         const rolId = Number(rolIdNuevo);
@@ -51,19 +57,21 @@ function RolPermisoScreen() {
             return;
         }
 
-        const response = await createRolPermiso({ rolId, permisoId });
+        try {
+            const response = await createRelacionMutation.mutateAsync({ rolId, permisoId });
 
-        if (response.ok || response.success) {
-            toast.success("Permiso asignado al rol correctamente");
-            setRolIdNuevo("");
-            setPermisoIdNuevo("");
-            if (page === 1) {
-                cargarRelaciones(1, limit);
+            if (response.ok || response.success) {
+                toast.success("Permiso asignado al rol correctamente");
+                setRolIdNuevo("");
+                setPermisoIdNuevo("");
+                if (page !== 1) {
+                    setPage(1);
+                }
             } else {
-                setPage(1);
+                toast.error(response.message || "Error al asignar el permiso al rol");
             }
-        } else {
-            toast.error(response.message || "Error al asignar el permiso al rol");
+        } catch (error) {
+            toast.error(getErrorMessage(error, "Error al asignar el permiso al rol"));
         }
     };
 
@@ -73,48 +81,70 @@ function RolPermisoScreen() {
             return;
         }
 
-        const response = await getRolPermisoById(rolIdBusqueda, permisoIdBusqueda);
+        const nextIds = {
+            rolId: rolIdBusqueda.trim(),
+            permisoId: permisoIdBusqueda.trim(),
+        };
 
-        if ((response.ok || response.success) && response.data) {
-            setRelacionBuscada(response.data);
+        if (
+            idsRelacionBuscada?.rolId === nextIds.rolId &&
+            idsRelacionBuscada.permisoId === nextIds.permisoId &&
+            relacionBuscadaQuery.data
+        ) {
+            if ((!relacionBuscadaQuery.data.ok && !relacionBuscadaQuery.data.success) || !relacionBuscadaQuery.data.data) {
+                toast.error(relacionBuscadaQuery.data.message || "Relación rol-permiso no encontrada");
+            }
         } else {
-            setRelacionBuscada(null);
-            toast.error(response.message || "Relación rol-permiso no encontrada");
+            setIdsRelacionBuscada(nextIds);
         }
     };
 
     const handleEliminar = async (rolId: number, permisoId: number) => {
         if (!window.confirm("¿Está seguro de eliminar esta relación rol-permiso?")) return;
 
-        const response = await deleteRolPermiso(rolId, permisoId);
+        try {
+            const response = await deleteRelacionMutation.mutateAsync({ rolId, permisoId });
 
-        if (response.ok || response.success) {
-            toast.success("Relación eliminada correctamente");
-            if (relacionesVisibles.length === 1 && page > 1) {
-                setPage(page - 1);
+            if (response.ok || response.success) {
+                toast.success("Relación eliminada correctamente");
+                if (relacionesVisibles.length === 1 && page > 1) {
+                    setPage(page - 1);
+                }
             } else {
-                cargarRelaciones(page, limit);
+                toast.error(response.message || "Error al eliminar la relación rol-permiso");
             }
-        } else {
-            toast.error(response.message || "Error al eliminar la relación rol-permiso");
+        } catch (error) {
+            toast.error(getErrorMessage(error, "Error al eliminar la relación rol-permiso"));
         }
     };
 
     useEffect(() => {
-        void getRolPermisos(page, limit).then((response) => {
-            if ((response.ok || response.success) && response.data) {
-                const pagination = normalizePagination<RolPermiso>(response.data, response, page, limit);
+        if (relacionesResponse && !relacionesResponse.ok && !relacionesResponse.success) {
+            toast.error(relacionesResponse.message || "Error al cargar las relaciones rol-permiso");
+        }
+    }, [relacionesResponse]);
 
-                setRelaciones(pagination.rows);
-                setPage(pagination.page);
-                setTotal(pagination.total);
-                setTotalPages(pagination.totalPages);
-                setServerPaginated(pagination.serverPaginated);
-            } else {
-                toast.error(response.message || "Error al cargar las relaciones rol-permiso");
-            }
-        });
-    }, [page, limit]);
+    useEffect(() => {
+        if (relacionesQuery.error) {
+            toast.error(getErrorMessage(relacionesQuery.error, "Error al cargar las relaciones rol-permiso"));
+        }
+    }, [relacionesQuery.error]);
+
+    useEffect(() => {
+        const response = relacionBuscadaResponse;
+
+        if (!idsRelacionBuscada || !response) return;
+
+        if ((!response.ok && !response.success) || !response.data) {
+            toast.error(response.message || "Relación rol-permiso no encontrada");
+        }
+    }, [idsRelacionBuscada, relacionBuscadaResponse]);
+
+    useEffect(() => {
+        if (relacionBuscadaQuery.error) {
+            toast.error(getErrorMessage(relacionBuscadaQuery.error, "Relación rol-permiso no encontrada"));
+        }
+    }, [relacionBuscadaQuery.error]);
 
     const relacionesVisibles = paginateRows(relaciones, page, limit, serverPaginated);
     const { first: primeraRelacion, last: ultimaRelacion } = getPaginationRange(total, page, limit);
@@ -130,6 +160,7 @@ function RolPermisoScreen() {
                     <div className="rol-title">
                         <h1>Gestión de Rol Permiso</h1>
                         <p>Asigna y consulta permisos relacionados con cada rol.</p>
+                        <QueryFreshness updatedAt={relacionesQuery.dataUpdatedAt} isFetching={relacionesQuery.isFetching} />
                     </div>
                 </header>
 

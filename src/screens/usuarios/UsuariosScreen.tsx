@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     Button,
@@ -10,15 +10,14 @@ import {
 import { ArrowLeft, RefreshCw, Users } from "lucide-react";
 import { toast } from "react-toastify";
 import {
-    findAllUsuarios,
-    findAllUsuariosActivos,
     type Usuario,
     type UsuarioPagination,
     type UsuarioResponse,
 } from "../../services/usuario.service";
+import { useUsuarios, type UsuarioFilter } from "../../hooks/usuarios/usuariosHook";
+import { QueryFreshness } from "../components/QueryFreshness";
 import "../../styles/UsuariosScreen.css";
 
-type UsuarioFilter = "todos" | "activos" | "inactivos";
 type UsuarioPayload = UsuarioResponse<Usuario[] | UsuarioPagination> | Usuario[];
 
 const filterOptions: { key: UsuarioFilter; label: string }[] = [
@@ -127,37 +126,28 @@ function getErrorMessage(error: unknown) {
 }
 
 function UsuariosScreen() {
-    const [usuarios, setUsuarios] = useState<Usuario[]>([]);
     const [filter, setFilter] = useState<UsuarioFilter>("todos");
-    const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
-
-    const cargarUsuarios = useCallback(async (nextFilter = filter) => {
-        setIsLoading(true);
-
-        try {
-            const response = nextFilter === "activos"
-                ? await findAllUsuariosActivos()
-                : await findAllUsuarios();
-
-            if (!Array.isArray(response) && response.ok === false) {
-                toast.error(response.message || "Error al cargar los usuarios");
-                setUsuarios([]);
-                return;
-            }
-
-            setUsuarios(extractUsuarios(response));
-        } catch (error) {
-            toast.error(getErrorMessage(error));
-            setUsuarios([]);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [filter]);
+    const usuariosQuery = useUsuarios(filter);
+    const usuariosPayload = usuariosQuery.data;
+    const isLoading = usuariosQuery.isLoading || usuariosQuery.isFetching;
+    const usuarios = usuariosPayload && (!Array.isArray(usuariosPayload) && usuariosPayload.ok === false)
+        ? []
+        : usuariosPayload
+            ? extractUsuarios(usuariosPayload)
+            : [];
 
     useEffect(() => {
-        void cargarUsuarios(filter);
-    }, [cargarUsuarios, filter]);
+        if (!Array.isArray(usuariosPayload) && usuariosPayload?.ok === false) {
+            toast.error(usuariosPayload.message || "Error al cargar los usuarios");
+        }
+    }, [usuariosPayload]);
+
+    useEffect(() => {
+        if (usuariosQuery.error) {
+            toast.error(getErrorMessage(usuariosQuery.error));
+        }
+    }, [usuariosQuery.error]);
 
     const usuariosVisibles = filter === "inactivos"
         ? usuarios.filter((usuario) => getUsuarioActivo(usuario) === false)
@@ -183,6 +173,7 @@ function UsuariosScreen() {
                     <span className="usuarios-eyebrow">Panel de administración</span>
                     <h1>Usuarios</h1>
                     <p>Consulta los usuarios registrados y filtra por estado activo o no activo.</p>
+                    <QueryFreshness updatedAt={usuariosQuery.dataUpdatedAt} isFetching={usuariosQuery.isFetching} />
                 </div>
             </section>
 
@@ -248,7 +239,7 @@ function UsuariosScreen() {
                                 variant="secondary"
                                 className="usuarios-refresh"
                                 isDisabled={isLoading}
-                                onPress={() => void cargarUsuarios(filter)}
+                                onPress={() => void usuariosQuery.refetch()}
                             >
                                 {isLoading ? <Spinner size="sm" /> : <RefreshCw size={18} />}
                                 <span>Actualizar</span>
