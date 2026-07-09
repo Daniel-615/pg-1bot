@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Home } from "lucide-react";
-import "../../public/styles/NotFoundScreen.css";
+import "../styles/NotFoundScreen.css";
 
 function AccessDeniedScreen() {
     const navigate = useNavigate();

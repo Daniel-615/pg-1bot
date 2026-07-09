@@ -1,6 +1,6 @@
 import { ArrowLeft, Home } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import "../../public/styles/NotFoundScreen.css";
+import "../styles/NotFoundScreen.css";
 
 function NotFoundScreen() {
     const navigate = useNavigate();

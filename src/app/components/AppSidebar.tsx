@@ -1,7 +1,7 @@
 import { memo, useState } from "react";
 import type * as Blockly from "blockly";
 import type { DeviceOption, SerialPortOption } from "../types";
-import { BackgroundPanel, BackgroundStage } from "../../backgrounds/BackgroundPanel";
+import { BackgroundPanel, BackgroundStage } from "../../screens/background/BackgroundPanel";
 import { initialBackgroundState, type BackgroundActorState } from "../../backgrounds/runtime";
 import "./css/AppSidebar.css";
 

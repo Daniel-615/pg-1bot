@@ -10,7 +10,7 @@ import {
 import { ArrowLeft, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { getPaginationRange, normalizePagination, paginateRows } from "../pagination";
-import "../../../public/styles/rol.css";
+import "../../styles/rol.css";
 
 function UsuarioRolScreen() {
     const [relaciones, setRelaciones] = useState<UsuarioRol[]>([]);

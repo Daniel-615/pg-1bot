@@ -10,7 +10,7 @@ import {
 } from "../../services/permiso.service";
 import { ArrowLeft, Edit2, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
-import "../../../public/styles/rol.css";
+import "../../styles/rol.css";
 
 function PermisoScreen() {
     const [permisos, setPermisos] = useState<Permiso[]>([]);

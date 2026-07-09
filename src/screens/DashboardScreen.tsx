@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowUpRight, ShieldCheck } from "lucide-react";
 import type { AuthUser } from "../services/auth.service";
-import "../../public/styles/DashboardScreen.css";
+import "../styles/DashboardScreen.css";
 
 type MenuItem = {
     title: string;

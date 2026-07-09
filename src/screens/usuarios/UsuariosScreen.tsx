@@ -16,7 +16,7 @@ import {
     type UsuarioPagination,
     type UsuarioResponse,
 } from "../../services/usuario.service";
-import "../../../public/styles/UsuariosScreen.css";
+import "../../styles/UsuariosScreen.css";
 
 type UsuarioFilter = "todos" | "activos" | "inactivos";
 type UsuarioPayload = UsuarioResponse<Usuario[] | UsuarioPagination> | Usuario[];

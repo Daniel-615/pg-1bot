@@ -4,7 +4,7 @@ import { getRoles, getRolById, deleteRol, updateRol, createRol, type Rol } from 
 import { ArrowLeft, Plus, Edit2, Search, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { getPaginationRange, normalizePagination, paginateRows } from "../pagination";
-import "../../../public/styles/rol.css";
+import "../../styles/rol.css";
 
 function RolScreen() {
     const [roles, setRoles] = useState<Rol[]>([]);
