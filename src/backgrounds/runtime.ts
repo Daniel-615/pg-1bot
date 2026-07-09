@@ -15,6 +15,8 @@ export type BackgroundActorState = {
   message: string;
 };
 
+type BackgroundValue = number | string | boolean;
+
 export const backgroundScenes: Array<{ id: BackgroundScene; label: string }> = [
   { id: "classroom", label: "Aula" },
   { id: "space", label: "Espacio" },
@@ -41,13 +43,26 @@ const BACKGROUND_BLOCKS = new Set([
   "background_go_to",
   "background_change_x",
   "background_change_y",
+  "background_set_x",
+  "background_set_y",
+  "background_point_direction",
+  "background_reset_position",
   "background_say",
+  "background_hide_message",
   "background_set_actor",
   "background_set_scene",
   "background_wait_ms",
   "variables_set",
   "variables_set_dynamic",
+  "if",
+  "if_else",
+  "for_range",
+  "while_repeat",
+  "do_while",
+  "repeat_until",
 ]);
+
+const MAX_BACKGROUND_LOOP_ITERATIONS = 100;
 
 function clamp(value: number) {
   return Math.max(-78, Math.min(78, value));
@@ -127,6 +142,76 @@ function evaluateNumber(
   }
 }
 
+function evaluateValue(
+  block: Blockly.Block | null,
+  fallback: BackgroundValue = 0,
+  variables: Record<string, number> = {}
+): BackgroundValue {
+  if (!block) {
+    return fallback;
+  }
+
+  switch (block.type) {
+    case "string":
+      return readText(block, "STRING");
+
+    case "logic_boolean":
+    case "logic_greater":
+    case "logic_less":
+    case "logic_equal":
+    case "logic_and":
+    case "logic_or":
+    case "logic_not":
+      return evaluateBoolean(block, variables);
+
+    default:
+      return evaluateNumber(block, typeof fallback === "number" ? fallback : 0, variables);
+  }
+}
+
+function toBoolean(value: BackgroundValue) {
+  if (typeof value === "string") {
+    return value.length > 0;
+  }
+
+  return Boolean(value);
+}
+
+function evaluateBoolean(
+  block: Blockly.Block | null,
+  variables: Record<string, number> = {}
+) {
+  if (!block) {
+    return false;
+  }
+
+  switch (block.type) {
+    case "logic_boolean":
+      return block.getFieldValue("BOOL") === "TRUE";
+
+    case "logic_greater":
+      return evaluateValue(block.getInputTargetBlock("A"), 0, variables) > evaluateValue(block.getInputTargetBlock("B"), 0, variables);
+
+    case "logic_less":
+      return evaluateValue(block.getInputTargetBlock("A"), 0, variables) < evaluateValue(block.getInputTargetBlock("B"), 0, variables);
+
+    case "logic_equal":
+      return evaluateValue(block.getInputTargetBlock("A"), 0, variables) === evaluateValue(block.getInputTargetBlock("B"), 0, variables);
+
+    case "logic_and":
+      return toBoolean(evaluateValue(block.getInputTargetBlock("A"), false, variables)) && toBoolean(evaluateValue(block.getInputTargetBlock("B"), false, variables));
+
+    case "logic_or":
+      return toBoolean(evaluateValue(block.getInputTargetBlock("A"), false, variables)) || toBoolean(evaluateValue(block.getInputTargetBlock("B"), false, variables));
+
+    case "logic_not":
+      return !toBoolean(evaluateValue(block.getInputTargetBlock("BOOL"), false, variables));
+
+    default:
+      return toBoolean(evaluateValue(block, 0, variables));
+  }
+}
+
 function readText(block: Blockly.Block, field: string) {
   return String(block.getFieldValue(field) ?? "");
 }
@@ -136,15 +221,8 @@ function evaluateMessage(block: Blockly.Block | null, variables: Record<string, 
     return "";
   }
 
-  if (block.type === "string") {
-    return readText(block, "STRING");
-  }
-
-  if (block.type === "logic_boolean") {
-    return block.getFieldValue("BOOL") === "TRUE" ? "verdadero" : "falso";
-  }
-
-  return String(evaluateNumber(block, 0, variables));
+  const value = evaluateValue(block, "", variables);
+  return typeof value === "boolean" ? (value ? "verdadero" : "falso") : String(value);
 }
 
 function isBackgroundBlock(block: Blockly.Block) {
@@ -210,10 +288,42 @@ function runBlock(block: Blockly.Block, state: BackgroundActorState) {
         y: clamp(state.y + evaluateNumber(block.getInputTargetBlock("DY"), readNumber(block, "DY"), state.variables)),
       };
 
+    case "background_set_x":
+      return {
+        ...state,
+        x: clamp(evaluateNumber(block.getInputTargetBlock("X"), readNumber(block, "X"), state.variables)),
+      };
+
+    case "background_set_y":
+      return {
+        ...state,
+        y: clamp(evaluateNumber(block.getInputTargetBlock("Y"), readNumber(block, "Y"), state.variables)),
+      };
+
+    case "background_point_direction":
+      return {
+        ...state,
+        direction: evaluateNumber(block.getInputTargetBlock("DEGREES"), readNumber(block, "DEGREES"), state.variables) % 360,
+      };
+
+    case "background_reset_position":
+      return {
+        ...state,
+        x: 0,
+        y: 0,
+        direction: 0,
+      };
+
     case "background_say":
       return {
         ...state,
         message: evaluateMessage(block.getInputTargetBlock("TEXT"), state.variables),
+      };
+
+    case "background_hide_message":
+      return {
+        ...state,
+        message: "",
       };
 
     case "background_set_actor": {
@@ -234,9 +344,95 @@ function runBlock(block: Blockly.Block, state: BackgroundActorState) {
       };
     }
 
+    case "if":
+      return evaluateBoolean(block.getInputTargetBlock("CONDITION"), state.variables)
+        ? runStatementChain(block.getInputTargetBlock("IF_BODY"), state)
+        : state;
+
+    case "if_else":
+      return evaluateBoolean(block.getInputTargetBlock("CONDITION"), state.variables)
+        ? runStatementChain(block.getInputTargetBlock("IF_BODY"), state)
+        : runStatementChain(block.getInputTargetBlock("ELSE_BODY"), state);
+
+    case "for_range": {
+      const variableName = getVariableName(block);
+      const from = evaluateNumber(block.getInputTargetBlock("FROM"), 0, state.variables);
+      const to = evaluateNumber(block.getInputTargetBlock("TO"), 0, state.variables);
+      const stepValue = Number(block.getFieldValue("STEP") ?? 1);
+      const step = stepValue === 0 ? 1 : stepValue;
+      let nextState = state;
+      let iterations = 0;
+
+      for (let value = from; step > 0 ? value <= to : value >= to; value += step) {
+        if (iterations >= MAX_BACKGROUND_LOOP_ITERATIONS) {
+          break;
+        }
+
+        nextState = {
+          ...nextState,
+          variables: variableName ? { ...nextState.variables, [variableName]: value } : nextState.variables,
+        };
+        nextState = runStatementChain(block.getInputTargetBlock("BODY"), nextState);
+        iterations += 1;
+      }
+
+      return nextState;
+    }
+
+    case "while_repeat": {
+      let nextState = state;
+      let iterations = 0;
+
+      while (evaluateBoolean(block.getInputTargetBlock("CONDITION"), nextState.variables) && iterations < MAX_BACKGROUND_LOOP_ITERATIONS) {
+        nextState = runStatementChain(block.getInputTargetBlock("BODY"), nextState);
+        iterations += 1;
+      }
+
+      return nextState;
+    }
+
+    case "do_while": {
+      let nextState = state;
+      let iterations = 0;
+
+      do {
+        nextState = runStatementChain(block.getInputTargetBlock("BODY"), nextState);
+        iterations += 1;
+      } while (evaluateBoolean(block.getInputTargetBlock("CONDITION"), nextState.variables) && iterations < MAX_BACKGROUND_LOOP_ITERATIONS);
+
+      return nextState;
+    }
+
+    case "repeat_until": {
+      let nextState = state;
+      let iterations = 0;
+
+      while (!evaluateBoolean(block.getInputTargetBlock("CONDITION"), nextState.variables) && iterations < MAX_BACKGROUND_LOOP_ITERATIONS) {
+        nextState = runStatementChain(block.getInputTargetBlock("BODY"), nextState);
+        iterations += 1;
+      }
+
+      return nextState;
+    }
+
     default:
       return state;
   }
+}
+
+function runStatementChain(
+  block: Blockly.Block | null,
+  currentState: BackgroundActorState
+) {
+  let state = currentState;
+  let currentBlock = block;
+
+  while (currentBlock) {
+    state = runBlock(currentBlock, state);
+    currentBlock = currentBlock.getNextBlock();
+  }
+
+  return state;
 }
 
 function sleep(milliseconds: number) {
@@ -257,13 +453,106 @@ export function runBackgroundProgram(
   const chains = getBackgroundChains(workspace);
 
   for (const chain of chains) {
-    let block: Blockly.Block | null =
+    const block: Blockly.Block | null =
       chain.type === "background_when_run" ? chain.getNextBlock() : chain;
 
-    while (block) {
-      state = runBlock(block, state);
-      block = block.getNextBlock();
+    state = runStatementChain(block, state);
+  }
+
+  return state;
+}
+
+async function playStatementChain(
+  block: Blockly.Block | null,
+  currentState: BackgroundActorState,
+  onStep: (state: BackgroundActorState) => void
+) {
+  let state = currentState;
+  let currentBlock = block;
+
+  while (currentBlock) {
+    switch (currentBlock.type) {
+      case "background_wait_ms":
+        await sleep(Math.min(evaluateNumber(currentBlock.getInputTargetBlock("TIME"), readNumber(currentBlock, "TIME"), state.variables), 3000));
+        break;
+
+      case "if":
+        if (evaluateBoolean(currentBlock.getInputTargetBlock("CONDITION"), state.variables)) {
+          state = await playStatementChain(currentBlock.getInputTargetBlock("IF_BODY"), state, onStep);
+        }
+        break;
+
+      case "if_else":
+        state = await playStatementChain(
+          evaluateBoolean(currentBlock.getInputTargetBlock("CONDITION"), state.variables)
+            ? currentBlock.getInputTargetBlock("IF_BODY")
+            : currentBlock.getInputTargetBlock("ELSE_BODY"),
+          state,
+          onStep
+        );
+        break;
+
+      case "for_range": {
+        const variableName = getVariableName(currentBlock);
+        const from = evaluateNumber(currentBlock.getInputTargetBlock("FROM"), 0, state.variables);
+        const to = evaluateNumber(currentBlock.getInputTargetBlock("TO"), 0, state.variables);
+        const stepValue = Number(currentBlock.getFieldValue("STEP") ?? 1);
+        const step = stepValue === 0 ? 1 : stepValue;
+        let iterations = 0;
+
+        for (let value = from; step > 0 ? value <= to : value >= to; value += step) {
+          if (iterations >= MAX_BACKGROUND_LOOP_ITERATIONS) {
+            break;
+          }
+
+          state = {
+            ...state,
+            variables: variableName ? { ...state.variables, [variableName]: value } : state.variables,
+          };
+          state = await playStatementChain(currentBlock.getInputTargetBlock("BODY"), state, onStep);
+          iterations += 1;
+        }
+        break;
+      }
+
+      case "while_repeat": {
+        let iterations = 0;
+
+        while (evaluateBoolean(currentBlock.getInputTargetBlock("CONDITION"), state.variables) && iterations < MAX_BACKGROUND_LOOP_ITERATIONS) {
+          state = await playStatementChain(currentBlock.getInputTargetBlock("BODY"), state, onStep);
+          iterations += 1;
+        }
+        break;
+      }
+
+      case "do_while": {
+        let iterations = 0;
+
+        do {
+          state = await playStatementChain(currentBlock.getInputTargetBlock("BODY"), state, onStep);
+          iterations += 1;
+        } while (evaluateBoolean(currentBlock.getInputTargetBlock("CONDITION"), state.variables) && iterations < MAX_BACKGROUND_LOOP_ITERATIONS);
+        break;
+      }
+
+      case "repeat_until": {
+        let iterations = 0;
+
+        while (!evaluateBoolean(currentBlock.getInputTargetBlock("CONDITION"), state.variables) && iterations < MAX_BACKGROUND_LOOP_ITERATIONS) {
+          state = await playStatementChain(currentBlock.getInputTargetBlock("BODY"), state, onStep);
+          iterations += 1;
+        }
+        break;
+      }
+
+      default:
+        state = runBlock(currentBlock, state);
+        onStep(state);
+        await sleep(220);
+        break;
     }
+
+    currentBlock = currentBlock.getNextBlock();
   }
 
   return state;
@@ -282,20 +571,10 @@ export async function playBackgroundProgram(
   const chains = getBackgroundChains(workspace);
 
   for (const chain of chains) {
-    let block: Blockly.Block | null =
+    const block: Blockly.Block | null =
       chain.type === "background_when_run" ? chain.getNextBlock() : chain;
 
-    while (block) {
-      if (block.type === "background_wait_ms") {
-        await sleep(Math.min(evaluateNumber(block.getInputTargetBlock("TIME"), readNumber(block, "TIME"), state.variables), 3000));
-      } else {
-        state = runBlock(block, state);
-        onStep(state);
-        await sleep(220);
-      }
-
-      block = block.getNextBlock();
-    }
+    state = await playStatementChain(block, state, onStep);
   }
 
   return state;

@@ -43,9 +43,31 @@ export function registerBackgroundGenerators(generator: ArduinoBaseGenerator) {
     return `// Fondo: cambiar y por ${getNumberCode(generator, block, "DY")}\n`;
   };
 
+  generator.forBlock["background_set_x"] = (block: Blockly.Block) => {
+    return `// Fondo: fijar x en ${getNumberCode(generator, block, "X")}\n`;
+  };
+
+  generator.forBlock["background_set_y"] = (block: Blockly.Block) => {
+    return `// Fondo: fijar y en ${getNumberCode(generator, block, "Y")}\n`;
+  };
+
+  generator.forBlock["background_point_direction"] = (block: Blockly.Block) => {
+    return `// Fondo: apuntar robot a ${getNumberCode(generator, block, "DEGREES")} grados\n`;
+  };
+
+  generator.forBlock["background_reset_position"] = (block: Blockly.Block) => {
+    void block;
+    return "// Fondo: volver al centro\n";
+  };
+
   generator.forBlock["background_say"] = (block: Blockly.Block) => {
     const text = generator.valueToCode(block, "TEXT", 99) || getField(block, "TEXT");
     return `// Fondo: decir ${text}\n`;
+  };
+
+  generator.forBlock["background_hide_message"] = (block: Blockly.Block) => {
+    void block;
+    return "// Fondo: ocultar mensaje\n";
   };
 
   generator.forBlock["background_set_actor"] = (block: Blockly.Block) => {

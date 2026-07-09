@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { registerRequest } from "../api/auth";
 import "./LoginScreen.css";
@@ -9,6 +9,7 @@ type RegisterScreenProps = {
 };
 
 export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProps) {
+    const navigate = useNavigate();
     const [nombre, setNombre] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -51,6 +52,7 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
 
         toast.success("Cuenta creada exitosamente");
         onRegisterSuccess?.();
+        navigate("/", { replace: true });
     };
 
     return (

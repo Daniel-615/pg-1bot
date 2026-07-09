@@ -25,7 +25,7 @@ import {
 import "./App.css";
 import { io } from "socket.io-client";
 import * as Blockly from "blockly";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 import {
@@ -59,10 +59,10 @@ type ProjectFileData = {
 
 type EditorMode = "device" | "background";
 
-function hasAdminRole(user: AuthUser | null) {
+function canManageDashboardContent(user: AuthUser | null) {
   const roles = Array.isArray(user?.rol) ? user.rol : user?.rol ? [user.rol] : [];
 
-  return roles.some((role) => String(role).toLowerCase() === "admin");
+  return roles.some((role) => ["admin", "1botpersonal"].includes(String(role).toLowerCase()));
 }
 
 function getInitialWorkspaceSnapshot() {
@@ -117,7 +117,7 @@ function App() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const isExtensionsPage = location.pathname === "/extensions";
-  const canManageExtensions = hasAdminRole(authUser);
+  const canManageExtensions = canManageDashboardContent(authUser);
 
 
   const {
@@ -709,10 +709,9 @@ function App() {
 
   const handleEdit = useCallback(() => { }, []);
 
-  const handleExtensions = useCallback(() => {
-    navigate("/extensions");
-  }, [navigate]);
-
+  const handleDashboard = useCallback(() => {
+    navigate("/dashboard");
+  }, [navigate])
   const handleBackToEditor = useCallback(() => {
     navigate("/");
   }, [navigate]);
@@ -773,34 +772,25 @@ function App() {
     return (
       <div className="app-container">
         <div className="app-loading">Validando sesión...</div>
-        <ToastContainer
-          position="bottom-right"
-          autoClose={4200}
-          newestOnTop
-          closeOnClick
-          pauseOnHover
-          draggable
-          theme="dark"
-        />
       </div>
     );
   }
 
   return (
     <div className="app-container">
-        <AppHeader
-          language={language}
-          projectName={projectName}
-          debugMode={debugMode}
-          onProjectNameChange={handleProjectNameChange}
-          onLanguageChange={setLanguage}
+      <AppHeader
+        language={language}
+        projectName={projectName}
+        debugMode={debugMode}
+        onProjectNameChange={handleProjectNameChange}
+        onLanguageChange={setLanguage}
         onRun={handleRun}
         onToggleDebug={handleToggleDebug}
         onExamples={handleShowExamples}
         onSave={handleSave}
         onFile={handleFile}
         onEdit={handleEdit}
-        onExtensions={handleExtensions}
+        onDashboard={handleDashboard}
         isUploading={isUploading}
         userName={authUser?.nombre ?? authUser?.email ?? "Usuario"}
         onLogout={handleLogout}
@@ -815,53 +805,53 @@ function App() {
           onBack={handleBackToEditor}
         />
       ) : (
-      <div className="main-content">
-        <AppSidebar
-          board={board}
-          isFullscreen={isFullscreen}
-          deviceMenuOpen={deviceMenuOpen}
-          currentDevice={currentDevice}
-          devices={DEVICES}
-          onBoardChange={handleBoardChange}
-          onToggleDeviceMenu={handleToggleDeviceMenu}
-          onFullscreen={handleFullscreen}
-          onRotate={handleRotate}
-          previewRotation={previewRotation}
-          t={t}
-          ports={ports}
-          selectedPort={selectedPort}
-          setSelectedPort={setSelectedPort}
-          fetchPorts={fetchPorts}
-          serialOpen={serialOpen}
-          startSerialMonitor={startSerialMonitor}
-          stopSerialMonitor={stopSerialMonitor}
-          workspace={workspace}
-          editorMode={editorMode}
-          onEditorModeChange={setEditorMode}
-        />
+        <div className="main-content">
+          <AppSidebar
+            board={board}
+            isFullscreen={isFullscreen}
+            deviceMenuOpen={deviceMenuOpen}
+            currentDevice={currentDevice}
+            devices={DEVICES}
+            onBoardChange={handleBoardChange}
+            onToggleDeviceMenu={handleToggleDeviceMenu}
+            onFullscreen={handleFullscreen}
+            onRotate={handleRotate}
+            previewRotation={previewRotation}
+            t={t}
+            ports={ports}
+            selectedPort={selectedPort}
+            setSelectedPort={setSelectedPort}
+            fetchPorts={fetchPorts}
+            serialOpen={serialOpen}
+            startSerialMonitor={startSerialMonitor}
+            stopSerialMonitor={stopSerialMonitor}
+            workspace={workspace}
+            editorMode={editorMode}
+            onEditorModeChange={setEditorMode}
+          />
 
-        <AppWorkspace
-          activeTab={activeTab}
-          board={board}
-          code={code}
-          debugMode={debugMode}
-          symbolRows={symbolRows}
-          workspaceVersion={workspaceVersion}
-          isEditorLoading={isEditorLoading}
-          showEditorLoading={showEditorLoading}
-          editorLoadError={editorLoadError}
-          blocklyDivRef={blocklyDivRef}
-          wokwiState={wokwiState}
-          wokwiPreviewFiles={wokwiPreviewFiles}
-          onTabChange={setActiveTab}
-          onCopyCode={handleCopyCode}
-          onDownloadCode={handleDownloadCode}
-          onCopyDiagramJson={handleCopyDiagramJson}
-          onOpenWokwi={handleOpenWokwi}
-          getScopeLabel={getScopeLabel}
-          t={t}
-        />
-      </div>
+          <AppWorkspace
+            activeTab={activeTab}
+            board={board}
+            code={code}
+            debugMode={debugMode}
+            symbolRows={symbolRows}
+            workspaceVersion={workspaceVersion}
+            isEditorLoading={isEditorLoading}
+            showEditorLoading={showEditorLoading}
+            editorLoadError={editorLoadError}
+            blocklyDivRef={blocklyDivRef}
+            wokwiState={wokwiState}
+            wokwiPreviewFiles={wokwiPreviewFiles}
+            onTabChange={setActiveTab}
+            onCopyCode={handleCopyCode}
+            onDownloadCode={handleDownloadCode}
+            onCopyDiagramJson={handleCopyDiagramJson}
+            onOpenWokwi={handleOpenWokwi}
+            getScopeLabel={getScopeLabel}
+            t={t}
+          />
+        </div>
       )}
 
       <AppStatusBar
@@ -909,15 +899,6 @@ function App() {
         />
       )}
 
-      <ToastContainer
-        position="bottom-right"
-        autoClose={4200}
-        newestOnTop
-        closeOnClick
-        pauseOnHover
-        draggable
-        theme="dark"
-      />
     </div>
   );
 }

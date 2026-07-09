@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const AUTH_API_URL = (import.meta.env.VITE_AUTH_API_URL as string | undefined) ?? "";
+const AUTH_API_URL = (import.meta.env.VITE_AUTH_API_URL as string );
 
 function getAuthUrl(path: string) {
     const baseUrl = AUTH_API_URL.endsWith("/") ? AUTH_API_URL : `${AUTH_API_URL}/`;

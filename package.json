@@ -13,9 +13,11 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@heroui/react": "^3.2.2",
     "axios": "^1.18.1",
     "blockly": "^13.1.0",
     "i18next": "^26.3.4",
+    "lucide-react": "^1.23.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-i18next": "^17.0.8",

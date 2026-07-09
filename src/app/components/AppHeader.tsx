@@ -11,7 +11,7 @@ type AppHeaderProps = {
   onSave: () => void;
   onFile: () => void;
   onEdit: () => void;
-  onExtensions: () => void;
+  onDashboard: () => void;
   onRun: () => void;
   onToggleDebug: () => void;
   onExamples: () => void;
@@ -31,7 +31,7 @@ export const AppHeader = memo(function AppHeader({
   onSave,
   onFile,
   onEdit,
-  onExtensions,
+  onDashboard,
   onRun,
   onToggleDebug,
   onExamples,
@@ -64,8 +64,8 @@ export const AppHeader = memo(function AppHeader({
             <span className="nav-text">{t("examples")}</span>
           </button>
           {canManageExtensions && (
-            <button className="nav-btn" onClick={onExtensions}>
-              <span className="nav-text">Extensiones</span>
+            <button className="nav-btn" onClick={onDashboard}>
+              <span className="nav-text">Dashboard</span>
             </button>
           )}
         </nav>

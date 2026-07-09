@@ -23,7 +23,7 @@ export function ExtensionFormScreen({ user, isAdmin, onBack }: ExtensionFormScre
     const userId = user?.userId ?? user?.id;
 
     if (!isAdmin) {
-      toast.error("Solo administradores pueden crear extensiones.");
+      toast.error("Solo personal autorizado puede crear extensiones.");
       return;
     }
 
@@ -84,7 +84,7 @@ export function ExtensionFormScreen({ user, isAdmin, onBack }: ExtensionFormScre
       <section className="extension-form-card">
         <div className="extension-form-header">
           <div>
-            <span>Administrador</span>
+            <span>Gestión de extensiones</span>
             <h1>Crear extensión</h1>
           </div>
           <button type="button" className="extension-secondary-btn" onClick={onBack}>

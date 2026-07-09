@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { LoginRequest } from "../api/auth";
 import "./LoginScreen.css";
@@ -9,6 +9,7 @@ type LoginScreenProps = {
 };
 
 export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
+    const navigate = useNavigate();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -40,6 +41,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
         toast.success("Inicio de sesión exitoso");
         onLoginSuccess?.();
+        navigate("/", { replace: true });
     };
 
     return (

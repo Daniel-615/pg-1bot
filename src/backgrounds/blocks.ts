@@ -98,6 +98,63 @@ export function defineBackgroundBlocks() {
       helpUrl: "",
     },
     {
+      type: "background_set_x",
+      message0: "fijar x en %1",
+      args0: [
+        {
+          type: "input_value",
+          name: "X",
+          check: "Number",
+        },
+      ],
+      previousStatement: null,
+      nextStatement: null,
+      colour: BACKGROUND_COLOR,
+      tooltip: "Fija la posicion horizontal del robot",
+      helpUrl: "",
+    },
+    {
+      type: "background_set_y",
+      message0: "fijar y en %1",
+      args0: [
+        {
+          type: "input_value",
+          name: "Y",
+          check: "Number",
+        },
+      ],
+      previousStatement: null,
+      nextStatement: null,
+      colour: BACKGROUND_COLOR,
+      tooltip: "Fija la posicion vertical del robot",
+      helpUrl: "",
+    },
+    {
+      type: "background_point_direction",
+      message0: "apuntar robot a %1 grados",
+      args0: [
+        {
+          type: "input_value",
+          name: "DEGREES",
+          check: "Number",
+        },
+      ],
+      previousStatement: null,
+      nextStatement: null,
+      colour: BACKGROUND_COLOR,
+      tooltip: "Cambia la direccion del robot",
+      helpUrl: "",
+    },
+    {
+      type: "background_reset_position",
+      message0: "volver al centro",
+      previousStatement: null,
+      nextStatement: null,
+      colour: BACKGROUND_COLOR,
+      tooltip: "Regresa el robot al centro del fondo",
+      helpUrl: "",
+    },
+    {
       type: "background_say",
       message0: "decir %1",
       args0: [
@@ -111,6 +168,15 @@ export function defineBackgroundBlocks() {
       nextStatement: null,
       colour: BACKGROUND_COLOR,
       tooltip: "Muestra un mensaje sobre el robot",
+      helpUrl: "",
+    },
+    {
+      type: "background_hide_message",
+      message0: "ocultar mensaje",
+      previousStatement: null,
+      nextStatement: null,
+      colour: BACKGROUND_COLOR,
+      tooltip: "Oculta el mensaje del robot",
       helpUrl: "",
     },
     {
