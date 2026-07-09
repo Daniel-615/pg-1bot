@@ -7,7 +7,7 @@ import { registerListGenerators } from "./register/lists";
 import { registerProgramGenerators } from "./register/program";
 import { registerVariableGenerators } from "./register/variables";
 import { registerBackgroundGenerators } from "../../../backgrounds/generator";
-import { registerDynamicExtensionGenerators } from "../../../extensions/dynamicExtensions";
+import { registerDynamicExtensionGenerators } from "../../../screens/extensions/dynamicExtensions";
 import { cppStringLiteral } from "./utils/cppLiterals";
 import { inferExpressionChecks, inferListCppType } from "./utils/typeInference";
 

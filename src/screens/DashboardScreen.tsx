@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import "./DashboardScreen.css";
 import { ArrowLeft, ArrowUpRight, ShieldCheck } from "lucide-react";
-import type { AuthUser } from "../api/auth";
+import type { AuthUser } from "../services/auth.service";
+import "../../public/styles/DashboardScreen.css";
 
 type MenuItem = {
     title: string;
@@ -87,7 +87,7 @@ type DashboardScreenProps = {
     user?: AuthUser;
 };
 
-function getUserRoles( user?: AuthUser) {
+function getUserRoles(user?: AuthUser) {
     const roles = Array.isArray(user?.rol) ? user.rol : user?.rol ? [user.rol] : [];
 
     return roles.map((role) => role.toLowerCase());

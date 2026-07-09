@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { LoginRequest } from "../api/auth";
-import "./LoginScreen.css";
+import { LoginRequest } from "../services/auth.service";
+import "../../public/styles/LoginScreen.css";
 
 type LoginScreenProps = {
     onLoginSuccess?: () => void;

@@ -1,6 +1,6 @@
 import * as Blockly from "blockly";
-import type { ArduinoBaseGenerator } from "../devices/base/generator/generator";
-import { getExtensionBlocks, type ExtensionBlockDefinition, type ExtensionBlockParameter } from "../api/extensions";
+import type { ArduinoBaseGenerator } from "../../devices/base/generator/generator";
+import { getExtensionBlocks, type ExtensionBlockDefinition, type ExtensionBlockParameter } from "../../services/extensions.service";
 
 const dynamicBlockTypes = new Map<string, ExtensionBlockDefinition>();
 

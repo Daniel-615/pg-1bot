@@ -1,7 +1,7 @@
 import { memo, useMemo } from "react";
 import type { RefObject } from "react";
 import type { SymbolTableRow } from "../../core/blockEngine/semantic/base/symbolTable";
-import type { WokwiProjectFiles, WokwiSimulationState } from "../../simulator/wokwi";
+import type { WokwiProjectFiles, WokwiSimulationState } from "../../screens/simulator/wokwi";
 import "./css/AppWorkspace.css";
 
 type AppWorkspaceProps = {

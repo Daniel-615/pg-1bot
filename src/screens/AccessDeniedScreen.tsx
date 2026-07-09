@@ -1,6 +1,6 @@
-import { ArrowLeft, Home, ShieldAlert } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import "./NotFoundScreen.css";
+import { ArrowLeft, Home } from "lucide-react";
+import "../../public/styles/NotFoundScreen.css";
 
 function AccessDeniedScreen() {
     const navigate = useNavigate();
@@ -32,10 +32,6 @@ function AccessDeniedScreen() {
                         Volver atrás
                     </button>
 
-                    <button className="not-found-secondary" onClick={() => navigate("/dashboard")}>
-                        <ShieldAlert size={18} />
-                        Ir al dashboard
-                    </button>
                 </div>
             </section>
         </main>

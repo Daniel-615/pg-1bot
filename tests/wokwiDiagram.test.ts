@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createWokwiProjectFiles } from "../src/simulator/wokwi";
+import { createWokwiProjectFiles } from "../src/screens/simulator/wokwi";
 
 describe("Wokwi project files", () => {
   it("keeps the generated code as sketch.ino content", () => {

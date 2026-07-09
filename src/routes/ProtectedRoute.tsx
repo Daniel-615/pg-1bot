@@ -4,7 +4,7 @@ import {
     refreshTokenRequest,
     verifySessionRequest,
     type AuthUser,
-} from "../api/auth";
+} from "../services/auth.service";
 import AccessDeniedScreen from "../screens/AccessDeniedScreen";
 
 type ProtectedRouteProps = {

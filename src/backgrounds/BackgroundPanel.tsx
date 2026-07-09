@@ -7,7 +7,7 @@ import {
   type BackgroundActorState,
   type BackgroundScene,
 } from "./runtime";
-import "./BackgroundPanel.css";
+import "../../public/styles/BackgroundPanel.css";
 
 type BackgroundPanelProps = {
   workspace: Blockly.Workspace | null;

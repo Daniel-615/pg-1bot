@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { toast } from "react-toastify";
-import type { AuthUser } from "../api/auth";
-import { createExtension } from "../api/extensions";
+import type { AuthUser } from "../../services/auth.service";
+import { createExtension } from "../../services/extensions.service";
 import "./ExtensionFormScreen.css";
 
 type ExtensionFormScreenProps = {

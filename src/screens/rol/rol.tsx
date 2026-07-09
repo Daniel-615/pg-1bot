@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getRoles, getRolById, deleteRol, updateRol, createRol, type Rol } from "../../api/rol";
+import { getRoles, getRolById, deleteRol, updateRol, createRol, type Rol } from "../../services/rol.service";
 import { ArrowLeft, Plus, Edit2, Search, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { getPaginationRange, normalizePagination, paginateRows } from "../pagination";
-import "./rol.css";
+import "../../../public/styles/rol.css";
 
 function RolScreen() {
     const [roles, setRoles] = useState<Rol[]>([]);

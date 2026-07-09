@@ -1,7 +1,7 @@
 import type * as Blockly from "blockly";
 import type { SymbolTableRow } from "../../../core/blockEngine/semantic/base/symbolTable";
 import { registerBaseBlocks } from "../register";
-import { loadDynamicExtensionCategories } from "../../../extensions/dynamicExtensions";
+import { loadDynamicExtensionCategories } from "../../../screens/extensions/dynamicExtensions";
 
 type CreateWorkspaceManagerOptions = {
   onSymbolTableChange?: (rows: SymbolTableRow[]) => void;

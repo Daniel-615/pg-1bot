@@ -12,7 +12,7 @@ import { EXAMPLES, ExamplesPanel, getExamplePath } from "./app/components/Exampl
 import {
   getArduinoCompileErrorMessage,
   resolveCompileTarget,
-} from "./api/arduino.compile";
+} from "./services/arduino.compile.service";
 import { detectClientPlatform } from "./app/platform";
 import type { SerialPortOption } from "./app/types";
 import {
@@ -21,7 +21,7 @@ import {
   getWokwiNewProjectUrl,
   type WokwiProjectFiles,
   type WokwiSimulationState,
-} from "./simulator/wokwi";
+} from "./screens/simulator/wokwi";
 import "./App.css";
 import { io } from "socket.io-client";
 import * as Blockly from "blockly";
@@ -33,8 +33,8 @@ import {
   refreshTokenRequest,
   verifySessionRequest,
   type AuthUser,
-} from "./api/auth";
-import { ExtensionFormScreen } from "./extensions/ExtensionFormScreen";
+} from "./services/auth.service";
+import { ExtensionFormScreen } from "./screens/extensions/ExtensionFormScreen";
 import type {
   Issue
 } from "./core/blockEngine/semantic/arduinoSemanticAnalyzer"

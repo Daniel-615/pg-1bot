@@ -6,11 +6,11 @@ import {
     getUsuarioRolById,
     getUsuarioRoles,
     type UsuarioRol,
-} from "../../api/usuario.rol";
+} from "../../services/usuario.rol.sevice";
 import { ArrowLeft, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { getPaginationRange, normalizePagination, paginateRows } from "../pagination";
-import "../rol/rol.css";
+import "../../../public/styles/rol.css";
 
 function UsuarioRolScreen() {
     const [relaciones, setRelaciones] = useState<UsuarioRol[]>([]);

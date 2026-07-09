@@ -6,11 +6,11 @@ import {
     getRolPermisoById,
     getRolPermisos,
     type RolPermiso,
-} from "../../api/rol.permiso";
+} from "../../services/rol.permiso.service";
 import { ArrowLeft, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { getPaginationRange, normalizePagination, paginateRows } from "../pagination";
-import "../rol/rol.css";
+import "../../../public/styles/rol.css";
 
 function RolPermisoScreen() {
     const [relaciones, setRelaciones] = useState<RolPermiso[]>([]);

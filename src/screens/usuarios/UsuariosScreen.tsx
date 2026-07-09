@@ -15,8 +15,8 @@ import {
     type Usuario,
     type UsuarioPagination,
     type UsuarioResponse,
-} from "../../api/usuario";
-import "./UsuariosScreen.css";
+} from "../../services/usuario.service";
+import "../../../public/styles/UsuariosScreen.css";
 
 type UsuarioFilter = "todos" | "activos" | "inactivos";
 type UsuarioPayload = UsuarioResponse<Usuario[] | UsuarioPagination> | Usuario[];
@@ -219,8 +219,8 @@ function UsuariosScreen() {
                             </h2>
                             <p>
                                 {filter === "activos"
-                                    ? "Mostrando datos de findAllActivos."
-                                    : "Mostrando datos de findAll."}
+                                    ? "Estos son los usuarios que se encuentran activos."
+                                    : "Estos son los usuarios que se encuentran."}
                             </p>
                         </div>
 
