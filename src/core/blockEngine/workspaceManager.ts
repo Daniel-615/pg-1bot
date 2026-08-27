@@ -27,7 +27,7 @@ export function createWorkspace(
     },
   }) as unknown as BlocklyWorkspaceWithAnalyzer;
   workspace.registerToolboxCategoryCallback("VARIABLE_EXTENDED", (targetWorkspace) => {
-    const variableItems = Blockly.Variables.flyoutCategory(targetWorkspace, false) as Blockly.utils.toolbox.FlyoutItemInfoArray;
+    const variableItems = Blockly.Variables.flyoutCategory(targetWorkspace) as Blockly.utils.toolbox.FlyoutItemInfoArray;
 
     return [
       ...variableItems, //it returns the object with the list of blocks defined on each electronic board

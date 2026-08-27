@@ -30,7 +30,9 @@ export type MockWorkspace = {
   getAllBlocks: (_ordered: boolean) => MockBlock[];
   getTopBlocks: (_ordered: boolean) => MockBlock[];
   getBlockById: (id: string) => MockBlock | null;
-  getVariableById: (id: string) => MockVariableModel | null;
+  getVariableMap: () => {
+    getVariableById: (id: string) => MockVariableModel | null;
+  };
 };
 
 type CreateBlockOptions = {
@@ -119,10 +121,12 @@ export function createWorkspace(
     getAllBlocks: () => blocks,
     getTopBlocks: () => topBlocks,
     getBlockById: (id: string) => blocks.find(block => block.id === id) ?? null,
-    getVariableById: (id: string) => {
-      const name = variableNamesById[id];
-      return name ? { getName: () => name } : null;
-    },
+    getVariableMap: () => ({
+      getVariableById: (id: string) => {
+        const name = variableNamesById[id];
+        return name ? { getName: () => name } : null;
+      },
+    }),
   };
 
   blocks.forEach(block => {

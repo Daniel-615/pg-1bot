@@ -153,7 +153,7 @@ export class ArduinoSemanticAnalyzer {
     const variableId = block.getFieldValue(fieldName);
     if (!variableId) return null;
 
-    const variableModel = block.workspace?.getVariableById(variableId);
+    const variableModel = block.workspace?.getVariableMap().getVariableById(variableId);
     return variableModel?.getName() ?? variableId;
   }
 
