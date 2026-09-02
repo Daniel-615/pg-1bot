@@ -1,0 +1,47 @@
+.cookie-consent {
+  position: fixed;
+  z-index: 1000;
+  right: 22px;
+  bottom: 22px;
+  display: grid;
+  grid-template-columns: auto minmax(260px, 1fr) auto;
+  align-items: start;
+  gap: 16px;
+  width: min(760px, calc(100vw - 44px));
+  padding: 18px;
+  border: 1px solid #d8d4cb;
+  border-radius: 20px;
+  background: #fffdf8;
+  box-shadow: 0 10px 30px rgba(62, 58, 49, .16);
+  color: #34322d;
+}
+
+.cookie-consent-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 13px;
+  background: #e8eee7;
+  color: #536b58;
+}
+
+.cookie-consent-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.cookie-consent h2 { margin: 0; color: #292823; font-size: 17px; }
+.cookie-consent p { margin: 6px 0 0; color: #68645b; font-size: 13px; line-height: 1.5; }
+.cookie-consent-details { color: #514e46 !important; }
+.cookie-consent-close { display: none; border: 0; background: transparent; color: #77736a; cursor: pointer; }
+.cookie-consent-link { margin-top: 8px; padding: 0; border: 0; background: transparent; color: #536b58; font-size: 12px; font-weight: 800; cursor: pointer; }
+.cookie-consent-actions { display: flex; align-items: center; gap: 8px; align-self: center; }
+.cookie-essential-button, .cookie-accept-button { min-height: 38px; padding: 0 13px; border-radius: 9px; font-size: 12px; font-weight: 800; cursor: pointer; }
+.cookie-essential-button { border: 1px solid #c9c5bb; background: transparent; color: #5f5b52; }
+.cookie-accept-button { border: 1px solid #536b58; background: #536b58; color: #fffdf8; }
+.cookie-essential-button:hover { background: #f1eee7; }
+.cookie-accept-button:hover { background: #435847; }
+
+@media (max-width: 640px) {
+  .cookie-consent { right: 12px; bottom: 12px; grid-template-columns: auto 1fr; width: calc(100vw - 24px); padding: 16px; }
+  .cookie-consent-actions { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; }
+  .cookie-essential-button, .cookie-accept-button { width: 100%; }
+  .cookie-consent-close { display: block; }
+}

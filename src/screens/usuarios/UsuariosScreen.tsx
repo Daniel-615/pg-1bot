@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     Button,
@@ -7,7 +7,7 @@ import {
     Spinner,
     Table,
 } from "@heroui/react";
-import { ArrowLeft, RefreshCw, Users } from "lucide-react";
+import { ArrowLeft, Plus, RefreshCw, Users } from "lucide-react";
 import { toast } from "react-toastify";
 import {
     type Usuario,
@@ -16,6 +16,8 @@ import {
 } from "../../services/usuario.service";
 import { useUsuarios, type UsuarioFilter } from "../../hooks/usuarios/usuariosHook";
 import { QueryFreshness } from "../components/QueryFreshness";
+import { registerRequestEmployee } from "../../services/auth.service";
+import { useRoles } from "../../hooks/roles/rolesHook";
 import "../../styles/UsuariosScreen.css";
 
 type UsuarioPayload = UsuarioResponse<Usuario[] | UsuarioPagination> | Usuario[];
@@ -129,6 +131,10 @@ function UsuariosScreen() {
     const [filter, setFilter] = useState<UsuarioFilter>("todos");
     const navigate = useNavigate();
     const usuariosQuery = useUsuarios(filter);
+    const rolesQuery = useRoles(1, 100);
+    const [showCreateForm, setShowCreateForm] = useState(false);
+    const [newUser, setNewUser] = useState({ nombre: "", apellido: "", email: "", password: "", edad: "", rolId: "" });
+    const [isCreating, setIsCreating] = useState(false);
     const usuariosPayload = usuariosQuery.data;
     const isLoading = usuariosQuery.isLoading || usuariosQuery.isFetching;
     const usuarios = usuariosPayload && (!Array.isArray(usuariosPayload) && usuariosPayload.ok === false)
@@ -155,6 +161,33 @@ function UsuariosScreen() {
 
     const totalActivos = usuarios.filter((usuario) => getUsuarioActivo(usuario) === true).length;
     const totalInactivos = usuarios.filter((usuario) => getUsuarioActivo(usuario) === false).length;
+    const rolesData = rolesQuery.data?.data;
+    const roles = Array.isArray(rolesData) ? rolesData : rolesData?.rows ?? [];
+
+    const handleCreateUser = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const age = Number(newUser.edad);
+        if (!newUser.nombre.trim() || !newUser.apellido.trim() || !newUser.email.trim() || !newUser.password || !newUser.rolId || !Number.isInteger(age) || age < 5 || age > 120) {
+            toast.error("Completa todos los campos y usa una edad válida.");
+            return;
+        }
+        setIsCreating(true);
+        try {
+            const response = await registerRequestEmployee({ ...newUser, edad: age, rolId: Number(newUser.rolId) });
+            if (!response.success) {
+                toast.error(response.error);
+                return;
+            }
+            toast.success("Usuario creado correctamente.");
+            setNewUser({ nombre: "", apellido: "", email: "", password: "", edad: "", rolId: "" });
+            setShowCreateForm(false);
+            await usuariosQuery.refetch();
+        } catch (error) {
+            toast.error(getErrorMessage(error));
+        } finally {
+            setIsCreating(false);
+        }
+    };
 
     return (
         <main className="usuarios-container">
@@ -244,8 +277,25 @@ function UsuariosScreen() {
                                 {isLoading ? <Spinner size="sm" /> : <RefreshCw size={18} />}
                                 <span>Actualizar</span>
                             </Button>
+                            <Button className="usuarios-create-button" variant="primary" onPress={() => setShowCreateForm((current) => !current)}>
+                                {showCreateForm ? <Users size={18} /> : <Plus size={18} />}
+                                {showCreateForm ? "Cerrar" : "Crear usuario"}
+                            </Button>
                         </div>
                     </div>
+
+                    {showCreateForm && (
+                        <form className="usuarios-create-form" onSubmit={handleCreateUser}>
+                            <div className="usuarios-create-heading"><div><span>Alta administrativa</span><h3>Crear usuario interno</h3></div><small>Solo disponible para roles autorizados</small></div>
+                            <div className="usuarios-create-grid">
+                                {([["nombre", "Nombre"], ["apellido", "Apellido"], ["email", "Correo"]] as const).map(([field, label]) => <label key={field}>{label}<input type={field === "email" ? "email" : "text"} value={newUser[field]} onChange={(event) => setNewUser((current) => ({ ...current, [field]: event.target.value }))} disabled={isCreating} /></label>)}
+                                <label>Edad<input type="number" min="5" max="120" value={newUser.edad} onChange={(event) => setNewUser((current) => ({ ...current, edad: event.target.value }))} disabled={isCreating} /></label>
+                                <label>Contraseña<input type="password" value={newUser.password} onChange={(event) => setNewUser((current) => ({ ...current, password: event.target.value }))} disabled={isCreating} /></label>
+                                <label>Rol<select value={newUser.rolId} onChange={(event) => setNewUser((current) => ({ ...current, rolId: event.target.value }))} disabled={isCreating || rolesQuery.isLoading}><option value="">Selecciona un rol</option>{roles.filter((role) => ["empleado", "1botpersonal"].includes(role.nombre.trim().toLowerCase().replace(/\s+/g, ""))).map((role) => <option key={role.id} value={role.id}>{role.nombre}</option>)}</select></label>
+                            </div>
+                            <Button type="submit" className="usuarios-submit-button" variant="primary" isDisabled={isCreating}>{isCreating ? "Creando..." : "Crear usuario"}</Button>
+                        </form>
+                    )}
 
                     <Table className="usuarios-table" variant="primary">
                         <Table.ScrollContainer className="usuarios-table-wrapper">

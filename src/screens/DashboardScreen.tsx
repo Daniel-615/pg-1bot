@@ -1,5 +1,19 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowUpRight, ShieldCheck } from "lucide-react";
+import { Button, Card, Chip } from "@heroui/react";
+import {
+    ArrowLeft,
+    ArrowUpRight,
+    Blocks,
+    Cpu,
+    KeyRound,
+    Link2,
+    Puzzle,
+    Shield,
+    ShieldCheck,
+    UserRound,
+    UserRoundCheck,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { AuthUser } from "../services/auth.service";
 import "../styles/DashboardScreen.css";
 
@@ -7,10 +21,10 @@ type MenuItem = {
     title: string;
     description: string;
     path: string;
-    icon: string;
+    icon: LucideIcon;
     accent: string;
     tag: string;
-    oneBotPersonal?: boolean;
+    requiredPermission: string;
 };
 
 const menuItems: MenuItem[] = [
@@ -18,80 +32,79 @@ const menuItems: MenuItem[] = [
         title: "Usuarios",
         description: "Administrar usuarios del sistema",
         path: "/usuarios",
-        icon: "👤",
+        icon: UserRound,
         accent: "sky",
         tag: "Identidad",
+        requiredPermission: "ver_usuarios",
     },
     {
         title: "Roles",
         description: "Gestionar roles de acceso",
         path: "/rol",
-        icon: "🛡️",
+        icon: Shield,
         accent: "indigo",
         tag: "Accesos",
+        requiredPermission: "ver_roles",
     },
     {
         title: "Permisos",
         description: "Configurar permisos del sistema",
         path: "/permisos",
-        icon: "🔐",
+        icon: KeyRound,
         accent: "cyan",
         tag: "Seguridad",
+        requiredPermission: "ver_permisos",
     },
     {
         title: "Rol Permiso",
         description: "Asignar permisos a roles",
         path: "/rol-permiso",
-        icon: "🔗",
+        icon: Link2,
         accent: "violet",
         tag: "Relaciones",
+        requiredPermission: "ver_roles",
     },
     {
         title: "Usuario Rol",
         description: "Asignar roles a usuarios",
         path: "/usuario-rol",
-        icon: "✅",
+        icon: UserRoundCheck,
         accent: "emerald",
         tag: "Usuarios",
+        requiredPermission: "ver_usuarios",
     },
     {
         title: "Extensiones",
         description: "Administrar extensiones disponibles",
         path: "/extensions",
-        icon: "🧩",
+        icon: Puzzle,
         accent: "amber",
         tag: "Builder",
-        oneBotPersonal: true,
+        requiredPermission: "leer_extension",
     },
     {
         title: "Bloques",
         description: "Gestionar bloques de programación",
         path: "/bloques",
-        icon: "🧱",
+        icon: Blocks,
         accent: "rose",
         tag: "Editor",
-        oneBotPersonal: true,
+        requiredPermission: "leer_bloque",
     },
     {
         title: "Placas",
         description: "Administrar placas compatibles",
         path: "/placas",
-        icon: "💻",
+        icon: Cpu,
         accent: "slate",
         tag: "Hardware",
-        oneBotPersonal: true,
+        requiredPermission: "leer_placa",
     },
 ];
 
 type DashboardScreenProps = {
     user?: AuthUser;
 };
-
-function getUserRoles(user?: AuthUser) {
-    const roles = Array.isArray(user?.rol) ? user.rol : user?.rol ? [user.rol] : [];
-
-    return roles.map((role) => role.toLowerCase());
-}
 
 function getDisplayName(user?: AuthUser) {
     const fullName = [user?.nombre, user?.apellido].filter(Boolean).join(" ").trim();
@@ -107,26 +120,30 @@ function getDisplayRole(user?: AuthUser) {
 
 export const DashboardScreen = ({ user }: DashboardScreenProps) => {
     const navigate = useNavigate();
-    const roles = getUserRoles(user);
-    const isAdmin = roles.includes("admin");
-    const visibleItems = isAdmin ? menuItems : menuItems.filter((item) => item.oneBotPersonal);
+    const permissions = new Set(user?.permisos ?? []);
+    const roles = [
+        ...(Array.isArray(user?.rol) ? user.rol : user?.rol ? [user.rol] : []),
+        ...(user?.roles ?? []).map((role) => role.nombre),
+    ].map((role) => role.trim().toLowerCase().replace(/\s+/g, ""));
+    const isAdmin = roles.some((role) => role === "admin" || role === "1botpersonal");
+    const visibleItems = menuItems.filter((item) => isAdmin || permissions.has(item.requiredPermission));
     const restrictedItems = menuItems.length - visibleItems.length;
 
     return (
         <main className="dashboard-container">
             <section className="dashboard-hero">
                 <div className="dashboard-hero-copy">
-                    <button
-                        onClick={() => navigate("/")}
+                    <Button
+                        isIconOnly
+                        variant="primary"
                         className="dashboard-back"
                         aria-label="Volver al editor"
+                        onPress={() => navigate("/")}
                     >
                         <ArrowLeft size={22} />
-                    </button>
+                    </Button>
 
-                    <div className="dashboard-eyebrow">
-                        Panel de administración
-                    </div>
+                    <Chip color="accent" variant="soft" className="dashboard-eyebrow">Panel de administración</Chip>
 
                     <h1>Gestiona 1bot desde un solo lugar</h1>
                     <p className="dashboard-description">
@@ -136,41 +153,57 @@ export const DashboardScreen = ({ user }: DashboardScreenProps) => {
                     </p>
 
                     <div className="dashboard-hero-actions">
-                        <button className="dashboard-primary-action" onClick={() => navigate(visibleItems[0]?.path || "/")}>
+                        <Button
+                            className="dashboard-primary-action"
+                            onPress={() => navigate(visibleItems[0]?.path || "/")}
+                        >
                             Abrir primera sección
                             <ArrowUpRight size={18} />
-                        </button>
+                        </Button>
 
-                        <span className="dashboard-role-chip">
+                        {visibleItems.some((item) => item.path === "/extensions") && (
+                            <Button
+                                variant="secondary"
+                                className="dashboard-extensions-action"
+                                onPress={() => navigate("/extensions")}
+                            >
+                                <Puzzle size={18} />
+                                Ver extensiones
+                            </Button>
+                        )}
+
+                        <Chip color="accent" variant="soft" className="dashboard-role-chip">
                             <ShieldCheck size={16} />
                             {getDisplayRole(user)}
-                        </span>
+                        </Chip>
                     </div>
                 </div>
 
-                <aside className="dashboard-profile-card">
+                <Card className="dashboard-profile-card">
+                    <Card.Content>
                     <img src="/logo.webp" alt="1bot" className="dashboard-logo" />
-                    <span>Sesión activa</span>
+                    <Chip color="success" variant="soft">Sesión activa</Chip>
                     <h2>{getDisplayName(user)}</h2>
                     <p>{isAdmin ? "Acceso completo al panel" : "Acceso operativo 1bot"}</p>
-                </aside>
+                    </Card.Content>
+                </Card>
             </section>
 
             <section className="dashboard-stats" aria-label="Resumen del panel">
-                <article>
+                <Card><Card.Content>
                     <span>Secciones visibles</span>
                     <strong>{visibleItems.length}</strong>
-                </article>
+                </Card.Content></Card>
 
-                <article>
+                <Card><Card.Content>
                     <span>Acceso</span>
                     <strong>{isAdmin ? "Total" : "Limitado"}</strong>
-                </article>
+                </Card.Content></Card>
 
-                <article>
+                <Card><Card.Content>
                     <span>Restringidas</span>
                     <strong>{restrictedItems}</strong>
-                </article>
+                </Card.Content></Card>
             </section>
 
             <section className="dashboard-section-heading">
@@ -181,25 +214,31 @@ export const DashboardScreen = ({ user }: DashboardScreenProps) => {
             </section>
 
             <section className="dashboard-grid">
-                {visibleItems.map((item) => (
-                    <button
-                        key={item.path}
-                        className={`dashboard-card dashboard-card-${item.accent}`}
-                        onClick={() => navigate(item.path)}
-                    >
-                        <span className="dashboard-card-tag">{item.tag}</span>
-                        <span className="dashboard-icon">{item.icon}</span>
+                {visibleItems.map((item) => {
+                    const Icon = item.icon;
 
-                        <div>
-                            <h2>{item.title}</h2>
-                            <p>{item.description}</p>
-                        </div>
+                    return (
+                        <button
+                            key={item.path}
+                            className={`dashboard-card dashboard-card-${item.accent}`}
+                            onClick={() => navigate(item.path)}
+                        >
+                            <span className="dashboard-card-tag">{item.tag}</span>
+                            <span className="dashboard-icon">
+                                <Icon size={27} strokeWidth={2.1} aria-hidden="true" />
+                            </span>
 
-                        <span className="dashboard-card-arrow">
-                            <ArrowUpRight size={18} />
-                        </span>
-                    </button>
-                ))}
+                            <div>
+                                <h2>{item.title}</h2>
+                                <p>{item.description}</p>
+                            </div>
+
+                            <span className="dashboard-card-arrow">
+                                <ArrowUpRight size={18} />
+                            </span>
+                        </button>
+                    );
+                })}
             </section>
         </main>
     );

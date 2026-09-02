@@ -11,6 +11,7 @@ import { AppStatusBar } from "../src/screens/components/AppStatusBar";
 import { EXAMPLES, ExamplesPanel, getExamplePath } from "../src/screens/components/ExamplesPanel";
 import {
   getArduinoCompileErrorMessage,
+  compileSketch,
   resolveCompileTarget,
 } from "./services/arduino.compile.service";
 import { detectClientPlatform } from "./screens/platform";
@@ -38,15 +39,11 @@ import { ExtensionFormScreen } from "./screens/extensions/ExtensionFormScreen";
 import type {
   Issue
 } from "./core/blockEngine/semantic/arduinoSemanticAnalyzer"
+import { reportCriticalErrors } from "./services/errors.service";
 
 function sanitizeFilename(value: string) {
   return value.replace(/[<>:"/\\|?*]/g, "_");
 }
-
-const BOARD_FQBN: Record<string, string> = {
-  esp32: "esp32:esp32:esp32",
-  uno: "arduino:avr:uno",
-};
 
 const MAX_SERIAL_LOG_LINES = 300;
 
@@ -60,9 +57,27 @@ type ProjectFileData = {
 type EditorMode = "device" | "background";
 
 function canManageDashboardContent(user: AuthUser | null) {
-  const roles = Array.isArray(user?.rol) ? user.rol : user?.rol ? [user.rol] : [];
+  const roles = [
+    ...(Array.isArray(user?.rol) ? user.rol : user?.rol ? [user.rol] : []),
+    ...(user?.roles ?? []).map((role) => role.nombre),
+  ].map((role) => role.trim().toLowerCase().replace(/\s+/g, ""));
+  if (roles.some((role) => role === "admin" || role === "1botpersonal")) return true;
 
-  return roles.some((role) => ["admin", "1botpersonal"].includes(String(role).toLowerCase()));
+  return (user?.permisos ?? []).some((permission) =>
+    ["leer_extension", "crear_extension", "editar_extension", "leer_bloque", "crear_bloque", "editar_bloque", "leer_placa", "crear_placa", "editar_placa"].includes(permission)
+  );
+}
+
+function canAccessDashboard(user: AuthUser | null) {
+  const roleNames = [
+    ...(Array.isArray(user?.rol) ? user.rol : user?.rol ? [user.rol] : []),
+    ...(user?.roles ?? []).map((role) => role.nombre),
+  ];
+
+  return roleNames.some((role) => {
+    const normalizedRole = role.trim().toLowerCase().replace(/\s+/g, "");
+    return normalizedRole === "admin" || normalizedRole === "1botpersonal";
+  });
 }
 
 function getInitialWorkspaceSnapshot() {
@@ -116,8 +131,9 @@ function App() {
   const [examplesOpen, setExamplesOpen] = useState(false);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
-  const isExtensionsPage = location.pathname === "/extensions";
+  const isExtensionsPage = ["/extensions", "/bloques", "/placas"].includes(location.pathname);
   const canManageExtensions = canManageDashboardContent(authUser);
+  const hasDashboardAccess = canAccessDashboard(authUser);
 
 
   const {
@@ -436,44 +452,29 @@ function App() {
     )
 
     if (hasErrors) {
+      const criticalIssues = Array.from(semanticErrors.values()).flat().filter((issue) => issue.severity === "error");
+      const userId = authUser?.id ?? authUser?.userId;
+      if (userId) {
+        void reportCriticalErrors({
+          userId,
+          age: authUser?.edad,
+          program: projectName,
+          issues: criticalIssues,
+        });
+      }
       toast.error(
         "No puedes compilar mientras existan errores semánticos."
       );
       return;
     }
 
-    const filename = `${sanitizeFilename(projectName)}.ino`;
+    const isCodey = board === "codey";
+    const filename = `${sanitizeFilename(projectName)}.${isCodey ? "py" : "ino"}`;
 
     setIsUploading(true);
 
     try {
-      const formData = new FormData();
-
-      const fqbn =
-        BOARD_FQBN[board] || "esp32:esp32:esp32";
-
-      formData.append(
-        "file",
-        new Blob([code]),
-        filename
-      );
-
-      formData.append("upload", "true");
-      formData.append("fqbn", fqbn);
-
-      if (selectedPort) {
-        formData.append("port", selectedPort);
-      }
-
-      const res = await fetch(
-        "http://localhost:3000/api/arduino/compile",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const result = await res.json();
+      const result = await compileSketch({ code, board, filename, port: selectedPort, target: compileTarget });
 
       if (result.ok) {
         setIsConnected(true);
@@ -487,7 +488,7 @@ function App() {
       }
 
       toast.error(
-        result.error ||
+        result.message ||
         "La compilación falló."
       );
     } catch (err) {
@@ -495,7 +496,7 @@ function App() {
     } finally {
       setIsUploading(false);
     }
-  }, [board, code, projectName, selectedPort, semanticErrors]);
+  }, [authUser?.edad, authUser?.id, authUser?.userId, board, code, compileTarget, projectName, selectedPort, semanticErrors]);
 
   const handleRun = useCallback(() => {
     void compileAndUpload();
@@ -518,12 +519,12 @@ function App() {
   }, [code]);
 
   const handleDownloadCode = useCallback(() => {
-    const filename = `${projectName}.ino`;
+    const filename = `${projectName}.${board === "codey" ? "py" : "ino"}`;
 
     downloadGeneratedCode(filename);
 
     toast.success(`Archivo ${filename} descargado.`);
-  }, [downloadGeneratedCode, projectName]);
+  }, [board, downloadGeneratedCode, projectName]);
 
   const handleCopyDiagramJson = useCallback(() => {
     const files = wokwiPreviewFiles ?? wokwiState.files;
@@ -713,6 +714,7 @@ function App() {
     navigate("/dashboard");
   }, [navigate])
   const handleBackToEditor = useCallback(() => {
+    setProjectLoadVersion((current) => current + 1);
     navigate("/");
   }, [navigate]);
 
@@ -794,7 +796,7 @@ function App() {
         isUploading={isUploading}
         userName={authUser?.nombre ?? authUser?.email ?? "Usuario"}
         onLogout={handleLogout}
-        canManageExtensions={canManageExtensions}
+        canAccessDashboard={hasDashboardAccess}
         t={t}
       />
 
@@ -803,6 +805,7 @@ function App() {
           user={authUser}
           isAdmin={canManageExtensions}
           onBack={handleBackToEditor}
+          initialPanel={location.pathname === "/bloques" ? "blocks" : location.pathname === "/placas" ? "plates" : "extensions"}
         />
       ) : (
         <div className="main-content">

@@ -16,7 +16,7 @@ type AppHeaderProps = {
   onToggleDebug: () => void;
   onExamples: () => void;
   onLogout: () => void;
-  canManageExtensions: boolean;
+  canAccessDashboard: boolean;
   isUploading: boolean;
   userName: string;
   t: (key: string, options?: Record<string, string | number>) => string;
@@ -36,7 +36,7 @@ export const AppHeader = memo(function AppHeader({
   onToggleDebug,
   onExamples,
   onLogout,
-  canManageExtensions,
+  canAccessDashboard,
   isUploading,
   userName,
   t,
@@ -63,7 +63,7 @@ export const AppHeader = memo(function AppHeader({
           <button className="nav-btn" onClick={onExamples}>
             <span className="nav-text">{t("examples")}</span>
           </button>
-          {canManageExtensions && (
+          {canAccessDashboard && (
             <button className="nav-btn" onClick={onDashboard}>
               <span className="nav-text">Dashboard</span>
             </button>
@@ -83,14 +83,20 @@ export const AppHeader = memo(function AppHeader({
           <button
             className={`language-btn ${language === "es" ? "active" : ""}`}
             onClick={() => onLanguageChange("es")}
+            aria-label="Español"
+            title="Español"
           >
-            {t("languageSpanish")}
+            <img className="language-flag" src="/flag-es.svg" alt="" aria-hidden="true" />
+            <span className="language-code">ES</span>
           </button>
           <button
             className={`language-btn ${language === "en" ? "active" : ""}`}
             onClick={() => onLanguageChange("en")}
+            aria-label="English"
+            title="English"
           >
-            {t("languageEnglish")}
+            <img className="language-flag" src="/flag-us.svg" alt="" aria-hidden="true" />
+            <span className="language-code">EN</span>
           </button>
         </div>
 

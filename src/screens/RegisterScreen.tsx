@@ -14,6 +14,7 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [lastname, setLastname] = useState("");
+    const [edad, setEdad] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const registerMutation = useRegister();
@@ -25,7 +26,8 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
         const trimmedNombre = nombre.trim();
         const trimmedEmail = email.trim();
         const trimmedLastName = lastname.trim();
-        if (!trimmedNombre || !trimmedEmail || !trimmedLastName || !password || !confirmPassword) {
+        const numericAge = Number(edad);
+        if (!trimmedNombre || !trimmedEmail || !trimmedLastName || !password || !confirmPassword || !Number.isInteger(numericAge) || numericAge < 5 || numericAge > 120) {
             toast.error("Completa todos los campos");
             return;
         }
@@ -40,6 +42,7 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
             email: trimmedEmail,
             apellido: trimmedLastName,
             password,
+            edad: numericAge,
         });
 
         if (!response.success) {
@@ -49,7 +52,7 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
 
         toast.success("Cuenta creada exitosamente");
         onRegisterSuccess?.();
-        navigate("/", { replace: true });
+        navigate(`/verify-account?email=${encodeURIComponent(trimmedEmail)}`, { replace: true });
     };
 
     return (
@@ -66,6 +69,19 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
                 <p className="subtitle">
                     Registra tu cuenta para comenzar
                 </p>
+
+                <div className="form-group">
+                    <label htmlFor="register-age">Edad</label>
+                    <input
+                        id="register-age"
+                        type="number"
+                        min="5"
+                        max="120"
+                        value={edad}
+                        onChange={(e) => setEdad(e.target.value)}
+                        disabled={isSubmitting}
+                    />
+                </div>
 
                 <div className="form-group">
                     <label htmlFor="register-name">Nombre</label>

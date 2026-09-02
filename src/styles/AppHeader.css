@@ -104,6 +104,10 @@
 }
 
 .language-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   padding: 6px 10px;
   background: transparent;
   border: none;
@@ -113,6 +117,20 @@
   font-weight: 700;
   cursor: pointer;
   transition: all var(--transition-normal);
+}
+
+.language-flag {
+  display: block;
+  width: 22px;
+  height: 15px;
+  border-radius: 3px;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.16);
+}
+
+.language-code {
+  font-size: 11px;
+  letter-spacing: .04em;
 }
 
 .language-btn:hover {

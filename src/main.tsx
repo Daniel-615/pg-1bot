@@ -17,9 +17,11 @@ import UsuarioRolScreen from "./screens/usuarioRol/usuarioRol";
 import NotFoundScreen from "./screens/NotFoundScreen";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { queryClient } from "./lib/queryClient";
-
-const DASHBOARD_ROLES = ["admin", "1botpersonal"];
-const ADMIN_ROLES = ["admin"];
+import { OfflineIndicator } from "./screens/components/OfflineIndicator";
+import ForgotPasswordScreen from "./screens/ForgotPasswordScreen";
+import ResetPasswordScreen from "./screens/ResetPasswordScreen";
+import VerifyAccountScreen from "./screens/VerifyAccountScreen";
+import { CookieConsent } from "./screens/components/CookieConsent";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -28,11 +30,14 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Routes>
           <Route path="/login" element={<LoginScreen />} />
           <Route path="/register" element={<RegisterScreen />} />
+          <Route path="/forgot-password" element={<ForgotPasswordScreen />} />
+          <Route path="/reset-password" element={<ResetPasswordScreen />} />
+          <Route path="/verify-account" element={<VerifyAccountScreen />} />
           <Route path="/" element={<App />} />
           <Route
             path="/extensions"
             element={
-              <ProtectedRoute allowedRoles={DASHBOARD_ROLES}>
+                <ProtectedRoute requiredPermissions={["leer_extension"]}>
                 <App />
               </ProtectedRoute>
             }
@@ -40,7 +45,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route
             path="/bloques"
             element={
-              <ProtectedRoute allowedRoles={DASHBOARD_ROLES}>
+                <ProtectedRoute requiredPermissions={["leer_bloque"]}>
                 <App />
               </ProtectedRoute>
             }
@@ -48,7 +53,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route
             path="/placas"
             element={
-              <ProtectedRoute allowedRoles={DASHBOARD_ROLES}>
+                <ProtectedRoute requiredPermissions={["leer_placa"]}>
                 <App />
               </ProtectedRoute>
             }
@@ -56,7 +61,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute allowedRoles={DASHBOARD_ROLES}>
+                <ProtectedRoute>
                 {(user) => <DashboardScreen user={user} />}
               </ProtectedRoute>
             }
@@ -64,7 +69,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route
             path="/usuarios"
             element={
-              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <ProtectedRoute requiredPermissions={["ver_usuarios"]}>
                 <UsuariosScreen />
               </ProtectedRoute>
             }
@@ -72,7 +77,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route
             path="/rol"
             element={
-              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <ProtectedRoute requiredPermissions={["ver_roles"]}>
                 <RolScreen />
               </ProtectedRoute>
             }
@@ -80,7 +85,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route
             path="/permisos"
             element={
-              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <ProtectedRoute requiredPermissions={["ver_permisos"]}>
                 <PermisoScreen />
               </ProtectedRoute>
             }
@@ -88,7 +93,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route
             path="/rol-permiso"
             element={
-              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <ProtectedRoute requiredPermissions={["ver_roles", "ver_permisos"]}>
                 <RolPermisoScreen />
               </ProtectedRoute>
             }
@@ -96,13 +101,14 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route
             path="/usuario-rol"
             element={
-              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <ProtectedRoute requiredPermissions={["ver_usuarios"]}>
                 <UsuarioRolScreen />
               </ProtectedRoute>
             }
           />
           <Route path="*" element={<NotFoundScreen />} />
         </Routes>
+        <CookieConsent />
         <ToastContainer
           position="bottom-right"
           autoClose={4200}
@@ -112,6 +118,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           draggable
           theme="dark"
         />
+        <OfflineIndicator />
       </BrowserRouter>
     </QueryClientProvider>
   </React.StrictMode>

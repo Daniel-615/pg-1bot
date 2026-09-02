@@ -46,6 +46,7 @@ export function createWorkspace(
   startBlock.setMovable(false);
   analyzer.analyze(workspace);
   options.onSymbolTableChange?.(analyzer.getSymbolTableRows());
+  options.onSemanticErrorsChange?.(analyzer.getErrors());
   workspace.semanticAnalyzer = analyzer;
   workspace.addChangeListener((event) => {
     /* 

@@ -101,9 +101,9 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                     {isSubmitting ? "Iniciando..." : "Iniciar Sesión"}
                 </button>
 
-                <button type="button" className="forgot-password" disabled={isSubmitting}>
+                <Link to="/forgot-password" className="forgot-password" aria-disabled={isSubmitting}>
                     ¿Olvidaste tu contraseña?
-                </button>
+                </Link>
 
                 <p className="auth-switch">
                     ¿No tienes cuenta? <Link to="/register">Crea una cuenta</Link>

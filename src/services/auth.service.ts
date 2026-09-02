@@ -16,13 +16,18 @@ export type LoginCredentials = {
     password: string;
 };
 
+export type ResetPasswordPayload = { token: string; newPassword: string };
+
 export type AuthUser = {
     id?: string;
     userId?: string;
     nombre?: string;
-    apellido?: string;
+   apellido?: string;
+   edad?: number;
     email?: string;
-    rol?: string[] | string;
+  rol?: string[] | string;
+  roles?: Array<{ id: number | string; nombre: string }>;
+  permisos?: string[];
 };
 
 export type LoginResponse = {
@@ -48,6 +53,8 @@ type AuthErrorResponse = {
 
 export type AuthResponse<TData = unknown> = AuthSuccessResponse<TData> | AuthErrorResponse;
 
+export type VerificationPayload = { email: string; code: string };
+
 function getAuthErrorMessage(error: unknown, fallback: string): string {
     if (axios.isAxiosError<AuthErrorPayload>(error)) {
         return error.response?.data?.error ?? error.response?.data?.message ?? fallback;
@@ -71,6 +78,24 @@ export const registerRequest = async (user: RegisterUserPayload): Promise<AuthRe
         return { success: false, error: getAuthErrorMessage(error, "Error de red o del servidor") };
     }
 };
+
+export async function verifyEmailRequest(payload: VerificationPayload): Promise<AuthResponse> {
+    try {
+        const response = await axios.post(getAuthUrl("usuario/verify-email"), payload);
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, error: getAuthErrorMessage(error, "No se pudo confirmar la cuenta.") };
+    }
+}
+
+export async function resendVerificationRequest(email: string): Promise<AuthResponse> {
+    try {
+        const response = await axios.post(getAuthUrl("usuario/resend-verification"), { email });
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, error: getAuthErrorMessage(error, "No se pudo enviar el código.") };
+    }
+}
 
 export const registerRequestEmployee = async (user: RegisterUserPayload): Promise<AuthResponse> => {
     try {
@@ -140,3 +165,21 @@ export const Logout = async (): Promise<AuthResponse> => {
         };
     }
 };
+
+export async function requestPasswordReset(email: string): Promise<AuthResponse> {
+    try {
+        const response = await axios.post(getAuthUrl("usuario/forgot-password"), { email });
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, error: getAuthErrorMessage(error, "No se pudo solicitar el restablecimiento.") };
+    }
+}
+
+export async function resetPassword({ token, newPassword }: ResetPasswordPayload): Promise<AuthResponse> {
+    try {
+        const response = await axios.post(getAuthUrl("usuario/reset-password"), { newPassword }, { params: { token } });
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, error: getAuthErrorMessage(error, "El enlace de recuperación no es válido o expiró.") };
+    }
+}

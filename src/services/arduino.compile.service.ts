@@ -11,6 +11,7 @@ type CompileSketchParams = {
   code: string;
   board: string;
   filename?: string;
+  port?: string;
 };
 
 type CompileSketchResult = {
@@ -66,6 +67,12 @@ function normalizeFilename(value: string | undefined) {
   return sanitized.toLowerCase().endsWith(".ino") ? sanitized : `${sanitized}.ino`;
 }
 
+function normalizeCodeyFilename(value: string | undefined) {
+  const baseName = value?.trim() || "main";
+  const sanitized = sanitizeFilename(baseName).replace(/\.(ino|py)$/i, "");
+  return `${sanitized.toLowerCase().endsWith(".py") ? sanitized.slice(0, -3) : sanitized}.py`;
+}
+
 export class ArduinoApi {
   readonly apiUrl: string;
 
@@ -73,23 +80,35 @@ export class ArduinoApi {
     this.apiUrl = normalizeApiUrl(apiUrl);
   }
 
-  async postCompile({ code, board, filename }: CompileSketchParams): Promise<CompileSketchResult> {
+  async postCompile({ code, board, filename, port }: CompileSketchParams): Promise<CompileSketchResult> {
     /*
       Converts code to arduino sketch (ino), and call the api to compile this returns a status and message
     */
     const formData = new FormData();
-    const resolvedFilename = normalizeFilename(filename);
+    const isCodey = board === "codey";
+    const resolvedFilename = isCodey ? normalizeCodeyFilename(filename) : normalizeFilename(filename);
     const file = new Blob([code], { type: "text/plain" });
     const fqbn = BOARD_FQBN_MAP[board];
 
-    if (!fqbn) {
+    if (!fqbn && !isCodey) {
       throw new Error(`La placa "${board}" no tiene un fqbn configurado para compilar.`);
     }
 
     formData.append("file", file, resolvedFilename);
-    formData.append("fqbn", fqbn);
+    formData.append("upload", "true");
+    if (fqbn) {
+      formData.append("fqbn", fqbn);
+    }
+    if (board === "codey") {
+      if (filename) formData.append("filename", resolvedFilename);
+      formData.append("board", board);
+    }
+    if (port) {
+      formData.append("port", port);
+    }
 
-    const response = await axios.post(`${this.apiUrl}/api/arduino/compile`, formData);
+    const endpoint = isCodey ? "/api/codey/compile" : "/api/arduino/compile";
+    const response = await axios.post(`${this.apiUrl}${endpoint}`, formData);
 
     const payload = response.data as { ok?: boolean; message?: string };
 

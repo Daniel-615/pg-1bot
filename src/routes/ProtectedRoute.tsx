@@ -8,7 +8,7 @@ import {
 import AccessDeniedScreen from "../screens/AccessDeniedScreen";
 
 type ProtectedRouteProps = {
-    allowedRoles: string[];
+    requiredPermissions?: string[];
     children: ReactNode | ((user: AuthUser) => ReactNode);
 };
 
@@ -18,20 +18,18 @@ type SessionState = {
     shouldLogin: boolean;
 };
 
-function getUserRoles(user: AuthUser | null) {
-    const roles = Array.isArray(user?.rol) ? user.rol : user?.rol ? [user.rol] : [];
+function hasRequiredPermissions(user: AuthUser | null, requiredPermissions: string[]) {
+    const roles = [
+        ...(Array.isArray(user?.rol) ? user.rol : user?.rol ? [user.rol] : []),
+        ...(user?.roles ?? []).map((role) => role.nombre),
+    ].map((role) => role.trim().toLowerCase().replace(/\s+/g, ""));
+    if (roles.some((role) => role === "admin" || role === "1botpersonal")) return true;
 
-    return roles.map((role) => role.toLowerCase());
+    const permissions = new Set(user?.permisos ?? []);
+    return requiredPermissions.every((permission) => permissions.has(permission));
 }
 
-function hasAllowedRole(user: AuthUser | null, allowedRoles: string[]) {
-    const userRoles = getUserRoles(user);
-    const normalizedAllowedRoles = allowedRoles.map((role) => role.toLowerCase());
-
-    return userRoles.some((role) => normalizedAllowedRoles.includes(role));
-}
-
-function ProtectedRoute({ allowedRoles, children }: ProtectedRouteProps) {
+function ProtectedRoute({ requiredPermissions = [], children }: ProtectedRouteProps) {
     const [session, setSession] = useState<SessionState>({
         isLoading: true,
         user: null,
@@ -86,7 +84,7 @@ function ProtectedRoute({ allowedRoles, children }: ProtectedRouteProps) {
         return <Navigate to="/login" replace />;
     }
 
-    if (!hasAllowedRole(session.user, allowedRoles)) {
+    if (!hasRequiredPermissions(session.user, requiredPermissions)) {
         return <AccessDeniedScreen />;
     }
 
