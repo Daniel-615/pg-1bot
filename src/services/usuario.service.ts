@@ -1,4 +1,5 @@
 import axios from "axios";
+import { attachAccessToken } from "./access-token";
 
 const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL as string;
 
@@ -43,10 +44,10 @@ export type UsuarioResponse<TData = unknown> = {
     totalPages?: number;
 };
 
-const usuarioApi = axios.create({
+const usuarioApi = attachAccessToken(axios.create({
     baseURL: getAuthUrl("/usuario"),
     withCredentials: true,
-});
+}));
 
 export async function findAllUsuarios() {
     const response = await usuarioApi.get<UsuarioResponse<Usuario[] | UsuarioPagination> | Usuario[]>("/findAll");

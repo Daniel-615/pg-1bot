@@ -1,4 +1,5 @@
 import axios from "axios";
+import { clearAccessToken, getAccessToken } from "./access-token";
 
 const AUTH_API_URL = (import.meta.env.VITE_AUTH_API_URL as string );
 
@@ -135,6 +136,7 @@ export const refreshTokenRequest = async (): Promise<AuthResponse> => {
     try {
         const response = await axios.post<unknown>(getAuthUrl("usuario/refreshToken"), {}, {
             withCredentials: true,
+            headers: getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : undefined,
         });
 
         return { success: true, data: response.data };
@@ -147,6 +149,7 @@ export const verifySessionRequest = async (): Promise<AuthResponse<AuthUser>> =>
     try {
         const response = await axios.get<AuthUser>(getAuthUrl("usuario/verifyToken"), {
             withCredentials: true,
+            headers: getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : undefined,
         });
 
         return { success: true, data: response.data };
@@ -161,6 +164,7 @@ export const Logout = async (): Promise<AuthResponse> => {
             withCredentials: true,
         });
 
+        clearAccessToken();
         return { success: true, data: response.data };
     } catch (error) {
         return {

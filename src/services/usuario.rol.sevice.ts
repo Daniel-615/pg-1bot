@@ -1,4 +1,5 @@
 import axios from "axios";
+import { attachAccessToken } from "./access-token";
 
 const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL as string;
 
@@ -44,10 +45,10 @@ export type UsuarioRolResponse<TData = unknown> = {
     totalPages?: number;
 };
 
-const usuarioRolApi = axios.create({
+const usuarioRolApi = attachAccessToken(axios.create({
     baseURL: getAuthUrl("/usuario-rol"),
     withCredentials: true,
-});
+}));
 
 export async function createUsuarioRol(data: {
     usuarioId: string;

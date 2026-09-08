@@ -1,4 +1,5 @@
 import axios from "axios";
+import { attachAccessToken } from "./access-token";
 
 const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL as string;
 
@@ -27,10 +28,10 @@ export type PermisoResponse<TData = unknown> = {
     permiso?: TData;
 };
 
-const permisoApi = axios.create({
+const permisoApi = attachAccessToken(axios.create({
     baseURL: getAuthUrl("/permiso"),
     withCredentials: true,
-});
+}));
 
 export async function getPermisos(page = 1, limit = 10) {
     const response = await permisoApi.get<PermisoResponse<PermisoPagination>>("/", {

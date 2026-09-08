@@ -1,4 +1,5 @@
 import axios from "axios";
+import { attachAccessToken } from "./access-token";
 
 const BLOCKS_API_URL = (import.meta.env.VITE_BLOCKS_API_URL as string | undefined) ?? "";
 
@@ -8,6 +9,8 @@ function getBlocksUrl(path: string) {
 
   return `${baseUrl}${normalizedPath}`;
 }
+
+const blocksApi = attachAccessToken(axios.create());
 
 export type BlocksServiceResponse<T> = {
   ok: boolean;
@@ -122,17 +125,17 @@ export type ParameterOption = {
 };
 
 async function getResource<T>(path: string) {
-  const response = await axios.get<BlocksServiceResponse<T>>(getBlocksUrl(path), { withCredentials: true });
+  const response = await blocksApi.get<BlocksServiceResponse<T>>(getBlocksUrl(path), { withCredentials: true });
   return response.data.data ?? ([] as T);
 }
 
 async function postResource<T>(path: string, payload: unknown) {
-  const response = await axios.post<BlocksServiceResponse<T>>(getBlocksUrl(path), payload, { withCredentials: true });
+  const response = await blocksApi.post<BlocksServiceResponse<T>>(getBlocksUrl(path), payload, { withCredentials: true });
   return response.data;
 }
 
 async function putResource<T>(path: string, payload: unknown) {
-  const response = await axios.put<BlocksServiceResponse<T>>(getBlocksUrl(path), payload, { withCredentials: true });
+  const response = await blocksApi.put<BlocksServiceResponse<T>>(getBlocksUrl(path), payload, { withCredentials: true });
   return response.data;
 }
 
@@ -167,7 +170,7 @@ export const updateParameterOption = ({ id, ...payload }: { id: string } & Creat
   putResource<ParameterOption>(`option/parameter/${id}`, payload);
 
 export async function getExtensions() {
-  const response = await axios.get<BlocksServiceResponse<Extension[]>>(
+  const response = await blocksApi.get<BlocksServiceResponse<Extension[]>>(
     getBlocksUrl("extension"),
     { withCredentials: true }
   );
@@ -176,7 +179,7 @@ export async function getExtensions() {
 }
 
 export async function getExtensionStatuses() {
-  const response = await axios.get<BlocksServiceResponse<ExtensionStatus[]>>(
+  const response = await blocksApi.get<BlocksServiceResponse<ExtensionStatus[]>>(
     getBlocksUrl("status/extension"),
     { withCredentials: true }
   );
@@ -185,7 +188,7 @@ export async function getExtensionStatuses() {
 }
 
 export async function getExtensionBlocks() {
-  const response = await axios.get<BlocksServiceResponse<ExtensionBlockDefinition[]>>(
+  const response = await blocksApi.get<BlocksServiceResponse<ExtensionBlockDefinition[]>>(
     getBlocksUrl("blocks"),
     { withCredentials: true }
   );
@@ -202,7 +205,7 @@ export type CreateExtensionPayload = {
 };
 
 export async function createExtension(payload: CreateExtensionPayload) {
-  const response = await axios.post<BlocksServiceResponse<unknown>>(
+  const response = await blocksApi.post<BlocksServiceResponse<unknown>>(
     getBlocksUrl("extension"),
     payload,
     { withCredentials: true }
@@ -220,7 +223,7 @@ export type UpdateExtensionPayload = {
 };
 
 export async function updateExtension({ id, ...payload }: UpdateExtensionPayload) {
-  const response = await axios.put<BlocksServiceResponse<Extension>>(
+  const response = await blocksApi.put<BlocksServiceResponse<Extension>>(
     getBlocksUrl(`extension/${id}`),
     payload,
     { withCredentials: true }

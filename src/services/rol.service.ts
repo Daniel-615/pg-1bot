@@ -1,4 +1,5 @@
 import axios from "axios";
+import { attachAccessToken } from "./access-token";
 
 const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL as string;
 
@@ -36,10 +37,10 @@ export type RolResponse<TData = unknown> = {
     totalPages?: number;
 };
 
-const rolApi = axios.create({
+const rolApi = attachAccessToken(axios.create({
     baseURL: getAuthUrl("/rol"),
     withCredentials: true,
-});
+}));
 
 export async function getRoles(page = 1, limit = 10) {
     const response = await rolApi.get<RolResponse<Rol[] | RolPagination>>("/", {
