@@ -33,7 +33,14 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/forgot-password" element={<ForgotPasswordScreen />} />
           <Route path="/reset-password" element={<ResetPasswordScreen />} />
           <Route path="/verify-account" element={<VerifyAccountScreen />} />
-          <Route path="/" element={<App />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <App />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/extensions"
             element={
