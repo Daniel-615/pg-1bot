@@ -22,7 +22,7 @@ import ForgotPasswordScreen from "./screens/ForgotPasswordScreen";
 import ResetPasswordScreen from "./screens/ResetPasswordScreen";
 import VerifyAccountScreen from "./screens/VerifyAccountScreen";
 import { CookieConsent } from "./screens/components/CookieConsent";
-import { Analytics } from "@vercel/analytics/next"
+import { Analytics } from "@vercel/analytics/react";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
@@ -120,6 +120,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         />
         <OfflineIndicator />
       </BrowserRouter>
+      <Analytics />
     </QueryClientProvider>
   </React.StrictMode>
 );
