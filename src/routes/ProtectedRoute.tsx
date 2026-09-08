@@ -6,6 +6,7 @@ import {
     type AuthUser,
 } from "../services/auth.service";
 import AccessDeniedScreen from "../screens/AccessDeniedScreen";
+import { CookieConsent } from "../screens/components/CookieConsent";
 
 type ProtectedRouteProps = {
     requiredPermissions?: string[];
@@ -88,7 +89,12 @@ function ProtectedRoute({ requiredPermissions = [], children }: ProtectedRoutePr
         return <AccessDeniedScreen />;
     }
 
-    return <>{typeof children === "function" ? children(session.user as AuthUser) : children}</>;
+    return (
+        <>
+            {typeof children === "function" ? children(session.user as AuthUser) : children}
+            <CookieConsent />
+        </>
+    );
 }
 
 export default ProtectedRoute;

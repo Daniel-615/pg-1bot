@@ -21,7 +21,6 @@ import { OfflineIndicator } from "./screens/components/OfflineIndicator";
 import ForgotPasswordScreen from "./screens/ForgotPasswordScreen";
 import ResetPasswordScreen from "./screens/ResetPasswordScreen";
 import VerifyAccountScreen from "./screens/VerifyAccountScreen";
-import { CookieConsent } from "./screens/components/CookieConsent";
 import { Analytics } from "@vercel/analytics/react";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -115,7 +114,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           />
           <Route path="*" element={<NotFoundScreen />} />
         </Routes>
-        <CookieConsent />
         <ToastContainer
           position="bottom-right"
           autoClose={4200}
