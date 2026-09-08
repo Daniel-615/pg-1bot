@@ -29,12 +29,7 @@ import * as Blockly from "blockly";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
-import {
-  Logout,
-  refreshTokenRequest,
-  verifySessionRequest,
-  type AuthUser,
-} from "./services/auth.service";
+import { Logout, type AuthUser } from "./services/auth.service";
 import { ExtensionFormScreen } from "./screens/extensions/ExtensionFormScreen";
 import type {
   Issue
@@ -88,7 +83,11 @@ function getInitialWorkspaceSnapshot() {
   };
 }
 
-function App() {
+type AppProps = {
+  authUser: AuthUser;
+};
+
+function App({ authUser }: AppProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [initialWorkspace] = useState(getInitialWorkspaceSnapshot);
@@ -129,8 +128,7 @@ function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [previewRotation, setPreviewRotation] = useState(0);
   const [examplesOpen, setExamplesOpen] = useState(false);
-  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [isCheckingSession] = useState(false);
   const isExtensionsPage = ["/extensions", "/bloques", "/placas"].includes(location.pathname);
   const canManageExtensions = canManageDashboardContent(authUser);
   const hasDashboardAccess = canAccessDashboard(authUser);
@@ -171,50 +169,6 @@ function App() {
     },
     [language]
   );
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const verifySession = async () => {
-      const session = await verifySessionRequest();
-
-      if (session.success) {
-        if (isMounted) {
-          setAuthUser(session.data);
-          setIsCheckingSession(false);
-        }
-
-        return;
-      }
-
-      const refreshed = await refreshTokenRequest();
-
-      if (refreshed.success) {
-        const retrySession = await verifySessionRequest();
-
-        if (retrySession.success) {
-          if (isMounted) {
-            setAuthUser(retrySession.data);
-            setIsCheckingSession(false);
-          }
-
-          return;
-        }
-      }
-
-      if (isMounted) {
-        setAuthUser(null);
-        setIsCheckingSession(false);
-        navigate("/login", { replace: true });
-      }
-    };
-
-    void verifySession();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [navigate]);
 
   const clientPlatform = useMemo(() => detectClientPlatform(), []);
 
@@ -766,7 +720,6 @@ function App() {
       toast.success("Sesión cerrada");
     }
 
-    setAuthUser(null);
     navigate("/login", { replace: true });
   }, [navigate]);
 

@@ -37,7 +37,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             path="/"
             element={
               <ProtectedRoute>
-                <App />
+                {(user) => <App authUser={user} />}
               </ProtectedRoute>
             }
           />
@@ -45,7 +45,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             path="/extensions"
             element={
                 <ProtectedRoute requiredPermissions={["leer_extension"]}>
-                <App />
+                {(user) => <App authUser={user} />}
               </ProtectedRoute>
             }
           />
@@ -53,7 +53,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             path="/bloques"
             element={
                 <ProtectedRoute requiredPermissions={["leer_bloque"]}>
-                <App />
+                {(user) => <App authUser={user} />}
               </ProtectedRoute>
             }
           />
@@ -61,7 +61,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             path="/placas"
             element={
                 <ProtectedRoute requiredPermissions={["leer_placa"]}>
-                <App />
+                {(user) => <App authUser={user} />}
               </ProtectedRoute>
             }
           />
