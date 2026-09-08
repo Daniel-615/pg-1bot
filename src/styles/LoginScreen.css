@@ -86,6 +86,13 @@
     padding-right: 78px;
 }
 
+.login-card .password-requirements {
+    margin: 8px 0 0;
+    color: #777;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
 .login-card .eye-button {
     position: absolute;
     top: 50%;
@@ -95,8 +102,60 @@
     background: transparent;
     color: #15b8e5;
     cursor: pointer;
-    font-size: 13px;
     font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+}
+
+.login-card .eye-button:focus-visible {
+    outline: 2px solid #15b8e5;
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+.login-card .password-requirements {
+    display: grid;
+    gap: 4px;
+    list-style: none;
+    padding: 0;
+}
+
+.login-card .password-requirements li {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #888;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.login-card .requirement-check {
+    color: #1689e8;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.login-card .password-requirements li:not(.is-valid) .requirement-check {
+    color: #d64545;
+}
+
+.login-card .password-requirements li.is-valid {
+    color: #555;
+}
+
+.login-card .password-strength {
+    margin: 10px 0 0;
+    color: #1689e8;
+    font-size: 13px;
+}
+
+.login-card .password-strength strong {
+    color: #1689e8;
 }
 
 .login-card .login-button {
@@ -368,4 +427,28 @@
     .login-card .logo {
         width: 128px;
     }
+}
+.password-security-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.password-security-header p {
+    margin: 0;
+}
+
+.password-security-line {
+    width: 100%;
+    height: 5px;
+    background-color: #2563eb;
+    border-radius: 10px;
+    margin: 6px 0 8px;
+}
+
+.security-info {
+    margin: 10px 0 0;
+    color: #000;
+    font-size: 13px;
 }

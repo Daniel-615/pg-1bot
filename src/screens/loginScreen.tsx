@@ -61,7 +61,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="maria.garcia@correo.com"
+                        placeholder="maria.garcia@gmail.com"
                         autoComplete="email"
                         disabled={isSubmitting}
                     />

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { Eye, EyeOff } from "lucide-react";
 import { useRegister } from "../hooks/auth/registerHook";
 import "../styles/LoginScreen.css";
 
@@ -19,6 +20,21 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
     const [showPassword, setShowPassword] = useState(false);
     const registerMutation = useRegister();
     const isSubmitting = registerMutation.isPending;
+    const passwordRequirements = [
+        { label: "Mínimo 8 caracteres", valid: password.length >= 8 },
+        { label: "Una letra mayúscula", valid: /[A-Z]/.test(password) },
+        { label: "Una letra minúscula", valid: /[a-z]/.test(password) },
+        { label: "Al menos 1 número", valid: /\d/.test(password) },
+        { label: "Al menos 1 símbolo", valid: /[^A-Za-z\d]/.test(password) },
+    ];
+    const passwordScore = passwordRequirements.filter((requirement) => requirement.valid).length;
+    const passwordStrength = password.length === 0
+        ? "Débil"
+        : passwordScore <= 2
+            ? "Débil"
+            : passwordScore <= 4
+                ? "Segura"
+                : "Muy segura";
 
     const handleRegister = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -34,6 +50,11 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
 
         if (password !== confirmPassword) {
             toast.error("Las contraseñas no coinciden");
+            return;
+        }
+
+        if (passwordScore < passwordRequirements.length) {
+            toast.error("La contraseña no cumple todos los requisitos");
             return;
         }
 
@@ -79,6 +100,7 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
                         max="120"
                         value={edad}
                         onChange={(e) => setEdad(e.target.value)}
+                        placeholder="12"
                         disabled={isSubmitting}
                     />
                 </div>
@@ -119,7 +141,7 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="maria.garcia@correo.com"
+                        placeholder="maria.garcia@gmail.com"
                         autoComplete="email"
                         disabled={isSubmitting}
                     />
@@ -136,6 +158,7 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="********"
                             autoComplete="new-password"
+                            aria-describedby="register-password-requirements"
                             disabled={isSubmitting}
                         />
 
@@ -146,9 +169,28 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
                             disabled={isSubmitting}
                             aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                         >
-                            {showPassword ? "Ocultar" : "Ver"}
+                            {showPassword ? <EyeOff size={20} aria-hidden="true" /> : <Eye size={20} aria-hidden="true" />}
                         </button>
                     </div>
+                  <div className="password-security-header">
+                        <p className="security-info">
+                            Seguridad de la contraseña:
+                        </p>
+
+                        <p className={`password-strength strength-${passwordScore}`}>
+                            <strong>{passwordStrength}</strong>
+                        </p>
+                    </div>
+
+                    <div className="password-security-line"></div>
+                    <ul id="register-password-requirements" className="password-requirements">
+                        {passwordRequirements.map((requirement) => (
+                            <li className={requirement.valid ? "is-valid" : ""} key={requirement.label}>
+                                <span className="requirement-check" aria-hidden="true">{requirement.valid ? "✓" : "×"}</span>
+                                {requirement.label}
+                            </li>
+                        ))}
+                    </ul>
                 </div>
 
                 <div className="form-group">
