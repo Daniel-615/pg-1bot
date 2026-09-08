@@ -7,6 +7,7 @@ import {
 } from "../services/auth.service";
 import AccessDeniedScreen from "../screens/AccessDeniedScreen";
 import { CookieConsent } from "../screens/components/CookieConsent";
+import { OfflineIndicator } from "../screens/components/OfflineIndicator";
 
 type ProtectedRouteProps = {
     requiredPermissions?: string[];
@@ -86,13 +87,19 @@ function ProtectedRoute({ requiredPermissions = [], children }: ProtectedRoutePr
     }
 
     if (!hasRequiredPermissions(session.user, requiredPermissions)) {
-        return <AccessDeniedScreen />;
+        return (
+            <>
+                <AccessDeniedScreen />
+                <OfflineIndicator />
+            </>
+        );
     }
 
     return (
         <>
             {typeof children === "function" ? children(session.user as AuthUser) : children}
             <CookieConsent />
+            <OfflineIndicator />
         </>
     );
 }

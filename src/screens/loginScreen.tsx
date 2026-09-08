@@ -1,7 +1,9 @@
-import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import { Eye, EyeOff } from "lucide-react";
 import { useLogin } from "../hooks/auth/loginHook";
+import { getGoogleLoginUrl } from "../services/auth.service";
 import "../styles/LoginScreen.css";
 
 type LoginScreenProps = {
@@ -10,11 +12,21 @@ type LoginScreenProps = {
 
 export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const loginMutation = useLogin();
     const isSubmitting = loginMutation.isPending;
+
+    useEffect(() => {
+        const googleError = searchParams.get("google_error");
+        if (!googleError) return;
+
+        toast.error(googleError);
+        searchParams.delete("google_error");
+        setSearchParams(searchParams, { replace: true });
+    }, [searchParams, setSearchParams]);
 
     const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -88,7 +100,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                             disabled={isSubmitting}
                             aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                         >
-                            {showPassword ? "Ocultar" : "Ver"}
+                            {showPassword ? <EyeOff size={20} aria-hidden="true" /> : <Eye size={20} aria-hidden="true" />}
                         </button>
                     </div>
                 </div>
@@ -99,6 +111,20 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                     disabled={isSubmitting}
                 >
                     {isSubmitting ? "Iniciando..." : "Iniciar Sesión"}
+                </button>
+
+                <div className="login-divider" aria-hidden="true">
+                    <span>o</span>
+                </div>
+
+                <button
+                    type="button"
+                    className="google-button"
+                    disabled={isSubmitting}
+                    onClick={() => window.location.assign(getGoogleLoginUrl())}
+                >
+                    <span className="google-mark" aria-hidden="true">G</span>
+                    Registrarse con Google
                 </button>
 
                 <Link to="/forgot-password" className="forgot-password" aria-disabled={isSubmitting}>

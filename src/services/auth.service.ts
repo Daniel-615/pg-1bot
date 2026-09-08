@@ -9,6 +9,10 @@ function getAuthUrl(path: string) {
     return `${baseUrl}${normalizedPath}`;
 }
 
+export function getGoogleLoginUrl() {
+    return getAuthUrl("usuario/google");
+}
+
 export type RegisterUserPayload = Record<string, unknown>;
 
 export type LoginCredentials = {

@@ -172,25 +172,29 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
                             {showPassword ? <EyeOff size={20} aria-hidden="true" /> : <Eye size={20} aria-hidden="true" />}
                         </button>
                     </div>
-                  <div className="password-security-header">
-                        <p className="security-info">
-                            Seguridad de la contraseña:
-                        </p>
+                    {password.length > 0 && (
+                        <>
+                            <div className="password-security-header">
+                                <p className="security-info">
+                                    Seguridad de la contraseña:
+                                </p>
 
-                        <p className={`password-strength strength-${passwordScore}`}>
-                            <strong>{passwordStrength}</strong>
-                        </p>
-                    </div>
+                                <p className={`password-strength strength-${passwordScore}`}>
+                                    <strong>{passwordStrength}</strong>
+                                </p>
+                            </div>
 
-                    <div className="password-security-line"></div>
-                    <ul id="register-password-requirements" className="password-requirements">
-                        {passwordRequirements.map((requirement) => (
-                            <li className={requirement.valid ? "is-valid" : ""} key={requirement.label}>
-                                <span className="requirement-check" aria-hidden="true">{requirement.valid ? "✓" : "×"}</span>
-                                {requirement.label}
-                            </li>
-                        ))}
-                    </ul>
+                            <div className="password-security-line"></div>
+                            <ul id="register-password-requirements" className="password-requirements">
+                                {passwordRequirements.map((requirement) => (
+                                    <li className={requirement.valid ? "is-valid" : ""} key={requirement.label}>
+                                        <span className="requirement-check" aria-hidden="true">{requirement.valid ? "✓" : "×"}</span>
+                                        {requirement.label}
+                                    </li>
+                                ))}
+                            </ul>
+                        </>
+                    )}
                 </div>
 
                 <div className="form-group">

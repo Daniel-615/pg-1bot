@@ -17,7 +17,6 @@ import UsuarioRolScreen from "./screens/usuarioRol/usuarioRol";
 import NotFoundScreen from "./screens/NotFoundScreen";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { queryClient } from "./lib/queryClient";
-import { OfflineIndicator } from "./screens/components/OfflineIndicator";
 import ForgotPasswordScreen from "./screens/ForgotPasswordScreen";
 import ResetPasswordScreen from "./screens/ResetPasswordScreen";
 import VerifyAccountScreen from "./screens/VerifyAccountScreen";
@@ -123,7 +122,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           draggable
           theme="dark"
         />
-        <OfflineIndicator />
       </BrowserRouter>
       <Analytics />
     </QueryClientProvider>
