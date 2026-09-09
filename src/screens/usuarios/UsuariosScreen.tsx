@@ -7,7 +7,7 @@ import {
     Spinner,
     Table,
 } from "@heroui/react";
-import { ArrowLeft, Plus, RefreshCw, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, Clock3, Plus, RefreshCw, Users } from "lucide-react";
 import { toast } from "react-toastify";
 import {
     type Usuario,
@@ -116,11 +116,33 @@ function formatDate(value?: string) {
         return value;
     }
 
-    return new Intl.DateTimeFormat("es", {
+    return new Intl.DateTimeFormat("es-AR", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
     }).format(date);
+}
+
+function getUsuarioDate(usuario: Usuario, field: "created" | "updated") {
+    const keys = field === "created"
+        ? ["createdAt", "created_at", "fechaCreacion", "fecha_creacion"]
+        : ["updatedAt", "updated_at", "fechaActualizacion", "fecha_actualizacion"];
+
+    for (const key of keys) {
+        const value = usuario[key];
+        if (typeof value === "string" || value instanceof Date) {
+            return formatDate(String(value));
+        }
+    }
+
+    return "Sin registro";
+}
+
+function getInitials(usuario: Usuario) {
+    const name = getUsuarioNombre(usuario).split(" ").filter(Boolean);
+    return name.slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "U";
 }
 
 function getErrorMessage(error: unknown) {
@@ -205,7 +227,7 @@ function UsuariosScreen() {
                 <div className="usuarios-title">
                     <span className="usuarios-eyebrow">Panel de administración</span>
                     <h1>Usuarios</h1>
-                    <p>Consulta los usuarios registrados y filtra por estado activo o no activo.</p>
+                    <p>Una vista clara para administrar las cuentas y conocer su actividad.</p>
                     <QueryFreshness updatedAt={usuariosQuery.dataUpdatedAt} isFetching={usuariosQuery.isFetching} />
                 </div>
             </section>
@@ -237,20 +259,18 @@ function UsuariosScreen() {
                 <Card.Content className="usuarios-card-body">
                     <div className="usuarios-toolbar">
                         <div>
-                            <h2>
-                                <Users size={22} />
-                                Lista de usuarios
-                            </h2>
-                            <p>
-                                {filter === "activos"
-                                    ? "Estos son los usuarios que se encuentran activos."
-                                    : "Estos son los usuarios que se encuentran."}
-                            </p>
+                            <div className="usuarios-list-heading">
+                                <div className="usuarios-heading-icon"><Users size={20} /></div>
+                                <div>
+                                    <h2>Directorio de usuarios</h2>
+                                    <p>Gestiona las cuentas registradas en tu plataforma.</p>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="usuarios-actions">
                             <label className="usuarios-filter-label">
-                                Estado
+                                <span>Filtrar por estado</span>
                                 <select
                                     className="usuarios-filter"
                                     value={filter}
@@ -301,8 +321,7 @@ function UsuariosScreen() {
                         <Table.ScrollContainer className="usuarios-table-wrapper">
                             <Table.Content aria-label="Tabla de usuarios">
                                 <Table.Header>
-                                    <Table.Column className="usuarios-table-head" isRowHeader>ID</Table.Column>
-                                    <Table.Column className="usuarios-table-head">Nombre</Table.Column>
+                                    <Table.Column className="usuarios-table-head" isRowHeader>Usuario</Table.Column>
                                     <Table.Column className="usuarios-table-head">Email</Table.Column>
                                     <Table.Column className="usuarios-table-head">Estado</Table.Column>
                                     <Table.Column className="usuarios-table-head">Creado</Table.Column>
@@ -316,8 +335,15 @@ function UsuariosScreen() {
 
                                         return (
                                             <Table.Row key={String(usuarioId === "-" ? `usuario-${index}` : usuarioId)}>
-                                                <Table.Cell className="usuarios-table-cell">{usuarioId}</Table.Cell>
-                                                <Table.Cell className="usuarios-table-cell">{getUsuarioNombre(usuario)}</Table.Cell>
+                                                <Table.Cell className="usuarios-table-cell">
+                                                    <div className="usuarios-person">
+                                                        <span className="usuarios-avatar">{getInitials(usuario)}</span>
+                                                        <span>
+                                                            <strong>{getUsuarioNombre(usuario)}</strong>
+                                                            <small>ID {usuarioId}</small>
+                                                        </span>
+                                                    </div>
+                                                </Table.Cell>
                                                 <Table.Cell className="usuarios-table-cell">{usuario.email || "-"}</Table.Cell>
                                                 <Table.Cell className="usuarios-table-cell">
                                                     <Chip
@@ -328,8 +354,14 @@ function UsuariosScreen() {
                                                         {estado ? "Activo" : estado === false ? "No activo" : "Sin dato"}
                                                     </Chip>
                                                 </Table.Cell>
-                                                <Table.Cell className="usuarios-table-cell">{formatDate(usuario.createdAt)}</Table.Cell>
-                                                <Table.Cell className="usuarios-table-cell">{formatDate(usuario.updatedAt)}</Table.Cell>
+                                                <Table.Cell className="usuarios-table-cell usuarios-date-cell">
+                                                    <CalendarDays size={15} />
+                                                    <span>{getUsuarioDate(usuario, "created")}</span>
+                                                </Table.Cell>
+                                                <Table.Cell className="usuarios-table-cell usuarios-date-cell">
+                                                    <Clock3 size={15} />
+                                                    <span>{getUsuarioDate(usuario, "updated")}</span>
+                                                </Table.Cell>
                                             </Table.Row>
                                         );
                                     })}

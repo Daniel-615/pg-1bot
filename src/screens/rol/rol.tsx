@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Rol } from "../../services/rol.service";
-import { useCreateRol, useDeleteRol, useRol, useRoles, useUpdateRol } from "../../hooks/roles/rolesHook";
-import { ArrowLeft, Plus, Edit2, Search, Trash2 } from "lucide-react";
+import { useCreateRol, useDeleteRol, useRoles, useUpdateRol } from "../../hooks/roles/rolesHook";
+import { ArrowLeft, Edit2, GraduationCap, Layers3, Plus, Search, ShieldCheck, Trash2, UserRound } from "lucide-react";
 import { toast } from "react-toastify";
 import { getPaginationRange, normalizePagination, paginateRows } from "../pagination";
 import { QueryFreshness } from "../components/QueryFreshness";
@@ -12,6 +12,23 @@ function getErrorMessage(error: unknown, fallback: string) {
     return error instanceof Error ? error.message : fallback;
 }
 
+function formatDate(value?: string) {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat("es-AR", {
+        day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+    }).format(date);
+}
+
+function getRoleIcon(roleName: string) {
+    const role = roleName.trim().toLowerCase().replace(/\s+/g, "");
+
+    if (role === "1botpersonal") return UserRound;
+    if (role === "estudiante") return GraduationCap;
+    return ShieldCheck;
+}
+
 function RolScreen() {
     const [rolEditando, setRolEditando] = useState<Rol | null>(null);
     const [page, setPage] = useState(1);
@@ -19,12 +36,11 @@ function RolScreen() {
     const [nombreEditado, setNombreEditado] = useState("");
     const [nombreNuevo, setNombreNuevo] = useState("");
     const [idBusqueda, setIdBusqueda] = useState("");
-    const [idRolBuscado, setIdRolBuscado] = useState<string | null>(null);
 
     const navigate = useNavigate();
 
     const rolesQuery = useRoles(page, limit);
-    const rolBuscadoQuery = useRol(idRolBuscado);
+    const rolesCatalogQuery = useRoles(1, 100);
     const createRolMutation = useCreateRol();
     const updateRolMutation = useUpdateRol();
     const deleteRolMutation = useDeleteRol();
@@ -34,13 +50,11 @@ function RolScreen() {
         ? normalizePagination<Rol>(rolesResponse.data, rolesResponse, page, limit)
         : normalizePagination<Rol>(undefined, {}, page, limit);
     const roles = pagination.rows;
+    const rolesCatalogData = rolesCatalogQuery.data?.ok ? rolesCatalogQuery.data.data : undefined;
+    const rolesCatalog = Array.isArray(rolesCatalogData) ? rolesCatalogData : rolesCatalogData?.rows ?? [];
     const total = pagination.total;
     const totalPages = pagination.totalPages;
     const serverPaginated = pagination.serverPaginated;
-    const rolBuscadoResponse = rolBuscadoQuery.data;
-    const rolBuscado = rolBuscadoResponse?.ok
-        ? rolBuscadoResponse.data || rolBuscadoResponse.rol || null
-        : null;
 
     const handleEliminar = async (id: string | number) => {
         if (!window.confirm("¿Está seguro de eliminar este rol?")) return;
@@ -104,25 +118,6 @@ function RolScreen() {
         }
     };
 
-    const handleBuscarRol = async () => {
-        if (!idBusqueda.trim()) {
-            toast.error("Ingresa un ID de rol para buscar");
-            return;
-        }
-
-        const nextId = idBusqueda.trim();
-
-        if (idRolBuscado === nextId && rolBuscadoQuery.data) {
-            const rol = rolBuscadoQuery.data.data || rolBuscadoQuery.data.rol || null;
-
-            if (!rolBuscadoQuery.data.ok || !rol) {
-                toast.error(rolBuscadoQuery.data.message || "Rol no encontrado");
-            }
-        } else {
-            setIdRolBuscado(nextId);
-        }
-    };
-
     useEffect(() => {
         if (rolesResponse && !rolesResponse.ok) {
             toast.error(rolesResponse.message || "Error al cargar los roles");
@@ -135,25 +130,10 @@ function RolScreen() {
         }
     }, [rolesQuery.error]);
 
-    useEffect(() => {
-        const response = rolBuscadoResponse;
-
-        if (!idRolBuscado || !response) return;
-
-        const rol = response.data || response.rol || null;
-
-        if (!response.ok || !rol) {
-            toast.error(response.message || "Rol no encontrado");
-        }
-    }, [idRolBuscado, rolBuscadoResponse]);
-
-    useEffect(() => {
-        if (rolBuscadoQuery.error) {
-            toast.error(getErrorMessage(rolBuscadoQuery.error, "Rol no encontrado"));
-        }
-    }, [rolBuscadoQuery.error]);
-
     const rolesVisibles = paginateRows(roles, page, limit, serverPaginated);
+    const rolesDeTabla = idBusqueda
+        ? rolesCatalog.filter((rol) => String(rol.id) === idBusqueda)
+        : rolesVisibles;
     const { first: primerRol, last: ultimoRol } = getPaginationRange(total, page, limit);
 
     return (
@@ -168,29 +148,39 @@ function RolScreen() {
                     </button>
 
                     <div className="rol-title">
+                        <span className="rol-eyebrow">Control de acceso</span>
                         <h1>Gestión de Roles</h1>
-                        <p>Administra los roles disponibles dentro del sistema.</p>
+                        <p>Define quién puede acceder y qué puede hacer dentro del sistema.</p>
                         <QueryFreshness updatedAt={rolesQuery.dataUpdatedAt} isFetching={rolesQuery.isFetching} />
                     </div>
                 </header>
 
+                <section className="rol-stats" aria-label="Resumen de roles">
+                    <div className="rol-stat-card">
+                        <span className="rol-stat-icon rol-stat-icon-purple"><Layers3 size={19} /></span>
+                        <div><small>Roles registrados</small><strong>{total}</strong></div>
+                    </div>
+                    <div className="rol-stat-card">
+                        <span className="rol-stat-icon rol-stat-icon-green"><ShieldCheck size={19} /></span>
+                        <div><small>Estado del catálogo</small><strong>Activo</strong></div>
+                    </div>
+                </section>
+
                 <section className="rol-card">
-                    <h2>
-                        <Plus size={20} />
-                        Crear Nuevo Rol
-                    </h2>
+                        <h2>
+                            <Plus size={20} />
+                            Nuevo rol
+                        </h2>
+                        <p className="rol-card-description">Agrega un perfil para organizar los permisos del equipo.</p>
 
                     <div className="rol-form">
-                        <input
-                            type="text"
-                            value={nombreNuevo}
-                            onChange={(e) => setNombreNuevo(e.target.value)}
-                            className="rol-input"
-                            placeholder="Nombre del rol"
-                        />
+                        <label className="rol-field">
+                            <span className="rol-field-label">Nombre del rol <b aria-hidden="true">*</b></span>
+                            <input type="text" value={nombreNuevo} onChange={(e) => setNombreNuevo(e.target.value)} className="rol-input" placeholder="Ej. supervisor, editor..." />
+                        </label>
 
                         <button onClick={handleCrearRol} className="rol-button">
-                            Crear
+                            Crear rol
                         </button>
                     </div>
                 </section>
@@ -198,47 +188,52 @@ function RolScreen() {
                 <section className="rol-card">
                     <h2>
                         <Search size={20} />
-                        Buscar Rol por ID
-                    </h2>
+                            Buscar rol
+                        </h2>
+                        <p className="rol-card-description">Consulta rápidamente un rol específico por su identificador.</p>
 
                     <div className="rol-form">
-                        <input
-                            type="number"
-                            value={idBusqueda}
-                            onChange={(e) => setIdBusqueda(e.target.value)}
-                            className="rol-input"
-                            placeholder="ID del rol"
-                        />
-
-                        <button onClick={handleBuscarRol} className="rol-button">
-                            Buscar
-                        </button>
+                        <label className="rol-field">
+                            <span className="rol-field-label">Rol <b aria-hidden="true">*</b></span>
+                            <select value={idBusqueda} onChange={(e) => { setIdBusqueda(e.target.value); setPage(1); }} className="rol-input rol-select">
+                                <option value="">Selecciona un rol</option>
+                                {rolesCatalog.map((rol) => <option key={rol.id} value={rol.id}>{rol.nombre} (ID: {rol.id})</option>)}
+                            </select>
+                        </label>
+                        {idBusqueda && <button type="button" onClick={() => setIdBusqueda("")} className="rol-button rol-cancel">Ver todos</button>}
                     </div>
-
-                    {rolBuscado && (
-                        <div className="rol-result">
-                            <strong>ID:</strong> {rolBuscado.id} | <strong>Nombre:</strong>{" "}
-                            {rolBuscado.nombre}
-                        </div>
-                    )}
                 </section>
 
                 <section className="rol-table rol-table-scroll">
                     <table>
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>Nombre</th>
-                                <th>Acciones</th>
+                                        <th>ID</th>
+                                        <th>Rol</th>
+                                        <th>Creado</th>
+                                        <th>Actualizado</th>
+                                        <th>Acciones</th>
                             </tr>
                         </thead>
 
                         <tbody>
-                            {rolesVisibles.length > 0 ? (
-                                rolesVisibles.map((r) => (
+                            {rolesDeTabla.length > 0 ? (
+                                rolesDeTabla.map((r) => (
                                     <tr key={r.id}>
-                                        <td>{r.id}</td>
-                                        <td>{r.nombre}</td>
+                                        <td><span className="rol-id">#{r.id}</span></td>
+                                        <td>
+                                            <div className="rol-name-cell">
+                                                <span className="rol-name-icon">
+                                                    {(() => {
+                                                        const RoleIcon = getRoleIcon(r.nombre);
+                                                        return <RoleIcon size={16} />;
+                                                    })()}
+                                                </span>
+                                                <strong>{r.nombre}</strong>
+                                            </div>
+                                        </td>
+                                        <td className="rol-date-cell">{formatDate(r.createdAt)}</td>
+                                        <td className="rol-date-cell">{formatDate(r.updatedAt)}</td>
                                         <td>
                                             <div className="rol-actions">
                                                 <button
@@ -265,8 +260,8 @@ function RolScreen() {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={3} className="rol-empty">
-                                        No hay roles disponibles.
+                                    <td colSpan={5} className="rol-empty">
+                                        {idBusqueda ? "No se encontró el rol seleccionado." : "No hay roles disponibles."}
                                     </td>
                                 </tr>
                             )}
@@ -276,10 +271,10 @@ function RolScreen() {
 
                 <section className="rol-pagination">
                     <p>
-                        Mostrando {primerRol} - {ultimoRol} de {total} roles
+                        {idBusqueda ? "Mostrando 1 rol" : `Mostrando ${primerRol} - ${ultimoRol} de ${total} roles`}
                     </p>
 
-                    <div className="rol-pagination-controls">
+                    {!idBusqueda && <div className="rol-pagination-controls">
                         <select
                             value={limit}
                             onChange={(e) => {
@@ -303,7 +298,7 @@ function RolScreen() {
                         </button>
 
                         <span className="rol-page-indicator">
-                            Página {page} de {totalPages}
+                            Página {page} de {Math.max(totalPages, 1)}
                         </span>
 
                         <button
@@ -313,7 +308,7 @@ function RolScreen() {
                         >
                             Siguiente
                         </button>
-                    </div>
+                    </div>}
                 </section>
 
                 {rolEditando && (

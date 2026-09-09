@@ -12,6 +12,8 @@ function getAuthUrl(path: string) {
 export type Permiso = {
     id?: number;
     nombre: string;
+    createdAt?: string;
+    updatedAt?: string;
 };
 
 export type PermisoPagination = {

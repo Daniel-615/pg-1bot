@@ -12,6 +12,8 @@ function getAuthUrl(path: string) {
 export type Rol = {
     id: number;
     nombre: string;
+    createdAt?: string;
+    updatedAt?: string;
 };
 
 export type RolPagination = {

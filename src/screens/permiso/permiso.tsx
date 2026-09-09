@@ -3,16 +3,48 @@ import { useNavigate } from "react-router-dom";
 import type { Permiso } from "../../services/permiso.service";
 import { useCreatePermiso } from "../../hooks/permisos/createPermisoHook";
 import { useDeletePermiso } from "../../hooks/permisos/deletePermiso.Hook";
-import { usePermiso } from "../../hooks/permisos/permisoGetByIdHook";
 import { usePermisos } from "../../hooks/permisos/permisosHook";
 import { useUpdatePermiso } from "../../hooks/permisos/updatePermisoHook";
 import { ArrowLeft, Edit2, Plus, Search, Trash2 } from "lucide-react";
+import axios from "axios";
 import { toast } from "react-toastify";
 import { QueryFreshness } from "../components/QueryFreshness";
 import "../../styles/rol.css";
 
 function getErrorMessage(error: unknown, fallback: string) {
+    if (axios.isAxiosError(error)) {
+        const data = error.response?.data as {
+            message?: unknown;
+            error?: unknown;
+            errors?: unknown;
+        } | undefined;
+
+        if (typeof data?.message === "string" && data.message.trim()) {
+            return data.message;
+        }
+
+        if (typeof data?.error === "string" && data.error.trim()) {
+            return data.error;
+        }
+
+        if (Array.isArray(data?.errors)) {
+            const messages = data.errors.filter((item): item is string => typeof item === "string");
+            if (messages.length > 0) {
+                return messages.join(". ");
+            }
+        }
+    }
+
     return error instanceof Error ? error.message : fallback;
+}
+
+function formatDate(value?: string) {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat("es-AR", {
+        day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+    }).format(date);
 }
 
 function PermisoScreen() {
@@ -22,11 +54,10 @@ function PermisoScreen() {
     const [nombreEditado, setNombreEditado] = useState("");
     const [nombreNuevo, setNombreNuevo] = useState("");
     const [idBusqueda, setIdBusqueda] = useState("");
-    const [idPermisoBuscado, setIdPermisoBuscado] = useState<string | null>(null);
     const navigate = useNavigate();
 
     const permisosQuery = usePermisos(page, limit);
-    const permisoBuscadoQuery = usePermiso(idPermisoBuscado);
+    const permisosCatalogQuery = usePermisos(1, 100);
     const createPermisoMutation = useCreatePermiso();
     const updatePermisoMutation = useUpdatePermiso();
     const deletePermisoMutation = useDeletePermiso();
@@ -35,10 +66,8 @@ function PermisoScreen() {
     const permisos = permisosResponse?.ok && permisosResponse.data ? permisosResponse.data.rows : [];
     const total = permisosResponse?.ok && permisosResponse.data ? permisosResponse.data.total : 0;
     const totalPages = permisosResponse?.ok && permisosResponse.data ? permisosResponse.data.totalPages || 1 : 1;
-    const permisoBuscadoResponse = permisoBuscadoQuery.data;
-    const permisoBuscado = permisoBuscadoResponse?.ok
-        ? permisoBuscadoResponse.data || permisoBuscadoResponse.permiso || null
-        : null;
+    const permisosCatalogData = permisosCatalogQuery.data?.ok ? permisosCatalogQuery.data.data : undefined;
+    const permisosCatalog = Array.isArray(permisosCatalogData) ? permisosCatalogData : permisosCatalogData?.rows ?? [];
 
     const handleCrearPermiso = async () => {
         if (!nombreNuevo.trim()) {
@@ -60,25 +89,6 @@ function PermisoScreen() {
             }
         } catch (error) {
             toast.error(getErrorMessage(error, "Error al crear el permiso"));
-        }
-    };
-
-    const handleBuscarPermiso = async () => {
-        if (!idBusqueda.trim()) {
-            toast.error("Ingresa un ID de permiso para buscar");
-            return;
-        }
-
-        const nextId = idBusqueda.trim();
-
-        if (idPermisoBuscado === nextId && permisoBuscadoQuery.data) {
-            const permiso = permisoBuscadoQuery.data.data || permisoBuscadoQuery.data.permiso || null;
-
-            if (!permisoBuscadoQuery.data.ok || !permiso) {
-                toast.error(permisoBuscadoQuery.data.message || "Permiso no encontrado");
-            }
-        } else {
-            setIdPermisoBuscado(nextId);
         }
     };
 
@@ -134,26 +144,11 @@ function PermisoScreen() {
         }
     }, [permisosQuery.error]);
 
-    useEffect(() => {
-        const response = permisoBuscadoResponse;
-
-        if (!idPermisoBuscado || !response) return;
-
-        const permiso = response.data || response.permiso || null;
-
-        if (!response.ok || !permiso) {
-            toast.error(response.message || "Permiso no encontrado");
-        }
-    }, [idPermisoBuscado, permisoBuscadoResponse]);
-
-    useEffect(() => {
-        if (permisoBuscadoQuery.error) {
-            toast.error(getErrorMessage(permisoBuscadoQuery.error, "Permiso no encontrado"));
-        }
-    }, [permisoBuscadoQuery.error]);
-
     const primerPermiso = total === 0 ? 0 : (page - 1) * limit + 1;
     const ultimoPermiso = Math.min(page * limit, total);
+    const permisosDeTabla = idBusqueda
+        ? permisosCatalog.filter((permiso) => String(permiso.id) === idBusqueda)
+        : permisos;
 
     return (
         <div className="rol-container">
@@ -177,13 +172,10 @@ function PermisoScreen() {
                     </h2>
 
                     <div className="rol-form">
-                        <input
-                            type="text"
-                            value={nombreNuevo}
-                            onChange={(e) => setNombreNuevo(e.target.value)}
-                            className="rol-input"
-                            placeholder="Nombre del permiso"
-                        />
+                        <label className="rol-field">
+                            <span className="rol-field-label">Nombre del permiso <b aria-hidden="true">*</b></span>
+                            <input type="text" value={nombreNuevo} onChange={(e) => setNombreNuevo(e.target.value)} className="rol-input" placeholder="Ej. leer_usuarios" />
+                        </label>
 
                         <button onClick={handleCrearPermiso} className="rol-button">
                             Crear
@@ -194,29 +186,19 @@ function PermisoScreen() {
                 <section className="rol-card">
                     <h2>
                         <Search size={20} />
-                        Buscar Permiso por ID
+                        Buscar permiso
                     </h2>
 
                     <div className="rol-form">
-                        <input
-                            type="number"
-                            value={idBusqueda}
-                            onChange={(e) => setIdBusqueda(e.target.value)}
-                            className="rol-input"
-                            placeholder="ID del permiso"
-                        />
-
-                        <button onClick={handleBuscarPermiso} className="rol-button">
-                            Buscar
-                        </button>
+                        <label className="rol-field">
+                            <span className="rol-field-label">Permiso <b aria-hidden="true">*</b></span>
+                            <select value={idBusqueda} onChange={(e) => { setIdBusqueda(e.target.value); setPage(1); }} className="rol-input rol-select">
+                                <option value="">Selecciona un permiso</option>
+                                {permisosCatalog.map((permiso) => <option key={permiso.id} value={permiso.id}>{permiso.nombre} (ID: {permiso.id})</option>)}
+                            </select>
+                        </label>
+                        {idBusqueda && <button type="button" onClick={() => setIdBusqueda("")} className="rol-button rol-cancel">Ver todos</button>}
                     </div>
-
-                    {permisoBuscado && (
-                        <div className="rol-result">
-                            <strong>ID:</strong> {permisoBuscado.id} | <strong>Nombre:</strong>{" "}
-                            {permisoBuscado.nombre}
-                        </div>
-                    )}
                 </section>
 
                 <section className="rol-table rol-table-scroll">
@@ -225,16 +207,20 @@ function PermisoScreen() {
                             <tr>
                                 <th>ID</th>
                                 <th>Nombre</th>
+                                <th>Creado</th>
+                                <th>Actualizado</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
 
                         <tbody>
-                            {permisos.length > 0 ? (
-                                permisos.map((permiso) => (
+                            {permisosDeTabla.length > 0 ? (
+                                permisosDeTabla.map((permiso) => (
                                     <tr key={permiso.id}>
                                         <td>{permiso.id}</td>
                                         <td>{permiso.nombre}</td>
+                                        <td className="rol-date-cell">{formatDate(permiso.createdAt)}</td>
+                                        <td className="rol-date-cell">{formatDate(permiso.updatedAt)}</td>
                                         <td>
                                             <div className="rol-actions">
                                                 <button
@@ -261,8 +247,8 @@ function PermisoScreen() {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={3} className="rol-empty">
-                                        No hay permisos disponibles.
+                                    <td colSpan={5} className="rol-empty">
+                                        {idBusqueda ? "No se encontró el permiso seleccionado." : "No hay permisos disponibles."}
                                     </td>
                                 </tr>
                             )}
@@ -272,10 +258,10 @@ function PermisoScreen() {
 
                 <section className="rol-pagination">
                     <p>
-                        Mostrando {primerPermiso} - {ultimoPermiso} de {total} permisos
+                        {idBusqueda ? "Mostrando 1 permiso" : `Mostrando ${primerPermiso} - ${ultimoPermiso} de ${total} permisos`}
                     </p>
 
-                    <div className="rol-pagination-controls">
+                    {!idBusqueda && <div className="rol-pagination-controls">
                         <select
                             value={limit}
                             onChange={(e) => {
@@ -309,7 +295,7 @@ function PermisoScreen() {
                         >
                             Siguiente
                         </button>
-                    </div>
+                    </div>}
                 </section>
 
                 {permisoEditando && (

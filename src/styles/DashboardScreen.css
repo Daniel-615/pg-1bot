@@ -438,3 +438,110 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Visual refresh */
+.dashboard-container {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  padding: 40px clamp(18px, 4vw, 64px) 60px;
+  background:
+    radial-gradient(circle at 6% 0%, rgba(99, 102, 241, .15), transparent 28%),
+    radial-gradient(circle at 96% 12%, rgba(14, 165, 233, .1), transparent 25%),
+    linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+}
+
+.dashboard-container::-webkit-scrollbar { width: 10px; }
+.dashboard-container::-webkit-scrollbar-track { background: rgba(226, 232, 240, .55); }
+.dashboard-container::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: #94a3b8;
+  background-clip: padding-box;
+}
+.dashboard-container::-webkit-scrollbar-thumb:hover { background: #6366f1; background-clip: padding-box; }
+
+.dashboard-hero { grid-template-columns: minmax(0, 1fr) 350px; gap: 18px; }
+
+.dashboard-hero-copy {
+  min-height: 410px;
+  border: 0;
+  border-radius: 30px;
+  padding: clamp(24px, 4vw, 42px);
+  background:
+    radial-gradient(circle at 88% 16%, rgba(56, 189, 248, .24), transparent 24%),
+    linear-gradient(135deg, #111827 0%, #1e1b4b 100%);
+  box-shadow: 0 24px 60px rgba(30, 27, 75, .2);
+}
+
+.dashboard-hero-copy::after { background: rgba(129, 140, 248, .14); }
+.dashboard-back { background: rgba(255, 255, 255, .13); box-shadow: none; }
+.dashboard-back:hover { background: rgba(255, 255, 255, .22); }
+
+.dashboard-eyebrow {
+  margin-top: 28px;
+  color: #c7d2fe;
+  background: rgba(129, 140, 248, .18);
+  border: 1px solid rgba(199, 210, 254, .18);
+}
+
+.dashboard-hero h1 { color: #fff; letter-spacing: -.055em; }
+.dashboard-description { color: #cbd5e1; }
+.dashboard-primary-action { color: #111827; background: #fff; }
+.dashboard-primary-action:hover { box-shadow: 0 16px 30px rgba(0, 0, 0, .24); }
+.dashboard-role-chip { color: #dbeafe; background: rgba(14, 165, 233, .16); border-color: rgba(125, 211, 252, .24); }
+
+.dashboard-profile-card {
+  min-height: 410px;
+  border: 1px solid rgba(255, 255, 255, .8);
+  border-radius: 30px;
+  padding: 30px;
+  background: linear-gradient(160deg, #ffffff 0%, #eef2ff 100%);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, .1);
+}
+
+.dashboard-logo {
+  width: 132px;
+  height: 132px;
+  padding: 14px;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, .76);
+  filter: drop-shadow(0 18px 24px rgba(79, 70, 229, .2));
+}
+
+.dashboard-profile-card h2 { font-size: 25px; letter-spacing: -.03em; }
+.dashboard-stats { gap: 14px; margin-bottom: 34px; }
+.dashboard-stat-card { border: 0; border-radius: 18px; padding: 20px; box-shadow: 0 12px 32px rgba(15, 23, 42, .07); }
+.dashboard-stat-card span { color: #64748b; }
+.dashboard-stat-card strong { color: #172033; }
+.dashboard-stat-card-primary { background: linear-gradient(135deg, #fff, #eef2ff); }
+.dashboard-stat-card-access { background: linear-gradient(135deg, #fff, #ecfeff); }
+.dashboard-stat-card-restricted { background: linear-gradient(135deg, #fff, #fff1f2); }
+
+.dashboard-section-heading { align-items: flex-end; margin-bottom: 16px; }
+.dashboard-section-heading h2 { font-size: 25px; letter-spacing: -.03em; }
+.dashboard-section-heading p { margin: 7px 0 0; color: #64748b; font-size: 13px; }
+.dashboard-module-count { padding: 8px 12px; border-radius: 999px; color: #4338ca; background: #eef2ff; font-size: 12px; font-weight: 800; }
+
+.dashboard-grid { gap: 16px; }
+.dashboard-card {
+  min-height: 188px;
+  border: 1px solid rgba(255, 255, 255, .9);
+  border-radius: 20px;
+  padding: 22px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, .07);
+}
+.dashboard-card:hover { box-shadow: 0 22px 46px rgba(15, 23, 42, .13); }
+.dashboard-card-tag { color: #64748b; font-size: 11px; }
+.dashboard-icon { border-radius: 14px; }
+.dashboard-card h2 { font-size: 20px; letter-spacing: -.02em; }
+.dashboard-card-arrow { border: 1px solid rgba(15, 23, 42, .06); }
+
+@media (max-width: 640px) {
+  .dashboard-hero-copy,
+  .dashboard-profile-card { min-height: auto; border-radius: 24px; }
+  .dashboard-section-heading { align-items: flex-start; flex-direction: column; gap: 12px; }
+}

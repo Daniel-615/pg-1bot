@@ -190,17 +190,17 @@ export const DashboardScreen = ({ user }: DashboardScreenProps) => {
             </section>
 
             <section className="dashboard-stats" aria-label="Resumen del panel">
-                <Card><Card.Content>
+                <Card className="dashboard-stat-card dashboard-stat-card-primary"><Card.Content>
                     <span>Secciones visibles</span>
                     <strong>{visibleItems.length}</strong>
                 </Card.Content></Card>
 
-                <Card><Card.Content>
+                <Card className="dashboard-stat-card dashboard-stat-card-access"><Card.Content>
                     <span>Acceso</span>
                     <strong>{isAdmin ? "Total" : "Limitado"}</strong>
                 </Card.Content></Card>
 
-                <Card><Card.Content>
+                <Card className="dashboard-stat-card dashboard-stat-card-restricted"><Card.Content>
                     <span>Restringidas</span>
                     <strong>{restrictedItems}</strong>
                 </Card.Content></Card>
@@ -210,7 +210,9 @@ export const DashboardScreen = ({ user }: DashboardScreenProps) => {
                 <div>
                     <span>Módulos</span>
                     <h2>Elige una sección para administrar</h2>
+                    <p>Accede rápidamente a las herramientas que tienes habilitadas.</p>
                 </div>
+                <span className="dashboard-module-count">{visibleItems.length} disponibles</span>
             </section>
 
             <section className="dashboard-grid">

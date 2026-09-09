@@ -1,20 +1,67 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import type { Usuario } from "../../services/usuario.service";
 import type { UsuarioRol } from "../../services/usuario.rol.sevice";
 import {
     useCreateUsuarioRol,
     useDeleteUsuarioRol,
-    useUsuarioRol,
     useUsuarioRoles,
 } from "../../hooks/usuarioRoles/usuarioRolesHook";
 import { ArrowLeft, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { getPaginationRange, normalizePagination, paginateRows } from "../pagination";
 import { QueryFreshness } from "../components/QueryFreshness";
+import { useUsuarios } from "../../hooks/usuarios/usuariosHook";
+import { useRoles } from "../../hooks/roles/rolesHook";
 import "../../styles/rol.css";
 
 function getErrorMessage(error: unknown, fallback: string) {
+    if (axios.isAxiosError(error)) {
+        const data = error.response?.data as { message?: unknown; error?: unknown; errors?: unknown } | undefined;
+        if (typeof data?.message === "string" && data.message.trim()) return data.message;
+        if (typeof data?.error === "string" && data.error.trim()) return data.error;
+        if (Array.isArray(data?.errors)) {
+            const messages = data.errors.filter((item): item is string => typeof item === "string");
+            if (messages.length > 0) return messages.join(". ");
+        }
+    }
+
     return error instanceof Error ? error.message : fallback;
+}
+
+function extractUsuarios(payload: unknown): Usuario[] {
+    if (Array.isArray(payload)) return payload;
+    if (!payload || typeof payload !== "object") return [];
+
+    const response = payload as { data?: unknown; usuarios?: unknown; users?: unknown; rows?: unknown };
+    if (Array.isArray(response.data)) return response.data;
+    if (response.data && typeof response.data === "object" && "rows" in response.data) {
+        const rows = (response.data as { rows?: unknown }).rows;
+        if (Array.isArray(rows)) return rows;
+    }
+    if (Array.isArray(response.usuarios)) return response.usuarios;
+    if (Array.isArray(response.users)) return response.users;
+    if (Array.isArray(response.rows)) return response.rows;
+    return [];
+}
+
+function getUsuarioLabel(usuario: Usuario) {
+    const nombre = [usuario.nombre, usuario.apellido].filter(Boolean).join(" ").trim();
+    return nombre || usuario.email || "Usuario sin nombre";
+}
+
+function formatDate(value?: string) {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat("es-AR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    }).format(date);
 }
 
 function UsuarioRolScreen() {
@@ -23,15 +70,11 @@ function UsuarioRolScreen() {
     const [usuarioIdNuevo, setUsuarioIdNuevo] = useState("");
     const [rolIdNuevo, setRolIdNuevo] = useState("");
     const [usuarioIdBusqueda, setUsuarioIdBusqueda] = useState("");
-    const [rolIdBusqueda, setRolIdBusqueda] = useState("");
-    const [idsRelacionBuscada, setIdsRelacionBuscada] = useState<{ usuarioId: string; rolId: string } | null>(null);
     const navigate = useNavigate();
 
     const relacionesQuery = useUsuarioRoles(page, limit);
-    const relacionBuscadaQuery = useUsuarioRol(
-        idsRelacionBuscada?.usuarioId ?? null,
-        idsRelacionBuscada?.rolId ?? null
-    );
+    const usuariosQuery = useUsuarios("todos");
+    const rolesQuery = useRoles(1, 100);
     const createRelacionMutation = useCreateUsuarioRol();
     const deleteRelacionMutation = useDeleteUsuarioRol();
 
@@ -43,16 +86,15 @@ function UsuarioRolScreen() {
     const total = pagination.total;
     const totalPages = pagination.totalPages;
     const serverPaginated = pagination.serverPaginated;
-    const relacionBuscadaResponse = relacionBuscadaQuery.data;
-    const relacionBuscada = relacionBuscadaResponse?.ok
-        ? relacionBuscadaResponse.data ?? null
-        : null;
+    const usuarios = extractUsuarios(usuariosQuery.data);
+    const rolesData = rolesQuery.data?.ok ? rolesQuery.data.data : undefined;
+    const roles = Array.isArray(rolesData) ? rolesData : rolesData?.rows ?? [];
 
     const handleCrearRelacion = async () => {
         const rolId = Number(rolIdNuevo);
 
         if (!usuarioIdNuevo.trim() || !rolId) {
-            toast.error("Ingresa un ID de usuario y un ID de rol válidos");
+            toast.error("Selecciona un usuario y un rol");
             return;
         }
 
@@ -71,30 +113,6 @@ function UsuarioRolScreen() {
             }
         } catch (error) {
             toast.error(getErrorMessage(error, "Error al asignar el rol al usuario"));
-        }
-    };
-
-    const handleBuscarRelacion = async () => {
-        if (!usuarioIdBusqueda.trim() || !rolIdBusqueda.trim()) {
-            toast.error("Ingresa el ID del usuario y el ID del rol para buscar");
-            return;
-        }
-
-        const nextIds = {
-            usuarioId: usuarioIdBusqueda.trim(),
-            rolId: rolIdBusqueda.trim(),
-        };
-
-        if (
-            idsRelacionBuscada?.usuarioId === nextIds.usuarioId &&
-            idsRelacionBuscada.rolId === nextIds.rolId &&
-            relacionBuscadaQuery.data
-        ) {
-            if (!relacionBuscadaQuery.data.ok || !relacionBuscadaQuery.data.data) {
-                toast.error(relacionBuscadaQuery.data.message || "Relación usuario-rol no encontrada");
-            }
-        } else {
-            setIdsRelacionBuscada(nextIds);
         }
     };
 
@@ -129,23 +147,10 @@ function UsuarioRolScreen() {
         }
     }, [relacionesQuery.error]);
 
-    useEffect(() => {
-        const response = relacionBuscadaResponse;
-
-        if (!idsRelacionBuscada || !response) return;
-
-        if (!response.ok || !response.data) {
-            toast.error(response.message || "Relación usuario-rol no encontrada");
-        }
-    }, [idsRelacionBuscada, relacionBuscadaResponse]);
-
-    useEffect(() => {
-        if (relacionBuscadaQuery.error) {
-            toast.error(getErrorMessage(relacionBuscadaQuery.error, "Relación usuario-rol no encontrada"));
-        }
-    }, [relacionBuscadaQuery.error]);
-
     const relacionesVisibles = paginateRows(relaciones, page, limit, serverPaginated);
+    const relacionesDeTabla = usuarioIdBusqueda
+        ? relaciones.filter((relacion) => relacion.usuarioId === usuarioIdBusqueda)
+        : relacionesVisibles;
     const { first: primeraRelacion, last: ultimaRelacion } = getPaginationRange(total, page, limit);
 
     return (
@@ -166,27 +171,45 @@ function UsuarioRolScreen() {
                 <section className="rol-card">
                     <h2>
                         <Plus size={20} />
-                        Crear Relación Usuario-Rol
+                        Asignale un rol al usuario
                     </h2>
 
                     <div className="rol-form">
-                        <input
-                            type="text"
-                            value={usuarioIdNuevo}
-                            onChange={(e) => setUsuarioIdNuevo(e.target.value)}
-                            className="rol-input"
-                            placeholder="ID del usuario"
-                        />
+                        <label className="rol-field">
+                            <span className="rol-field-label">Usuario</span>
+                            <select
+                                value={usuarioIdNuevo}
+                                onChange={(e) => {
+                                    setUsuarioIdNuevo(e.target.value);
+                                    setRolIdNuevo("");
+                                }}
+                                className="rol-input rol-select"
+                            >
+                                <option value="">Selecciona un usuario</option>
+                                {usuarios.map((usuario) => (
+                                    <option key={String(usuario.id)} value={String(usuario.id)}>
+                                        {getUsuarioLabel(usuario)} · {usuario.email || String(usuario.id)}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
 
-                        <input
-                            type="number"
+                        <label className="rol-field">
+                            <span className="rol-field-label">Rol <b aria-hidden="true">*</b></span>
+                            <select
                             value={rolIdNuevo}
                             onChange={(e) => setRolIdNuevo(e.target.value)}
-                            className="rol-input"
-                            placeholder="ID del rol"
-                        />
+                            className="rol-input rol-select"
+                            disabled={!usuarioIdNuevo}
+                            >
+                                <option value="">Selecciona un rol</option>
+                                {roles.map((rol) => (
+                                    <option key={rol.id} value={rol.id}>{rol.nombre} (ID: {rol.id})</option>
+                                ))}
+                            </select>
+                        </label>
 
-                        <button onClick={handleCrearRelacion} className="rol-button">
+                        <button onClick={handleCrearRelacion} className="rol-button" disabled={!usuarioIdNuevo || !rolIdNuevo}>
                             Crear
                         </button>
                     </div>
@@ -195,38 +218,36 @@ function UsuarioRolScreen() {
                 <section className="rol-card">
                     <h2>
                         <Search size={20} />
-                        Buscar Relación por IDs
+                        Buscar rol del usuario
                     </h2>
-
                     <div className="rol-form">
-                        <input
-                            type="text"
-                            value={usuarioIdBusqueda}
-                            onChange={(e) => setUsuarioIdBusqueda(e.target.value)}
-                            className="rol-input"
-                            placeholder="ID del usuario"
-                        />
+                        <label className="rol-field">
+                            <span className="rol-field-label">Usuario <b aria-hidden="true">*</b></span>
+                            <select
+                                value={usuarioIdBusqueda}
+                                onChange={(e) => {
+                                    setUsuarioIdBusqueda(e.target.value);
+                                    setPage(1);
+                                }}
+                                className="rol-input rol-select"
+                            >
+                                <option value="">Selecciona un usuario</option>
+                                {usuarios.map((usuario) => (
+                                    <option key={String(usuario.id)} value={String(usuario.id)}>
+                                        {getUsuarioLabel(usuario)} · {usuario.email || String(usuario.id)}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
 
-                        <input
-                            type="number"
-                            value={rolIdBusqueda}
-                            onChange={(e) => setRolIdBusqueda(e.target.value)}
-                            className="rol-input"
-                            placeholder="ID del rol"
-                        />
-
-                        <button onClick={handleBuscarRelacion} className="rol-button">
-                            Buscar
-                        </button>
+                        {usuarioIdBusqueda && (
+                            <button type="button" onClick={() => {
+                                setUsuarioIdBusqueda("");
+                            }} className="rol-button rol-cancel">
+                                Ver todos
+                            </button>
+                        )}
                     </div>
-
-                    {relacionBuscada && (
-                        <div className="rol-result">
-                            <strong>Usuario:</strong>{" "}
-                            {relacionBuscada.usuario?.email || relacionBuscada.usuarioId} |{" "}
-                            <strong>Rol:</strong> {relacionBuscada.rol?.nombre || relacionBuscada.rolId}
-                        </div>
-                    )}
                 </section>
 
                 <section className="rol-table rol-table-scroll">
@@ -238,19 +259,23 @@ function UsuarioRolScreen() {
                                 <th>Email</th>
                                 <th>Rol ID</th>
                                 <th>Rol</th>
+                                <th>Creado</th>
+                                <th>Actualizado</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
 
                         <tbody>
-                            {relacionesVisibles.length > 0 ? (
-                                relacionesVisibles.map((relacion) => (
+                            {relacionesDeTabla.length > 0 ? (
+                                relacionesDeTabla.map((relacion) => (
                                     <tr key={`${relacion.usuarioId}-${relacion.rolId}`}>
                                         <td>{relacion.usuarioId}</td>
                                         <td>{relacion.usuario?.nombre || "-"}</td>
                                         <td>{relacion.usuario?.email || "-"}</td>
                                         <td>{relacion.rolId}</td>
                                         <td>{relacion.rol?.nombre || "-"}</td>
+                                        <td className="rol-date-cell">{formatDate(relacion.createdAt)}</td>
+                                        <td className="rol-date-cell">{formatDate(relacion.updatedAt)}</td>
                                         <td>
                                             <div className="rol-actions">
                                                 <button
@@ -268,8 +293,8 @@ function UsuarioRolScreen() {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={6} className="rol-empty">
-                                        No hay relaciones usuario-rol disponibles.
+                                    <td colSpan={8} className="rol-empty">
+                                        {usuarioIdBusqueda ? "El usuario no tiene roles asignados." : "No hay relaciones usuario-rol disponibles."}
                                     </td>
                                 </tr>
                             )}
@@ -279,10 +304,12 @@ function UsuarioRolScreen() {
 
                 <section className="rol-pagination">
                     <p>
-                        Mostrando {primeraRelacion} - {ultimaRelacion} de {total} relaciones
+                        {usuarioIdBusqueda
+                            ? `Mostrando ${relacionesDeTabla.length} roles del usuario`
+                            : `Mostrando ${primeraRelacion} - ${ultimaRelacion} de ${total} relaciones`}
                     </p>
 
-                    <div className="rol-pagination-controls">
+                    {!usuarioIdBusqueda && <div className="rol-pagination-controls">
                         <select
                             value={limit}
                             onChange={(e) => {
@@ -316,7 +343,7 @@ function UsuarioRolScreen() {
                         >
                             Siguiente
                         </button>
-                    </div>
+                    </div>}
                 </section>
             </main>
         </div>

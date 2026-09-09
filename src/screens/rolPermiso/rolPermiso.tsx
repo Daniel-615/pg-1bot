@@ -4,17 +4,52 @@ import type { RolPermiso } from "../../services/rol.permiso.service";
 import {
     useCreateRolPermiso,
     useDeleteRolPermiso,
+    usePermisosNoAsignados,
     useRolPermiso,
     useRolPermisos,
 } from "../../hooks/rolPermisos/rolPermisosHook";
+import { useRoles } from "../../hooks/roles/rolesHook";
+import { usePermisos } from "../../hooks/permisos/permisosHook";
 import { ArrowLeft, Plus, Search, Trash2 } from "lucide-react";
+import axios from "axios";
 import { toast } from "react-toastify";
 import { getPaginationRange, normalizePagination, paginateRows } from "../pagination";
 import { QueryFreshness } from "../components/QueryFreshness";
 import "../../styles/rol.css";
 
 function getErrorMessage(error: unknown, fallback: string) {
+    if (axios.isAxiosError(error)) {
+        const data = error.response?.data as {
+            message?: unknown;
+            error?: unknown;
+            errors?: unknown;
+        } | undefined;
+
+        if (typeof data?.message === "string" && data.message.trim()) return data.message;
+        if (typeof data?.error === "string" && data.error.trim()) return data.error;
+
+        if (Array.isArray(data?.errors)) {
+            const messages = data.errors.filter((item): item is string => typeof item === "string");
+            if (messages.length > 0) return messages.join(". ");
+        }
+    }
+
     return error instanceof Error ? error.message : fallback;
+}
+
+function formatDate(value?: string) {
+    if (!value) return "-";
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+
+    return new Intl.DateTimeFormat("es-AR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    }).format(date);
 }
 
 function RolPermisoScreen() {
@@ -28,6 +63,9 @@ function RolPermisoScreen() {
     const navigate = useNavigate();
 
     const relacionesQuery = useRolPermisos(page, limit);
+    const rolesQuery = useRoles(1, 100);
+    const permisosQuery = usePermisos(1, 100);
+    const permisosNoAsignadosQuery = usePermisosNoAsignados(rolIdNuevo);
     const relacionBuscadaQuery = useRolPermiso(
         idsRelacionBuscada?.rolId ?? null,
         idsRelacionBuscada?.permisoId ?? null
@@ -47,13 +85,20 @@ function RolPermisoScreen() {
     const relacionBuscada = (relacionBuscadaResponse?.ok || relacionBuscadaResponse?.success)
         ? relacionBuscadaResponse.data ?? null
         : null;
+    const rolesData = rolesQuery.data?.ok ? rolesQuery.data.data : undefined;
+    const permisosData = permisosQuery.data?.ok ? permisosQuery.data.data : undefined;
+    const roles = Array.isArray(rolesData) ? rolesData : rolesData?.rows ?? [];
+    const permisos = Array.isArray(permisosData) ? permisosData : permisosData?.rows ?? [];
+    const permisosNoAsignados = permisosNoAsignadosQuery.data?.ok
+        ? permisosNoAsignadosQuery.data.data ?? []
+        : [];
 
     const handleCrearRelacion = async () => {
         const rolId = Number(rolIdNuevo);
         const permisoId = Number(permisoIdNuevo);
 
         if (!rolId || !permisoId) {
-            toast.error("Ingresa un ID de rol y un ID de permiso válidos");
+            toast.error("Selecciona un rol y un permiso");
             return;
         }
 
@@ -77,7 +122,7 @@ function RolPermisoScreen() {
 
     const handleBuscarRelacion = async () => {
         if (!rolIdBusqueda.trim() || !permisoIdBusqueda.trim()) {
-            toast.error("Ingresa el ID del rol y el ID del permiso para buscar");
+            toast.error("Selecciona el rol y el permiso para buscar");
             return;
         }
 
@@ -146,7 +191,18 @@ function RolPermisoScreen() {
         }
     }, [relacionBuscadaQuery.error]);
 
+    useEffect(() => {
+        if (permisosNoAsignadosQuery.error) {
+            toast.error(getErrorMessage(permisosNoAsignadosQuery.error, "No se pudieron cargar los permisos no asignados"));
+        }
+    }, [permisosNoAsignadosQuery.error]);
+
     const relacionesVisibles = paginateRows(relaciones, page, limit, serverPaginated);
+    const relacionesDeTabla = idsRelacionBuscada
+        ? relacionBuscada
+            ? [relacionBuscada]
+            : []
+        : relacionesVisibles;
     const { first: primeraRelacion, last: ultimaRelacion } = getPaginationRange(total, page, limit);
 
     return (
@@ -167,67 +223,117 @@ function RolPermisoScreen() {
                 <section className="rol-card">
                     <h2>
                         <Plus size={20} />
-                        Crear Relación Rol-Permiso
+                        Asignale un permiso a un rol
                     </h2>
 
                     <div className="rol-form">
-                        <input
-                            type="number"
-                            value={rolIdNuevo}
-                            onChange={(e) => setRolIdNuevo(e.target.value)}
-                            className="rol-input"
-                            placeholder="ID del rol"
-                        />
+                        <label className="rol-field">
+                            <span className="rol-field-label">Rol <b aria-hidden="true">*</b></span>
+                            <select
+                                value={rolIdNuevo}
+                                onChange={(e) => {
+                                    setRolIdNuevo(e.target.value);
+                                    setPermisoIdNuevo("");
+                                }}
+                                className="rol-input rol-select"
+                            >
+                                <option value="">Selecciona un rol</option>
+                                {roles.map((rol) => (
+                                    <option key={rol.id} value={rol.id}>
+                                        {rol.nombre} (ID: {rol.id})
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
 
-                        <input
-                            type="number"
-                            value={permisoIdNuevo}
-                            onChange={(e) => setPermisoIdNuevo(e.target.value)}
-                            className="rol-input"
-                            placeholder="ID del permiso"
-                        />
+                        <label className="rol-field">
+                            <span className="rol-field-label">Permiso <b aria-hidden="true">*</b></span>
+                            <select
+                                value={permisoIdNuevo}
+                                onChange={(e) => setPermisoIdNuevo(e.target.value)}
+                                className="rol-input rol-select"
+                                disabled={!rolIdNuevo || permisosNoAsignadosQuery.isLoading}
+                            >
+                                <option value="">
+                                    {permisosNoAsignadosQuery.isLoading ? "Cargando permisos..." : "Selecciona un permiso no asignado"}
+                                </option>
+                                {permisosNoAsignados.map((permiso) => (
+                                    <option key={permiso.id} value={permiso.id}>
+                                        {permiso.nombre} (ID: {permiso.id})
+                                    </option>
+                                ))}
+                            </select>
+                            {rolIdNuevo && !permisosNoAsignadosQuery.isLoading && permisosNoAsignados.length === 0 && (
+                                <small className="rol-field-hint">Este rol ya tiene todos los permisos asignados.</small>
+                            )}
+                        </label>
 
-                        <button onClick={handleCrearRelacion} className="rol-button">
+                        <button onClick={handleCrearRelacion} className="rol-button" disabled={!rolIdNuevo || !permisoIdNuevo}>
                             Crear
                         </button>
                     </div>
                 </section>
 
                 <section className="rol-card">
-                    <h2>
-                        <Search size={20} />
-                        Buscar Relación por IDs
-                    </h2>
+                        <h2>
+                            <Search size={20} />
+                            Selecciona el rol y permiso a buscar
+                        </h2>
 
                     <div className="rol-form">
-                        <input
-                            type="number"
-                            value={rolIdBusqueda}
-                            onChange={(e) => setRolIdBusqueda(e.target.value)}
-                            className="rol-input"
-                            placeholder="ID del rol"
-                        />
+                        <label className="rol-field">
+                            <span className="rol-field-label">Rol <b aria-hidden="true">*</b></span>
+                            <select
+                                value={rolIdBusqueda}
+                                onChange={(e) => {
+                                    setRolIdBusqueda(e.target.value);
+                                    setPermisoIdBusqueda("");
+                                }}
+                                className="rol-input rol-select"
+                            >
+                                <option value="">Selecciona un rol</option>
+                                {roles.map((rol) => (
+                                    <option key={rol.id} value={rol.id}>
+                                        {rol.nombre} (ID: {rol.id})
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
 
-                        <input
-                            type="number"
-                            value={permisoIdBusqueda}
-                            onChange={(e) => setPermisoIdBusqueda(e.target.value)}
-                            className="rol-input"
-                            placeholder="ID del permiso"
-                        />
+                        <label className="rol-field">
+                            <span className="rol-field-label">Permiso <b aria-hidden="true">*</b></span>
+                            <select
+                                value={permisoIdBusqueda}
+                                onChange={(e) => setPermisoIdBusqueda(e.target.value)}
+                                className="rol-input rol-select"
+                                disabled={!rolIdBusqueda}
+                            >
+                                <option value="">Selecciona un permiso</option>
+                                {permisos.map((permiso) => (
+                                    <option key={permiso.id} value={permiso.id}>
+                                        {permiso.nombre} (ID: {permiso.id})
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
 
                         <button onClick={handleBuscarRelacion} className="rol-button">
                             Buscar
                         </button>
+                        {idsRelacionBuscada && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIdsRelacionBuscada(null);
+                                    setRolIdBusqueda("");
+                                    setPermisoIdBusqueda("");
+                                }}
+                                className="rol-button rol-cancel"
+                            >
+                                Ver todas
+                            </button>
+                        )}
                     </div>
-
-                    {relacionBuscada && (
-                        <div className="rol-result">
-                            <strong>Rol:</strong> {relacionBuscada.rol?.nombre || relacionBuscada.rolId} |{" "}
-                            <strong>Permiso:</strong>{" "}
-                            {relacionBuscada.permiso?.nombre || relacionBuscada.permisoId}
-                        </div>
-                    )}
                 </section>
 
                 <section className="rol-table rol-table-scroll">
@@ -238,18 +344,22 @@ function RolPermisoScreen() {
                                 <th>Rol</th>
                                 <th>Permiso ID</th>
                                 <th>Permiso</th>
+                                <th>Creado</th>
+                                <th>Actualizado</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
 
                         <tbody>
-                            {relacionesVisibles.length > 0 ? (
-                                relacionesVisibles.map((relacion) => (
+                            {relacionesDeTabla.length > 0 ? (
+                                relacionesDeTabla.map((relacion) => (
                                     <tr key={`${relacion.rolId}-${relacion.permisoId}`}>
                                         <td>{relacion.rolId}</td>
                                         <td>{relacion.rol?.nombre || "-"}</td>
                                         <td>{relacion.permisoId}</td>
                                         <td>{relacion.permiso?.nombre || "-"}</td>
+                                        <td className="rol-date-cell">{formatDate(relacion.createdAt)}</td>
+                                        <td className="rol-date-cell">{formatDate(relacion.updatedAt)}</td>
                                         <td>
                                             <div className="rol-actions">
                                                 <button
@@ -267,8 +377,10 @@ function RolPermisoScreen() {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={5} className="rol-empty">
-                                        No hay relaciones rol-permiso disponibles.
+                                    <td colSpan={7} className="rol-empty">
+                                        {idsRelacionBuscada
+                                            ? "No se encontró la relación seleccionada."
+                                            : "No hay relaciones rol-permiso disponibles."}
                                     </td>
                                 </tr>
                             )}
@@ -278,10 +390,12 @@ function RolPermisoScreen() {
 
                 <section className="rol-pagination">
                     <p>
-                        Mostrando {primeraRelacion} - {ultimaRelacion} de {total} relaciones
+                        {idsRelacionBuscada
+                            ? `Mostrando ${relacionesDeTabla.length} relación encontrada`
+                            : `Mostrando ${primeraRelacion} - ${ultimaRelacion} de ${total} relaciones`}
                     </p>
 
-                    <div className="rol-pagination-controls">
+                    {!idsRelacionBuscada && <div className="rol-pagination-controls">
                         <select
                             value={limit}
                             onChange={(e) => {
@@ -315,7 +429,7 @@ function RolPermisoScreen() {
                         >
                             Siguiente
                         </button>
-                    </div>
+                    </div>}
                 </section>
             </main>
         </div>
