@@ -503,3 +503,9 @@
     color: #000;
     font-size: 13px;
 }
+
+.required{
+    color: red;
+    margin-left: 3px;
+    font-weight: bold;
+}

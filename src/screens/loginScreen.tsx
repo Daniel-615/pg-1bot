@@ -66,7 +66,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 </p>
 
                 <div className="form-group">
-                    <label htmlFor="login-email">Correo</label>
+                    <label htmlFor="login-email">Correo <span className="required">*</span></label>
 
                     <input
                         id="login-email"
@@ -80,7 +80,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 </div>
 
                 <div className="form-group">
-                    <label htmlFor="login-password">Contraseña</label>
+                    <label htmlFor="login-password">Contraseña <span className="required">*</span></label>
 
                     <div className="password-input">
                         <input

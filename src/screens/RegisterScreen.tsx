@@ -92,7 +92,7 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
                 </p>
 
                 <div className="form-group">
-                    <label htmlFor="register-age">Edad</label>
+                    <label htmlFor="register-age">Edad <span className="required">*</span></label>
                     <input
                         id="register-age"
                         type="number"
@@ -106,7 +106,7 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
                 </div>
 
                 <div className="form-group">
-                    <label htmlFor="register-name">Nombre</label>
+                    <label htmlFor="register-name">Nombre <span className="required">*</span></label>
 
                     <input
                         id="register-name"
@@ -119,7 +119,7 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
                     />
                 </div>
                 <div className="form-group">
-                    <label htmlFor="register-lastname">Apellido</label>
+                    <label htmlFor="register-lastname">Apellido <span className="required">*</span> </label>
 
                     <input
                         id="register-lastname"
@@ -134,7 +134,7 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
 
 
                 <div className="form-group">
-                    <label htmlFor="register-email">Correo</label>
+                    <label htmlFor="register-email">Correo <span className="required">*</span></label>
 
                     <input
                         id="register-email"
@@ -148,7 +148,7 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
                 </div>
 
                 <div className="form-group">
-                    <label htmlFor="register-password">Contraseña</label>
+                    <label htmlFor="register-password">Contraseña <span className="required">*</span></label>
 
                     <div className="password-input">
                         <input
@@ -198,7 +198,7 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
                 </div>
 
                 <div className="form-group">
-                    <label htmlFor="register-confirm-password">Confirmar contraseña</label>
+                    <label htmlFor="register-confirm-password">Confirmar contraseña <span className="required">*</span></label>
 
                     <input
                         id="register-confirm-password"
