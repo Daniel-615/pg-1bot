@@ -13,6 +13,7 @@ type UseBlocklyEditorOptions = {
   enabled?: boolean;
   onSymbolTableChange: (rows: SymbolTableRow[]) => void;
   onWorkspaceChange?: (blocks: unknown) => void;
+  installedExtensionIds?: string[];
 };
 
 
@@ -26,6 +27,7 @@ export function useBlocklyEditor({
   enabled = true,
   onSymbolTableChange,
   onWorkspaceChange,
+  installedExtensionIds = [],
 }: UseBlocklyEditorOptions) {
   /*
     The core of the software, it has the logic to show TOAST errors, to renderize arduino uno, nano, esp32, codey, etc.
@@ -185,6 +187,7 @@ export function useBlocklyEditor({
 
         localWorkspace = await runtime.createWorkspaceManager(blocklyDivRef.current, board, {
           editorMode,
+          installedExtensionIds,
           onSymbolTableChange,
           onSemanticErrorsChange: setSemanticErrors
         });
@@ -237,7 +240,7 @@ export function useBlocklyEditor({
       setIsEditorLoading(false);
       setShowEditorLoading(false);
     };
-  }, [board, editorMode, enabled, language, onSymbolTableChange, workspaceKey]);
+  }, [board, editorMode, enabled, installedExtensionIds, language, onSymbolTableChange, workspaceKey]);
 
   return {
     blocklyDivRef,

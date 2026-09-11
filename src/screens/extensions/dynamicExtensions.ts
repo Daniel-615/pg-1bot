@@ -72,6 +72,11 @@ function boardMatches(block: ExtensionBlockDefinition, board: string) {
   });
 }
 
+function isActive(value?: { nombre?: string }) {
+  const status = normalizeIdentifier(value?.nombre ?? "");
+  return !status || !status.includes("inactiv") && !status.includes("desactiv") && !status.includes("inactive");
+}
+
 function defineDynamicBlocks(blocks: ExtensionBlockDefinition[]) {
   const jsonBlocks = blocks.map((block) => {
     const parameters = [...(block.parametros ?? [])].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
@@ -89,7 +94,7 @@ function defineDynamicBlocks(blocks: ExtensionBlockDefinition[]) {
       args0: args,
       previousStatement: shape === "statement" ? null : undefined,
       nextStatement: shape === "statement" ? null : undefined,
-      output: shape === "output" ? "Number" : undefined,
+      output: shape === "output" ? getDataCheck(parameters[0] ?? { tipo_dato: { nombre: "Number" }, nombre: "value" }) : undefined,
       colour: block.tipo?.color || "#7c3aed",
       tooltip: block.descripcion || "",
       helpUrl: "",
@@ -99,9 +104,25 @@ function defineDynamicBlocks(blocks: ExtensionBlockDefinition[]) {
   Blockly.common.defineBlocksWithJsonArray(jsonBlocks);
 }
 
-export async function loadDynamicExtensionCategories(board: string): Promise<Blockly.utils.toolbox.ToolboxItemInfo[]> {
+function createCategory(name: string, blocks: ExtensionBlockDefinition[], colour: string): Blockly.utils.toolbox.ToolboxItemInfo {
+  return {
+    kind: "category",
+    name,
+    colour,
+    contents: blocks
+      .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+      .map((block) => ({ kind: "block", type: getBlockType(block) })),
+  } as Blockly.utils.toolbox.ToolboxItemInfo;
+}
+
+export async function loadDynamicExtensionCategories(board: string, installedExtensionIds: string[] = []): Promise<Blockly.utils.toolbox.ToolboxItemInfo[]> {
   try {
-    const blocks = (await fetchExtensionBlocks()).filter((block) => boardMatches(block, board));
+    const blocks = (await fetchExtensionBlocks()).filter((block) =>
+      boardMatches(block, board) &&
+      isActive(block.estado) &&
+      isActive(block.extension?.estado) &&
+      installedExtensionIds.includes(block.extension?.id_extension ?? "")
+    );
 
     if (blocks.length === 0) {
       return [];
@@ -112,26 +133,75 @@ export async function loadDynamicExtensionCategories(board: string): Promise<Blo
     const groups = new Map<string, ExtensionBlockDefinition[]>();
 
     for (const block of blocks) {
-      const groupName = block.extension?.nombre || "Extensiones";
-      groups.set(groupName, [...(groups.get(groupName) ?? []), block]);
+      const categories = block.extension?.categorias ?? [];
+      const groupNames = categories.length > 0
+        ? categories.map((category) => category.nombre)
+        : [block.extension?.nombre || "Otros"];
+
+      for (const groupName of groupNames) {
+        groups.set(groupName, [...(groups.get(groupName) ?? []), block]);
+      }
     }
 
-    return Array.from(groups.entries()).map(([name, groupBlocks]) => ({
-      kind: "category",
-      name,
-      colour: groupBlocks[0]?.tipo?.color || "#7c3aed",
-      contents: groupBlocks
-        .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
-        .map((block) => ({ kind: "block", type: getBlockType(block) })),
-    }));
+    const categories = Array.from(groups.entries())
+      .sort(([nameA], [nameB]) => nameA.localeCompare(nameB))
+      .map(([name, groupBlocks]) => createCategory(name, groupBlocks, groupBlocks[0]?.tipo?.color || "#7c3aed"));
+
+    return categories;
   } catch (error) {
     console.warn("No se pudieron cargar las extensiones", error);
     return [];
   }
 }
 
+function parseLibraries(value: string | undefined) {
+  if (!value?.trim()) return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parsed.map(String);
+  } catch {
+    // The catalog also accepts one include per line or comma-separated values.
+  }
+
+  return value.split(/[\n,;]/).map((item) => item.trim()).filter(Boolean);
+}
+
+function interpolate(template: string, values: Record<string, string>, orderedValues: string[]) {
+  return template.replace(/\{\{\s*([^}]+?)\s*\}\}|%([a-zA-Z_][\w]*)%|%(\d+)/g, (_match, braces, percent, index) => {
+    if (index) return orderedValues[Number(index) - 1] ?? "";
+    return values[braces ?? percent] ?? "";
+  });
+}
+
 export function registerDynamicExtensionGenerators(generator: ArduinoBaseGenerator) {
   for (const [type, block] of dynamicBlockTypes) {
-    generator.forBlock[type] = () => `// Extension: ${block.nombre}\n`;
+    generator.forBlock[type] = (workspaceBlock: Blockly.Block) => {
+      const plate = block.placas?.[0];
+      const values: Record<string, string> = {};
+      const orderedValues: string[] = [];
+
+      for (const parameter of block.parametros ?? []) {
+        values[parameter.nombre] = workspaceBlock.getFieldValue(parameter.nombre) ??
+          (generator.valueToCode(workspaceBlock, parameter.nombre, 0) || "");
+        orderedValues.push(values[parameter.nombre]);
+      }
+
+      for (const library of parseLibraries(plate?.BloquePlaca?.librerias_requeridas)) {
+        generator.addInclude(library.startsWith("#include") ? library : `#include ${library}`);
+      }
+
+      const setupCode = interpolate(plate?.BloquePlaca?.codigo_setup ?? "", values, orderedValues).trim();
+      if (setupCode) generator.addSetupDefinition(setupCode);
+
+      const generatedCode = interpolate(
+        plate?.BloquePlaca?.codigo_generado || plate?.BloquePlaca?.codigo_loop || "",
+        values,
+        orderedValues,
+      ).trim();
+
+      const code = generatedCode ? `${generatedCode}\n` : `/* ${block.nombre} */\n`;
+      return getBlockShape(block) === "output" ? [code.trim(), 0] : code;
+    };
   }
 }

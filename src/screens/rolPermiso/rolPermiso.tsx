@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import type { RolPermiso } from "../../services/rol.permiso.service";
 import {
@@ -53,6 +54,7 @@ function formatDate(value?: string) {
 }
 
 function RolPermisoScreen() {
+    const { t } = useTranslation();
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [rolIdNuevo, setRolIdNuevo] = useState("");
@@ -98,7 +100,7 @@ function RolPermisoScreen() {
         const permisoId = Number(permisoIdNuevo);
 
         if (!rolId || !permisoId) {
-            toast.error("Selecciona un rol y un permiso");
+            toast.error(t("searchRelationship"));
             return;
         }
 
@@ -106,23 +108,23 @@ function RolPermisoScreen() {
             const response = await createRelacionMutation.mutateAsync({ rolId, permisoId });
 
             if (response.ok || response.success) {
-                toast.success("Permiso asignado al rol correctamente");
+                toast.success(t("relationshipCreated"));
                 setRolIdNuevo("");
                 setPermisoIdNuevo("");
                 if (page !== 1) {
                     setPage(1);
                 }
             } else {
-                toast.error(response.message || "Error al asignar el permiso al rol");
+                toast.error(response.message || t("relationshipCreated"));
             }
         } catch (error) {
-            toast.error(getErrorMessage(error, "Error al asignar el permiso al rol"));
+            toast.error(getErrorMessage(error, t("relationshipCreated")));
         }
     };
 
     const handleBuscarRelacion = async () => {
         if (!rolIdBusqueda.trim() || !permisoIdBusqueda.trim()) {
-            toast.error("Selecciona el rol y el permiso para buscar");
+            toast.error(t("searchRelationship"));
             return;
         }
 
@@ -137,7 +139,7 @@ function RolPermisoScreen() {
             relacionBuscadaQuery.data
         ) {
             if ((!relacionBuscadaQuery.data.ok && !relacionBuscadaQuery.data.success) || !relacionBuscadaQuery.data.data) {
-                toast.error(relacionBuscadaQuery.data.message || "Relación rol-permiso no encontrada");
+                toast.error(relacionBuscadaQuery.data.message || t("noRelationshipSelected"));
             }
         } else {
             setIdsRelacionBuscada(nextIds);
@@ -145,33 +147,33 @@ function RolPermisoScreen() {
     };
 
     const handleEliminar = async (rolId: number, permisoId: number) => {
-        if (!window.confirm("¿Está seguro de eliminar esta relación rol-permiso?")) return;
+        if (!window.confirm(t("confirmDeleteRelationship"))) return;
 
         try {
             const response = await deleteRelacionMutation.mutateAsync({ rolId, permisoId });
 
             if (response.ok || response.success) {
-                toast.success("Relación eliminada correctamente");
+                toast.success(t("relationshipDeleted"));
                 if (relacionesVisibles.length === 1 && page > 1) {
                     setPage(page - 1);
                 }
             } else {
-                toast.error(response.message || "Error al eliminar la relación rol-permiso");
+                toast.error(response.message || t("relationshipDeleted"));
             }
         } catch (error) {
-            toast.error(getErrorMessage(error, "Error al eliminar la relación rol-permiso"));
+            toast.error(getErrorMessage(error, t("relationshipDeleted")));
         }
     };
 
     useEffect(() => {
         if (relacionesResponse && !relacionesResponse.ok && !relacionesResponse.success) {
-            toast.error(relacionesResponse.message || "Error al cargar las relaciones rol-permiso");
+            toast.error(relacionesResponse.message || t("errorLoadRelationships"));
         }
     }, [relacionesResponse]);
 
     useEffect(() => {
         if (relacionesQuery.error) {
-            toast.error(getErrorMessage(relacionesQuery.error, "Error al cargar las relaciones rol-permiso"));
+            toast.error(getErrorMessage(relacionesQuery.error, t("errorLoadRelationships")));
         }
     }, [relacionesQuery.error]);
 
@@ -214,8 +216,8 @@ function RolPermisoScreen() {
                     </button>
 
                     <div className="rol-title">
-                        <h1>Gestión de Rol Permiso</h1>
-                        <p>Asigna y consulta permisos relacionados con cada rol.</p>
+                        <h1>{t("relationshipTitle")}</h1>
+                        <p>{t("relationshipDescription")}</p>
                         <QueryFreshness updatedAt={relacionesQuery.dataUpdatedAt} isFetching={relacionesQuery.isFetching} />
                     </div>
                 </header>
@@ -223,12 +225,12 @@ function RolPermisoScreen() {
                 <section className="rol-card">
                     <h2>
                         <Plus size={20} />
-                        Asignale un permiso a un rol
+                        {t("assignPermission")}
                     </h2>
 
                     <div className="rol-form">
                         <label className="rol-field">
-                            <span className="rol-field-label">Rol <b aria-hidden="true">*</b></span>
+                            <span className="rol-field-label">{t("role")} <b aria-hidden="true">*</b></span>
                             <select
                                 value={rolIdNuevo}
                                 onChange={(e) => {
@@ -237,7 +239,7 @@ function RolPermisoScreen() {
                                 }}
                                 className="rol-input rol-select"
                             >
-                                <option value="">Selecciona un rol</option>
+                                <option value="">{t("selectRole")}</option>
                                 {roles.map((rol) => (
                                     <option key={rol.id} value={rol.id}>
                                         {rol.nombre} (ID: {rol.id})
@@ -247,7 +249,7 @@ function RolPermisoScreen() {
                         </label>
 
                         <label className="rol-field">
-                            <span className="rol-field-label">Permiso <b aria-hidden="true">*</b></span>
+                            <span className="rol-field-label">{t("permissions")} <b aria-hidden="true">*</b></span>
                             <select
                                 value={permisoIdNuevo}
                                 onChange={(e) => setPermisoIdNuevo(e.target.value)}
@@ -255,7 +257,7 @@ function RolPermisoScreen() {
                                 disabled={!rolIdNuevo || permisosNoAsignadosQuery.isLoading}
                             >
                                 <option value="">
-                                    {permisosNoAsignadosQuery.isLoading ? "Cargando permisos..." : "Selecciona un permiso no asignado"}
+                                    {permisosNoAsignadosQuery.isLoading ? t("loadingPermissions") : t("unassignedPermission")}
                                 </option>
                                 {permisosNoAsignados.map((permiso) => (
                                     <option key={permiso.id} value={permiso.id}>
@@ -264,12 +266,12 @@ function RolPermisoScreen() {
                                 ))}
                             </select>
                             {rolIdNuevo && !permisosNoAsignadosQuery.isLoading && permisosNoAsignados.length === 0 && (
-                                <small className="rol-field-hint">Este rol ya tiene todos los permisos asignados.</small>
+                                <small className="rol-field-hint">{t("allPermissionsAssigned")}</small>
                             )}
                         </label>
 
                         <button onClick={handleCrearRelacion} className="rol-button" disabled={!rolIdNuevo || !permisoIdNuevo}>
-                            Crear
+                            {t("create")}
                         </button>
                     </div>
                 </section>
@@ -277,12 +279,12 @@ function RolPermisoScreen() {
                 <section className="rol-card">
                         <h2>
                             <Search size={20} />
-                            Selecciona el rol y permiso a buscar
+                            {t("searchRelationship")}
                         </h2>
 
                     <div className="rol-form">
                         <label className="rol-field">
-                            <span className="rol-field-label">Rol <b aria-hidden="true">*</b></span>
+                            <span className="rol-field-label">{t("role")} <b aria-hidden="true">*</b></span>
                             <select
                                 value={rolIdBusqueda}
                                 onChange={(e) => {
@@ -291,7 +293,7 @@ function RolPermisoScreen() {
                                 }}
                                 className="rol-input rol-select"
                             >
-                                <option value="">Selecciona un rol</option>
+                                <option value="">{t("selectRole")}</option>
                                 {roles.map((rol) => (
                                     <option key={rol.id} value={rol.id}>
                                         {rol.nombre} (ID: {rol.id})
@@ -301,14 +303,14 @@ function RolPermisoScreen() {
                         </label>
 
                         <label className="rol-field">
-                            <span className="rol-field-label">Permiso <b aria-hidden="true">*</b></span>
+                            <span className="rol-field-label">{t("permissions")} <b aria-hidden="true">*</b></span>
                             <select
                                 value={permisoIdBusqueda}
                                 onChange={(e) => setPermisoIdBusqueda(e.target.value)}
                                 className="rol-input rol-select"
                                 disabled={!rolIdBusqueda}
                             >
-                                <option value="">Selecciona un permiso</option>
+                                <option value="">{t("selectPermission")}</option>
                                 {permisos.map((permiso) => (
                                     <option key={permiso.id} value={permiso.id}>
                                         {permiso.nombre} (ID: {permiso.id})
@@ -318,7 +320,7 @@ function RolPermisoScreen() {
                         </label>
 
                         <button onClick={handleBuscarRelacion} className="rol-button">
-                            Buscar
+                            {t("search")}
                         </button>
                         {idsRelacionBuscada && (
                             <button
@@ -330,7 +332,7 @@ function RolPermisoScreen() {
                                 }}
                                 className="rol-button rol-cancel"
                             >
-                                Ver todas
+                                {t("viewAll")}
                             </button>
                         )}
                     </div>
@@ -340,13 +342,13 @@ function RolPermisoScreen() {
                     <table>
                         <thead>
                             <tr>
-                                <th>Rol ID</th>
-                                <th>Rol</th>
-                                <th>Permiso ID</th>
-                                <th>Permiso</th>
-                                <th>Creado</th>
-                                <th>Actualizado</th>
-                                <th>Acciones</th>
+                                <th>{t("roleId")}</th>
+                                <th>{t("role")}</th>
+                                <th>{t("permissionId")}</th>
+                                <th>{t("permissions")}</th>
+                                <th>{t("created")}</th>
+                                <th>{t("updated")}</th>
+                                <th>{t("actions")}</th>
                             </tr>
                         </thead>
 
@@ -369,7 +371,7 @@ function RolPermisoScreen() {
                                                     className="rol-delete"
                                                 >
                                                     <Trash2 size={15} />
-                                                    Eliminar
+                                                    {t("delete")}
                                                 </button>
                                             </div>
                                         </td>
@@ -379,8 +381,8 @@ function RolPermisoScreen() {
                                 <tr>
                                     <td colSpan={7} className="rol-empty">
                                         {idsRelacionBuscada
-                                            ? "No se encontró la relación seleccionada."
-                                            : "No hay relaciones rol-permiso disponibles."}
+                                             ? t("noRelationshipSelected")
+                                             : t("noRelationships")}
                                     </td>
                                 </tr>
                             )}
@@ -391,8 +393,8 @@ function RolPermisoScreen() {
                 <section className="rol-pagination">
                     <p>
                         {idsRelacionBuscada
-                            ? `Mostrando ${relacionesDeTabla.length} relación encontrada`
-                            : `Mostrando ${primeraRelacion} - ${ultimaRelacion} de ${total} relaciones`}
+                             ? `${t("showing")} ${relacionesDeTabla.length} ${t("relationshipFound")}`
+                             : `${t("showing")} ${primeraRelacion} - ${ultimaRelacion} ${t("of")} ${total} ${t("relationships")}`}
                     </p>
 
                     {!idsRelacionBuscada && <div className="rol-pagination-controls">
@@ -404,10 +406,10 @@ function RolPermisoScreen() {
                             }}
                             className="rol-select"
                         >
-                            <option value={5}>5 por página</option>
-                            <option value={10}>10 por página</option>
-                            <option value={20}>20 por página</option>
-                            <option value={50}>50 por página</option>
+                            <option value={5}>5 {t("perPage")}</option>
+                            <option value={10}>10 {t("perPage")}</option>
+                            <option value={20}>20 {t("perPage")}</option>
+                            <option value={50}>50 {t("perPage")}</option>
                         </select>
 
                         <button
@@ -415,11 +417,11 @@ function RolPermisoScreen() {
                             className="rol-button rol-pagination-button"
                             disabled={page <= 1}
                         >
-                            Anterior
+                            {t("previous")}
                         </button>
 
                         <span className="rol-page-indicator">
-                            Página {page} de {totalPages}
+                            {t("page")} {page} {t("of")} {totalPages}
                         </span>
 
                         <button
@@ -427,7 +429,7 @@ function RolPermisoScreen() {
                             className="rol-button rol-pagination-button"
                             disabled={page >= totalPages}
                         >
-                            Siguiente
+                            {t("next")}
                         </button>
                     </div>}
                 </section>

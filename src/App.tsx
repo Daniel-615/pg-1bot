@@ -31,6 +31,7 @@ import { useNavigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 import { Logout, type AuthUser } from "./services/auth.service";
 import { ExtensionFormScreen } from "./screens/extensions/ExtensionFormScreen";
+import { ExtensionInstaller } from "./screens/components/ExtensionInstaller";
 import type {
   Issue
 } from "./core/blockEngine/semantic/arduinoSemanticAnalyzer"
@@ -73,6 +74,18 @@ function canAccessDashboard(user: AuthUser | null) {
     const normalizedRole = role.trim().toLowerCase().replace(/\s+/g, "");
     return normalizedRole === "admin" || normalizedRole === "1botpersonal";
   });
+}
+
+function getUserRole(user: AuthUser | null): "admin" | "student" | "staff" | "user" {
+  const roles = [
+    ...(Array.isArray(user?.rol) ? user.rol : user?.rol ? [user.rol] : []),
+    ...(user?.roles ?? []).map((role) => role.nombre),
+  ].map((role) => role.trim().toLowerCase().replace(/[\s_-]+/g, ""));
+
+  if (roles.some((role) => ["admin", "administrador"].includes(role))) return "admin";
+  if (roles.some((role) => ["estudiante", "student", "alumno"].includes(role))) return "student";
+  if (roles.some((role) => ["1botpersonal", "personal", "empleado", "profesor", "teacher"].includes(role))) return "staff";
+  return "user";
 }
 
 function getInitialWorkspaceSnapshot() {
@@ -118,9 +131,22 @@ function App({ authUser }: AppProps) {
   const [wokwiState, setWokwiState] = useState<WokwiSimulationState>(
     emptyWokwiSimulationState
   );
+  const [installedExtensionIds, setInstalledExtensionIds] = useState<string[]>(() => {
+    try {
+      const saved = window.localStorage.getItem("1bot-installed-extensions");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [extensionInstallerOpen, setExtensionInstallerOpen] = useState(true);
 
   const [ports, setPorts] = useState<SerialPortOption[]>([]);
   const [selectedPort, setSelectedPort] = useState("");
+
+  useEffect(() => {
+    window.localStorage.setItem("1bot-installed-extensions", JSON.stringify(installedExtensionIds));
+  }, [installedExtensionIds]);
 
   const [serialOpen, setSerialOpen] = useState(false);
   const [serialLogs, setSerialLogs] = useState<string[]>([]);
@@ -149,6 +175,7 @@ function App({ authUser }: AppProps) {
     editorMode,
     language,
     workspaceKey: `${editorMode}:${projectLoadVersion}`,
+    installedExtensionIds,
     initialBlocks: editorMode === "background" ? backgroundWorkspaceBlocks : deviceWorkspaceBlocks,
     enabled: !isCheckingSession,
     onSymbolTableChange: setSymbolRows,
@@ -161,6 +188,13 @@ function App({ authUser }: AppProps) {
       setDeviceWorkspaceBlocks(blocks);
     },
   });
+
+  const handleInstallExtension = useCallback((extensionId: string) => {
+    setInstalledExtensionIds((current) => current.includes(extensionId)
+      ? current.filter((id) => id !== extensionId)
+      : [...current, extensionId]);
+    setProjectLoadVersion((version) => version + 1);
+  }, []);
 
   const t = useCallback(
     (key: string, options?: Record<string, string | number>) => {
@@ -748,6 +782,7 @@ function App({ authUser }: AppProps) {
         onDashboard={handleDashboard}
         isUploading={isUploading}
         userName={authUser?.nombre ?? authUser?.email ?? "Usuario"}
+        userRole={getUserRole(authUser)}
         onLogout={handleLogout}
         canAccessDashboard={hasDashboardAccess}
         t={t}
@@ -762,6 +797,18 @@ function App({ authUser }: AppProps) {
         />
       ) : (
         <div className="main-content">
+          {extensionInstallerOpen ? (
+            <ExtensionInstaller
+              board={board}
+              installedExtensionIds={installedExtensionIds}
+              onInstall={handleInstallExtension}
+              onClose={() => setExtensionInstallerOpen(false)}
+            />
+          ) : (
+            <button className="extension-installer-trigger" type="button" onClick={() => setExtensionInstallerOpen(true)}>
+              Extensiones
+            </button>
+          )}
           <AppSidebar
             board={board}
             isFullscreen={isFullscreen}

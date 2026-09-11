@@ -1,21 +1,27 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Card, Chip } from "@heroui/react";
+import { Button, Card } from "@heroui/react";
 import {
     ArrowLeft,
-    ArrowUpRight,
     Blocks,
     Cpu,
     KeyRound,
     Link2,
     Puzzle,
     Shield,
-    ShieldCheck,
     UserRound,
     UserRoundCheck,
+    BarChart3,
+    ChevronRight,
+    LayoutDashboard,
+    LogOut,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { AuthUser } from "../services/auth.service";
+import { Logout } from "../services/auth.service";
+import { toast } from "react-toastify";
 import "../styles/DashboardScreen.css";
+import { getEvaluationMetrics, type EvaluationMetrics } from "../services/evaluations.service";
 
 type MenuItem = {
     title: string;
@@ -120,6 +126,8 @@ function getDisplayRole(user?: AuthUser) {
 
 export const DashboardScreen = ({ user }: DashboardScreenProps) => {
     const navigate = useNavigate();
+    const [metrics, setMetrics] = useState<EvaluationMetrics | null>(null);
+    const [metricsError, setMetricsError] = useState(false);
     const permissions = new Set(user?.permisos ?? []);
     const roles = [
         ...(Array.isArray(user?.rol) ? user.rol : user?.rol ? [user.rol] : []),
@@ -128,119 +136,39 @@ export const DashboardScreen = ({ user }: DashboardScreenProps) => {
     const isAdmin = roles.some((role) => role === "admin" || role === "1botpersonal");
     const visibleItems = menuItems.filter((item) => isAdmin || permissions.has(item.requiredPermission));
     const restrictedItems = menuItems.length - visibleItems.length;
+    const userId = user?.id ?? user?.userId;
+
+    const handleLogout = async () => {
+        const response = await Logout();
+        if (!response.success) toast.error(response.error);
+        else toast.success("Sesión cerrada");
+        navigate("/login", { replace: true });
+    };
+
+    useEffect(() => {
+        if (!userId) return;
+        getEvaluationMetrics(userId).then(setMetrics).catch(() => setMetricsError(true));
+    }, [userId]);
+
+    const initialScore = metrics?.inicial ?? 0;
+    const finalScore = metrics?.final ?? 0;
+    const chartPoints = `${22},${148 - initialScore * 1.16} 50,${148 - initialScore * 1.16} 78,${148 - finalScore * 1.16} 106,${148 - finalScore * 1.16}`;
 
     return (
         <main className="dashboard-container">
-            <section className="dashboard-hero">
-                <div className="dashboard-hero-copy">
-                    <Button
-                        isIconOnly
-                        variant="primary"
-                        className="dashboard-back"
-                        aria-label="Volver al editor"
-                        onPress={() => navigate("/")}
-                    >
-                        <ArrowLeft size={22} />
-                    </Button>
-
-                    <Chip color="accent" variant="soft" className="dashboard-eyebrow">Panel de administración</Chip>
-
-                    <h1>Gestiona 1bot desde un solo lugar</h1>
-                    <p className="dashboard-description">
-                        {isAdmin
-                            ? "Desde este panel puedes administrar usuarios, roles, permisos, extensiones, bloques y placas del sistema."
-                            : "Desde este panel puedes administrar extensiones, bloques y placas del sistema."}
-                    </p>
-
-                    <div className="dashboard-hero-actions">
-                        <Button
-                            className="dashboard-primary-action"
-                            onPress={() => navigate(visibleItems[0]?.path || "/")}
-                        >
-                            Abrir primera sección
-                            <ArrowUpRight size={18} />
-                        </Button>
-
-                        {visibleItems.some((item) => item.path === "/extensions") && (
-                            <Button
-                                variant="secondary"
-                                className="dashboard-extensions-action"
-                                onPress={() => navigate("/extensions")}
-                            >
-                                <Puzzle size={18} />
-                                Ver extensiones
-                            </Button>
-                        )}
-
-                        <Chip color="accent" variant="soft" className="dashboard-role-chip">
-                            <ShieldCheck size={16} />
-                            {getDisplayRole(user)}
-                        </Chip>
-                    </div>
-                </div>
-
-                <Card className="dashboard-profile-card">
-                    <Card.Content>
-                    <img src="/logo.webp" alt="1bot" className="dashboard-logo" />
-                    <Chip color="success" variant="soft">Sesión activa</Chip>
-                    <h2>{getDisplayName(user)}</h2>
-                    <p>{isAdmin ? "Acceso completo al panel" : "Acceso operativo 1bot"}</p>
-                    </Card.Content>
-                </Card>
-            </section>
-
-            <section className="dashboard-stats" aria-label="Resumen del panel">
-                <Card className="dashboard-stat-card dashboard-stat-card-primary"><Card.Content>
-                    <span>Secciones visibles</span>
-                    <strong>{visibleItems.length}</strong>
-                </Card.Content></Card>
-
-                <Card className="dashboard-stat-card dashboard-stat-card-access"><Card.Content>
-                    <span>Acceso</span>
-                    <strong>{isAdmin ? "Total" : "Limitado"}</strong>
-                </Card.Content></Card>
-
-                <Card className="dashboard-stat-card dashboard-stat-card-restricted"><Card.Content>
-                    <span>Restringidas</span>
-                    <strong>{restrictedItems}</strong>
-                </Card.Content></Card>
-            </section>
-
-            <section className="dashboard-section-heading">
-                <div>
-                    <span>Módulos</span>
-                    <h2>Elige una sección para administrar</h2>
-                    <p>Accede rápidamente a las herramientas que tienes habilitadas.</p>
-                </div>
-                <span className="dashboard-module-count">{visibleItems.length} disponibles</span>
-            </section>
-
-            <section className="dashboard-grid">
-                {visibleItems.map((item) => {
-                    const Icon = item.icon;
-
-                    return (
-                        <button
-                            key={item.path}
-                            className={`dashboard-card dashboard-card-${item.accent}`}
-                            onClick={() => navigate(item.path)}
-                        >
-                            <span className="dashboard-card-tag">{item.tag}</span>
-                            <span className="dashboard-icon">
-                                <Icon size={27} strokeWidth={2.1} aria-hidden="true" />
-                            </span>
-
-                            <div>
-                                <h2>{item.title}</h2>
-                                <p>{item.description}</p>
-                            </div>
-
-                            <span className="dashboard-card-arrow">
-                                <ArrowUpRight size={18} />
-                            </span>
-                        </button>
-                    );
-                })}
+            <aside className="dashboard-sidebar">
+                <button className="dashboard-brand dashboard-brand-link" type="button" aria-label="Ir al playground de 1bot" onClick={() => navigate("/")}><img src="/logo.webp" alt="1bot" /><div><strong>1bot</strong><span>Ir al playground</span></div></button>
+                <button className="dashboard-home active" onClick={() => navigate("/dashboard")}><LayoutDashboard size={18} />Resumen</button>
+                <span className="dashboard-nav-label">Administración</span>
+                <nav className="dashboard-nav" aria-label="Módulos de administración">
+                    {visibleItems.map((item) => { const Icon = item.icon; return <button key={item.path} onClick={() => navigate(item.path)}><Icon size={17} /><span>{item.title}</span><ChevronRight size={15} /></button>; })}
+                </nav>
+                <div className="dashboard-sidebar-footer"><div className="dashboard-user-mini"><div>{getDisplayName(user).slice(0, 1).toUpperCase()}</div><span><strong>{getDisplayName(user)}</strong><small>{getDisplayRole(user)}</small></span></div><button type="button" aria-label="Cerrar sesión" title="Cerrar sesión" onClick={() => void handleLogout()}><LogOut size={17} /></button></div>
+            </aside>
+            <section className="dashboard-main-content">
+                <header className="dashboard-topbar"><div><span className="dashboard-kicker">Panel de administración</span><h1>Resumen de aprendizaje</h1><p>Una lectura clara del progreso y las herramientas de tu plataforma.</p></div><Button className="dashboard-editor-button" onPress={() => navigate("/")}><ArrowLeft size={16} />Volver al editor</Button></header>
+                <section className="dashboard-overview-cards"><Card><Card.Content><span>Secciones disponibles</span><strong>{visibleItems.length}</strong><small>de {menuItems.length} módulos</small></Card.Content></Card><Card><Card.Content><span>Nivel de acceso</span><strong>{isAdmin ? "Total" : "Operativo"}</strong><small>{restrictedItems} restringidas</small></Card.Content></Card><Card><Card.Content><span>Estado de sesión</span><strong className="status-live">Activa</strong><small>{getDisplayName(user)}</small></Card.Content></Card></section>
+                <section className="dashboard-chart-card"><div className="dashboard-chart-header"><div><span className="dashboard-kicker">Evidencia de progreso</span><h2>Desempeño de programación</h2><p>Comparación entre la evaluación inicial y final.</p></div><div className={`dashboard-growth ${metrics?.mejoraPorcentual && metrics.mejoraPorcentual >= 0 ? "positive" : ""}`}><BarChart3 size={18} /><strong>{metrics?.mejoraPorcentual !== null && metrics?.mejoraPorcentual !== undefined ? `${metrics.mejoraPorcentual >= 0 ? "+" : ""}${metrics.mejoraPorcentual.toFixed(1)}%` : "--"}</strong><span>variación</span></div></div><div className="dashboard-chart-wrap"><svg viewBox="0 0 128 170" role="img" aria-label="Gráfico de desempeño pretest y postest" preserveAspectRatio="none"><defs><linearGradient id="progressFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#818cf8" stopOpacity=".35" /><stop offset="1" stopColor="#818cf8" stopOpacity="0" /></linearGradient></defs><path d="M22 148 H106 M22 112 H106 M22 76 H106 M22 40 H106" className="chart-grid-line" /><polygon points={`22,148 ${chartPoints} 106,148`} fill="url(#progressFill)" /><polyline points={chartPoints} className="chart-line" />{[22, 106].map((x, i) => <circle key={x} cx={x} cy={i === 0 ? 148 - initialScore * 1.16 : 148 - finalScore * 1.16} r="3" className="chart-dot" />)}</svg><div className="chart-labels"><span><b>{metrics?.inicial != null ? `${metrics.inicial.toFixed(0)}%` : "--"}</b>Pretest</span><span><b>{metrics?.final != null ? `${metrics.final.toFixed(0)}%` : "--"}</b>Postest</span></div></div>{metricsError && <p className="dashboard-chart-note">No se pudieron cargar las evaluaciones. Verifica que el servicio esté disponible.</p>}{!metricsError && !metrics?.muestraPretest && <p className="dashboard-chart-note">Registra un pretest y un postest para visualizar el progreso.</p>}</section>
             </section>
         </main>
     );

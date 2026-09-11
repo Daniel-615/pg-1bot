@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 import { Blocks, Cable, ChevronRight, CircleDot, Database, FolderTree, Layers3, ListChecks, Link2, Puzzle, Server, Settings2, Shapes } from "lucide-react";
 import type { AuthUser } from "../../services/auth.service";
@@ -16,6 +17,7 @@ type ExtensionFormScreenProps = {
 type PanelKey = "extensions" | "blocks" | "parameters" | "options" | "plates" | "categories" | "extensionCategories" | "blockTypes" | "blockStatuses" | "dataTypes" | "blockShapes" | "connectionTypes" | "blockConnections" | "blockPlates" | "extensionStatuses";
 
 export function ExtensionFormScreen({ user, isAdmin, onBack, initialPanel = "extensions" }: ExtensionFormScreenProps) {
+  const { t } = useTranslation();
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [version, setVersion] = useState("1.0.0");
@@ -38,17 +40,17 @@ export function ExtensionFormScreen({ user, isAdmin, onBack, initialPanel = "ext
   const extensions = adminData.extensions.data ?? [];
   const uniqueStatuses = adminData.extensionStatuses.data ?? [];
   const catalogViews: Record<string, { title: string; description: string; data: Array<Record<string, unknown>>; loading: boolean; updatedAt: number; isFetching: boolean }> = {
-    plates: { title: "Placas", description: "Placas compatibles con tus bloques.", data: (adminData.plates.data ?? []) as Array<Record<string, unknown>>, loading: adminData.plates.isLoading, updatedAt: adminData.plates.dataUpdatedAt, isFetching: adminData.plates.isFetching },
-    categories: { title: "Categorías", description: "Organiza las extensiones por categoría.", data: (adminData.categories.data ?? []) as Array<Record<string, unknown>>, loading: adminData.categories.isLoading, updatedAt: adminData.categories.dataUpdatedAt, isFetching: adminData.categories.isFetching },
-    extensionCategories: { title: "Extensiones por categoría", description: "Relaciones entre extensiones y categorías.", data: (adminData.extensionCategories.data ?? []) as Array<Record<string, unknown>>, loading: adminData.extensionCategories.isLoading, updatedAt: adminData.extensionCategories.dataUpdatedAt, isFetching: adminData.extensionCategories.isFetching },
-    blockTypes: { title: "Tipos de bloque", description: "Define la forma y comportamiento visual de los bloques.", data: (adminData.blockTypes.data ?? []) as Array<Record<string, unknown>>, loading: adminData.blockTypes.isLoading, updatedAt: adminData.blockTypes.dataUpdatedAt, isFetching: adminData.blockTypes.isFetching },
-    blockStatuses: { title: "Estados de bloque", description: "Estados disponibles para el ciclo de vida de un bloque.", data: (adminData.blockStatuses.data ?? []) as Array<Record<string, unknown>>, loading: adminData.blockStatuses.isLoading, updatedAt: adminData.blockStatuses.dataUpdatedAt, isFetching: adminData.blockStatuses.isFetching },
-    dataTypes: { title: "Tipos de dato", description: "Tipos aceptados por los parámetros de bloque.", data: (adminData.dataTypes.data ?? []) as Array<Record<string, unknown>>, loading: adminData.dataTypes.isLoading, updatedAt: adminData.dataTypes.dataUpdatedAt, isFetching: adminData.dataTypes.isFetching },
-    blockShapes: { title: "Formas de bloque", description: "Formas visuales disponibles para los tipos de bloque.", data: (adminData.blockShapes.data ?? []) as Array<Record<string, unknown>>, loading: adminData.blockShapes.isLoading, updatedAt: adminData.blockShapes.dataUpdatedAt, isFetching: adminData.blockShapes.isFetching },
-    connectionTypes: { title: "Tipos de conexión", description: "Conexiones permitidas entre bloques.", data: (adminData.connectionTypes.data ?? []) as Array<Record<string, unknown>>, loading: adminData.connectionTypes.isLoading, updatedAt: adminData.connectionTypes.dataUpdatedAt, isFetching: adminData.connectionTypes.isFetching },
-    blockConnections: { title: "Conexiones de bloque", description: "Conectores definidos para cada bloque.", data: (adminData.blockConnections.data ?? []) as Array<Record<string, unknown>>, loading: adminData.blockConnections.isLoading, updatedAt: adminData.blockConnections.dataUpdatedAt, isFetching: adminData.blockConnections.isFetching },
-    blockPlates: { title: "Bloques por placa", description: "Código generado por placa y bloque.", data: (adminData.blockPlates.data ?? []) as Array<Record<string, unknown>>, loading: adminData.blockPlates.isLoading, updatedAt: adminData.blockPlates.dataUpdatedAt, isFetching: adminData.blockPlates.isFetching },
-    extensionStatuses: { title: "Estados de extensión", description: "Estados disponibles para las extensiones.", data: (adminData.extensionStatuses.data ?? []) as Array<Record<string, unknown>>, loading: adminData.extensionStatuses.isLoading, updatedAt: adminData.extensionStatuses.dataUpdatedAt, isFetching: adminData.extensionStatuses.isFetching },
+    plates: { title: t("platesCatalog"), description: t("platesDescription"), data: (adminData.plates.data ?? []) as Array<Record<string, unknown>>, loading: adminData.plates.isLoading, updatedAt: adminData.plates.dataUpdatedAt, isFetching: adminData.plates.isFetching },
+    categories: { title: t("categoryCatalog"), description: t("categoriesDescription"), data: (adminData.categories.data ?? []) as Array<Record<string, unknown>>, loading: adminData.categories.isLoading, updatedAt: adminData.categories.dataUpdatedAt, isFetching: adminData.categories.isFetching },
+    extensionCategories: { title: t("extensionCategoriesCatalog"), description: t("extensionCategoriesDescription"), data: (adminData.extensionCategories.data ?? []) as Array<Record<string, unknown>>, loading: adminData.extensionCategories.isLoading, updatedAt: adminData.extensionCategories.dataUpdatedAt, isFetching: adminData.extensionCategories.isFetching },
+    blockTypes: { title: t("blockTypesCatalog"), description: t("blockTypesDescription"), data: (adminData.blockTypes.data ?? []) as Array<Record<string, unknown>>, loading: adminData.blockTypes.isLoading, updatedAt: adminData.blockTypes.dataUpdatedAt, isFetching: adminData.blockTypes.isFetching },
+    blockStatuses: { title: t("blockStatusesCatalog"), description: t("blockStatusesDescription"), data: (adminData.blockStatuses.data ?? []) as Array<Record<string, unknown>>, loading: adminData.blockStatuses.isLoading, updatedAt: adminData.blockStatuses.dataUpdatedAt, isFetching: adminData.blockStatuses.isFetching },
+    dataTypes: { title: t("dataTypesCatalog"), description: t("dataTypesDescription"), data: (adminData.dataTypes.data ?? []) as Array<Record<string, unknown>>, loading: adminData.dataTypes.isLoading, updatedAt: adminData.dataTypes.dataUpdatedAt, isFetching: adminData.dataTypes.isFetching },
+    blockShapes: { title: t("shapesCatalog"), description: t("shapesDescription"), data: (adminData.blockShapes.data ?? []) as Array<Record<string, unknown>>, loading: adminData.blockShapes.isLoading, updatedAt: adminData.blockShapes.dataUpdatedAt, isFetching: adminData.blockShapes.isFetching },
+    connectionTypes: { title: t("connectionTypesCatalog"), description: t("connectionTypesDescription"), data: (adminData.connectionTypes.data ?? []) as Array<Record<string, unknown>>, loading: adminData.connectionTypes.isLoading, updatedAt: adminData.connectionTypes.dataUpdatedAt, isFetching: adminData.connectionTypes.isFetching },
+    blockConnections: { title: t("blockConnectionsCatalog"), description: t("blockConnectionsDescription"), data: (adminData.blockConnections.data ?? []) as Array<Record<string, unknown>>, loading: adminData.blockConnections.isLoading, updatedAt: adminData.blockConnections.dataUpdatedAt, isFetching: adminData.blockConnections.isFetching },
+    blockPlates: { title: t("blockPlatesCatalog"), description: t("blockPlatesDescription"), data: (adminData.blockPlates.data ?? []) as Array<Record<string, unknown>>, loading: adminData.blockPlates.isLoading, updatedAt: adminData.blockPlates.dataUpdatedAt, isFetching: adminData.blockPlates.isFetching },
+    extensionStatuses: { title: t("extensionStatusesCatalog"), description: t("extensionStatusesDescription"), data: (adminData.extensionStatuses.data ?? []) as Array<Record<string, unknown>>, loading: adminData.extensionStatuses.isLoading, updatedAt: adminData.extensionStatuses.dataUpdatedAt, isFetching: adminData.extensionStatuses.isFetching },
   };
   const freshness = catalogViews[activePanel] ?? {
     title: activePanel === "extensions" ? "Extensiones" : activePanel === "blocks" ? "Bloques" : activePanel === "parameters" ? "Parámetros" : "Opciones",
@@ -62,19 +64,19 @@ export function ExtensionFormScreen({ user, isAdmin, onBack, initialPanel = "ext
     const userId = user?.userId ?? user?.id;
 
     if (!isAdmin) {
-      toast.error("Solo personal autorizado puede crear extensiones.");
+      toast.error(t("authorizedExtension"));
       return;
     }
 
     if (!userId) {
-      toast.error("No se pudo identificar el usuario actual.");
+      toast.error(t("userNotFound"));
       return;
     }
 
     const selectedStatus = estadoId || uniqueStatuses[0]?.id_estado_extension;
 
     if (!nombre.trim() || !version.trim() || !selectedStatus) {
-      toast.error("Completa nombre, versión y estado.");
+      toast.error(t("extensionFormRequired"));
       return;
     }
 
@@ -84,26 +86,26 @@ export function ExtensionFormScreen({ user, isAdmin, onBack, initialPanel = "ext
       } else {
         const result = await createExtensionMutation.mutateAsync({ nombre: nombre.trim(), descripcion: descripcion.trim() || undefined, version: version.trim(), id_usuario: userId, id_estado_extension: selectedStatus });
         if (!result.ok) {
-          toast.error(result.message ?? "No se pudo crear la extensión.");
+          toast.error(result.message ?? t("noExtensionCreated"));
           return;
         }
       }
 
-      toast.success(editingExtensionId ? "Extensión actualizada exitosamente." : "Extensión creada exitosamente.");
+      toast.success(editingExtensionId ? t("extensionUpdated") : t("extensionCreated"));
       setNombre("");
       setDescripcion("");
       setVersion("1.0.0");
       setEstadoId("");
       setEditingExtensionId(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Error al crear la extensión.");
+      toast.error(error instanceof Error ? error.message : t("noExtensionCreated"));
     }
   };
 
   const handleBlockSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!blockName.trim() || !blockExtensionId || !blockTypeId || !blockStatusId || !blockOrder) {
-      toast.error("Completa nombre, extensión, tipo, estado y orden del bloque.");
+      toast.error(t("extensionFieldsRequired"));
       return;
     }
 
@@ -113,13 +115,13 @@ export function ExtensionFormScreen({ user, isAdmin, onBack, initialPanel = "ext
       } else {
         await createBlockMutation.mutateAsync({ nombre: blockName.trim(), descripcion: blockDescription.trim() || undefined, id_extension: blockExtensionId, id_tipo_bloque: blockTypeId, id_estado_bloque: blockStatusId, orden: Number(blockOrder) });
       }
-      toast.success(editingBlockId ? "Bloque actualizado exitosamente." : "Bloque creado exitosamente.");
+      toast.success(editingBlockId ? t("blockUpdated") : t("blockCreated"));
       setBlockName("");
       setBlockDescription("");
       setBlockOrder("1");
       setEditingBlockId(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo crear el bloque.");
+      toast.error(error instanceof Error ? error.message : t("noBlockCreated"));
     }
   };
 
@@ -143,26 +145,26 @@ export function ExtensionFormScreen({ user, isAdmin, onBack, initialPanel = "ext
       <aside className="extension-sidebar" aria-label="Secciones de extensiones">
         <div className="extension-sidebar-brand">
           <span className="extension-sidebar-mark"><Puzzle size={18} /></span>
-          <div><strong>Builder</strong><small>Centro de extensiones</small></div>
+          <div><strong>Builder</strong><small>{t("extensionCenter")}</small></div>
         </div>
         <nav className="extension-sidebar-nav">
-          <span className="extension-sidebar-label">Catálogo</span>
+          <span className="extension-sidebar-label">{t("catalog")}</span>
           {[
-            ["extensions", Puzzle, "Extensiones", extensions.length],
-            ["blocks", Blocks, "Bloques", adminData.blocks.data?.length ?? 0],
-            ["parameters", Settings2, "Parámetros", adminData.parameters.data?.length ?? 0],
-            ["options", ListChecks, "Opciones", adminData.options.data?.length ?? 0],
-            ["plates", Server, "Placas", adminData.plates.data?.length ?? 0],
-            ["categories", FolderTree, "Categorías", adminData.categories.data?.length ?? 0],
-            ["extensionCategories", Link2, "Extensión-categoría", adminData.extensionCategories.data?.length ?? 0],
-            ["blockTypes", Shapes, "Tipos de bloque", adminData.blockTypes.data?.length ?? 0],
-            ["blockStatuses", CircleDot, "Estados de bloque", adminData.blockStatuses.data?.length ?? 0],
+            ["extensions", Puzzle, t("extensions"), extensions.length],
+            ["blocks", Blocks, t("blocks"), adminData.blocks.data?.length ?? 0],
+            ["parameters", Settings2, t("parameters"), adminData.parameters.data?.length ?? 0],
+            ["options", ListChecks, t("options"), adminData.options.data?.length ?? 0],
+            ["plates", Server, t("platesCatalog"), adminData.plates.data?.length ?? 0],
+            ["categories", FolderTree, t("categoryCatalog"), adminData.categories.data?.length ?? 0],
+            ["extensionCategories", Link2, t("extensionCategoriesCatalog"), adminData.extensionCategories.data?.length ?? 0],
+            ["blockTypes", Shapes, t("blockTypesCatalog"), adminData.blockTypes.data?.length ?? 0],
+            ["blockStatuses", CircleDot, t("blockStatusesCatalog"), adminData.blockStatuses.data?.length ?? 0],
             ["dataTypes", Database, "Tipos de dato", adminData.dataTypes.data?.length ?? 0],
-            ["blockShapes", Layers3, "Formas", adminData.blockShapes.data?.length ?? 0],
-            ["connectionTypes", Cable, "Tipos de conexión", adminData.connectionTypes.data?.length ?? 0],
-            ["blockConnections", Settings2, "Conexiones", adminData.blockConnections.data?.length ?? 0],
-            ["blockPlates", Server, "Bloque-placa", adminData.blockPlates.data?.length ?? 0],
-            ["extensionStatuses", CircleDot, "Estados de extensión", adminData.extensionStatuses.data?.length ?? 0],
+            ["blockShapes", Layers3, t("shapesCatalog"), adminData.blockShapes.data?.length ?? 0],
+            ["connectionTypes", Cable, t("connectionTypesCatalog"), adminData.connectionTypes.data?.length ?? 0],
+            ["blockConnections", Settings2, t("blockConnectionsCatalog"), adminData.blockConnections.data?.length ?? 0],
+            ["blockPlates", Server, t("blockPlatesCatalog"), adminData.blockPlates.data?.length ?? 0],
+            ["extensionStatuses", CircleDot, t("extensionStatusesCatalog"), adminData.extensionStatuses.data?.length ?? 0],
           ].map(([panel, Icon, label, count]) => {
             const panelKey = panel as PanelKey;
             const MenuIcon = Icon as typeof Puzzle;
@@ -171,13 +173,13 @@ export function ExtensionFormScreen({ user, isAdmin, onBack, initialPanel = "ext
             </button>;
           })}
         </nav>
-        <button type="button" className="extension-sidebar-back" onClick={onBack}>Volver al editor</button>
+        <button type="button" className="extension-sidebar-back" onClick={onBack}>{t("backEditor")}</button>
       </aside>
       <section className="extension-form-card">
         <div className="extension-form-header">
           <div>
-            <span>Gestión de extensiones</span>
-            <h1>{editingExtensionId ? "Editar extensión" : "Crear extensión"}</h1>
+            <span>{t("extensionManagement")}</span>
+            <h1>{editingExtensionId ? t("editExtension") : t("createExtension")}</h1>
           </div>
           <button type="button" className="extension-secondary-btn" onClick={onBack}>
             Volver al editor

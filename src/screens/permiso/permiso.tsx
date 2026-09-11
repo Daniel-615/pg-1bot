@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import type { Permiso } from "../../services/permiso.service";
 import { useCreatePermiso } from "../../hooks/permisos/createPermisoHook";
@@ -48,6 +49,7 @@ function formatDate(value?: string) {
 }
 
 function PermisoScreen() {
+    const { t } = useTranslation();
     const [permisoEditando, setPermisoEditando] = useState<Permiso | null>(null);
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
@@ -71,7 +73,7 @@ function PermisoScreen() {
 
     const handleCrearPermiso = async () => {
         if (!nombreNuevo.trim()) {
-            toast.error("El nombre del permiso no puede estar vacío");
+            toast.error(t("permissionRequired"));
             return;
         }
 
@@ -79,16 +81,16 @@ function PermisoScreen() {
             const response = await createPermisoMutation.mutateAsync({ nombre: nombreNuevo });
 
             if (response.ok) {
-                toast.success("Permiso creado correctamente");
+                toast.success(t("permissionCreated"));
                 setNombreNuevo("");
                 if (page !== 1) {
                     setPage(1);
                 }
             } else {
-                toast.error(response.message || "Error al crear el permiso");
+                toast.error(response.message || t("permissionCreated"));
             }
         } catch (error) {
-            toast.error(getErrorMessage(error, "Error al crear el permiso"));
+            toast.error(getErrorMessage(error, t("permissionCreated")));
         }
     };
 
@@ -102,45 +104,45 @@ function PermisoScreen() {
             });
 
             if (response.ok) {
-                toast.success("Permiso actualizado");
+                toast.success(t("permissionUpdated"));
                 setPermisoEditando(null);
             } else {
-                toast.error(response.message || "Error al actualizar el permiso");
+                toast.error(response.message || t("permissionUpdated"));
             }
         } catch (error) {
-            toast.error(getErrorMessage(error, "Error al actualizar el permiso"));
+            toast.error(getErrorMessage(error, t("permissionUpdated")));
         }
     };
 
     const handleEliminar = async (id?: number) => {
         if (!id) return;
-        if (!window.confirm("¿Está seguro de eliminar este permiso?")) return;
+        if (!window.confirm(t("confirmDeletePermission"))) return;
 
         try {
             const response = await deletePermisoMutation.mutateAsync(id);
 
             if (response.ok) {
-                toast.success("Permiso eliminado correctamente");
+                toast.success(t("permissionDeleted"));
                 if (permisos.length === 1 && page > 1) {
                     setPage(page - 1);
                 }
             } else {
-                toast.error(response.message || "Error al eliminar el permiso");
+                toast.error(response.message || t("permissionDeleted"));
             }
         } catch (error) {
-            toast.error(getErrorMessage(error, "Error al eliminar el permiso"));
+            toast.error(getErrorMessage(error, t("permissionDeleted")));
         }
     };
 
     useEffect(() => {
         if (permisosResponse && !permisosResponse.ok) {
-            toast.error(permisosResponse.message || "Error al cargar los permisos");
+            toast.error(permisosResponse.message || t("errorLoadPermissions"));
         }
     }, [permisosResponse]);
 
     useEffect(() => {
         if (permisosQuery.error) {
-            toast.error(getErrorMessage(permisosQuery.error, "Error al cargar los permisos"));
+            toast.error(getErrorMessage(permisosQuery.error, t("errorLoadPermissions")));
         }
     }, [permisosQuery.error]);
 
@@ -159,8 +161,8 @@ function PermisoScreen() {
                     </button>
 
                     <div className="rol-title">
-                        <h1>Gestión de Permisos</h1>
-                        <p>Administra los permisos disponibles dentro del sistema.</p>
+                        <h1>{t("permissionsTitle")}</h1>
+                        <p>{t("permissionsDescription")}</p>
                         <QueryFreshness updatedAt={permisosQuery.dataUpdatedAt} isFetching={permisosQuery.isFetching} />
                     </div>
                 </header>
@@ -168,17 +170,17 @@ function PermisoScreen() {
                 <section className="rol-card">
                     <h2>
                         <Plus size={20} />
-                        Crear Nuevo Permiso
+                        {t("newPermission")}
                     </h2>
 
                     <div className="rol-form">
                         <label className="rol-field">
-                            <span className="rol-field-label">Nombre del permiso <b aria-hidden="true">*</b></span>
+                            <span className="rol-field-label">{t("permissionName")} <b aria-hidden="true">*</b></span>
                             <input type="text" value={nombreNuevo} onChange={(e) => setNombreNuevo(e.target.value)} className="rol-input" placeholder="Ej. leer_usuarios" />
                         </label>
 
                         <button onClick={handleCrearPermiso} className="rol-button">
-                            Crear
+                            {t("create")}
                         </button>
                     </div>
                 </section>
@@ -186,18 +188,18 @@ function PermisoScreen() {
                 <section className="rol-card">
                     <h2>
                         <Search size={20} />
-                        Buscar permiso
+                        {t("searchPermission")}
                     </h2>
 
                     <div className="rol-form">
                         <label className="rol-field">
-                            <span className="rol-field-label">Permiso <b aria-hidden="true">*</b></span>
+                            <span className="rol-field-label">{t("permissions")} <b aria-hidden="true">*</b></span>
                             <select value={idBusqueda} onChange={(e) => { setIdBusqueda(e.target.value); setPage(1); }} className="rol-input rol-select">
-                                <option value="">Selecciona un permiso</option>
+                                <option value="">{t("selectPermission")}</option>
                                 {permisosCatalog.map((permiso) => <option key={permiso.id} value={permiso.id}>{permiso.nombre} (ID: {permiso.id})</option>)}
                             </select>
                         </label>
-                        {idBusqueda && <button type="button" onClick={() => setIdBusqueda("")} className="rol-button rol-cancel">Ver todos</button>}
+                        {idBusqueda && <button type="button" onClick={() => setIdBusqueda("")} className="rol-button rol-cancel">{t("viewAll")}</button>}
                     </div>
                 </section>
 
@@ -206,10 +208,10 @@ function PermisoScreen() {
                         <thead>
                             <tr>
                                 <th>ID</th>
-                                <th>Nombre</th>
-                                <th>Creado</th>
-                                <th>Actualizado</th>
-                                <th>Acciones</th>
+                                <th>{t("name")}</th>
+                                <th>{t("created")}</th>
+                                <th>{t("updated")}</th>
+                                <th>{t("actions")}</th>
                             </tr>
                         </thead>
 
@@ -231,7 +233,7 @@ function PermisoScreen() {
                                                     className="rol-edit"
                                                 >
                                                     <Edit2 size={15} />
-                                                    Editar
+                                                    {t("edit")}
                                                 </button>
 
                                                 <button
@@ -239,7 +241,7 @@ function PermisoScreen() {
                                                     className="rol-delete"
                                                 >
                                                     <Trash2 size={15} />
-                                                    Eliminar
+                                                    {t("delete")}
                                                 </button>
                                             </div>
                                         </td>
@@ -248,7 +250,7 @@ function PermisoScreen() {
                             ) : (
                                 <tr>
                                     <td colSpan={5} className="rol-empty">
-                                        {idBusqueda ? "No se encontró el permiso seleccionado." : "No hay permisos disponibles."}
+                                            {idBusqueda ? t("noPermissionSelected") : t("noPermissions")}
                                     </td>
                                 </tr>
                             )}
@@ -258,7 +260,7 @@ function PermisoScreen() {
 
                 <section className="rol-pagination">
                     <p>
-                        {idBusqueda ? "Mostrando 1 permiso" : `Mostrando ${primerPermiso} - ${ultimoPermiso} de ${total} permisos`}
+                        {idBusqueda ? `${t("showing")} 1 ${t("permissionsPage")}` : `${t("showing")} ${primerPermiso} - ${ultimoPermiso} ${t("of")} ${total} ${t("permissionsPage")}`}
                     </p>
 
                     {!idBusqueda && <div className="rol-pagination-controls">
@@ -270,10 +272,10 @@ function PermisoScreen() {
                             }}
                             className="rol-select"
                         >
-                            <option value={5}>5 por página</option>
-                            <option value={10}>10 por página</option>
-                            <option value={20}>20 por página</option>
-                            <option value={50}>50 por página</option>
+                            <option value={5}>5 {t("perPage")}</option>
+                            <option value={10}>10 {t("perPage")}</option>
+                            <option value={20}>20 {t("perPage")}</option>
+                            <option value={50}>50 {t("perPage")}</option>
                         </select>
 
                         <button
@@ -281,11 +283,11 @@ function PermisoScreen() {
                             className="rol-button rol-pagination-button"
                             disabled={page <= 1}
                         >
-                            Anterior
+                            {t("previous")}
                         </button>
 
                         <span className="rol-page-indicator">
-                            Página {page} de {totalPages}
+                            {t("page")} {page} {t("of")} {totalPages}
                         </span>
 
                         <button
@@ -293,7 +295,7 @@ function PermisoScreen() {
                             className="rol-button rol-pagination-button"
                             disabled={page >= totalPages}
                         >
-                            Siguiente
+                            {t("next")}
                         </button>
                     </div>}
                 </section>
@@ -302,7 +304,7 @@ function PermisoScreen() {
                     <section className="rol-modal">
                         <h2>
                             <Edit2 size={20} />
-                            Editar Permiso
+                            {t("edit") + " " + t("permissions").slice(0, -1)}
                         </h2>
 
                         <input
@@ -310,19 +312,19 @@ function PermisoScreen() {
                             value={nombreEditado}
                             onChange={(e) => setNombreEditado(e.target.value)}
                             className="rol-input"
-                            placeholder="Nombre del permiso"
+                            placeholder={t("permissionName")}
                         />
 
                         <div className="rol-modal-buttons">
                             <button onClick={handleGuardarEdicion} className="rol-button">
-                                Guardar
+                                {t("save")}
                             </button>
 
                             <button
                                 onClick={() => setPermisoEditando(null)}
                                 className="rol-button rol-cancel"
                             >
-                                Cancelar
+                                {t("cancel")}
                             </button>
                         </div>
                     </section>

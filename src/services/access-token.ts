@@ -23,6 +23,12 @@ export function clearAccessToken() {
     }
 }
 
+export function setAccessToken(token: string) {
+    if (typeof window !== "undefined") {
+        window.sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
+    }
+}
+
 export function attachAccessToken(client: AxiosInstance) {
     client.interceptors.request.use((config) => {
         const token = getAccessToken();

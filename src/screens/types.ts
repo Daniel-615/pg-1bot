@@ -16,6 +16,7 @@ export type EditorRuntime = {
     options?: {
       onSymbolTableChange?: (rows: SymbolTableRow[]) => void;
       editorMode?: "device" | "background";
+      installedExtensionIds?: string[];
       onSemanticErrorsChange?: (
         errors: ReturnType<ArduinoSemanticAnalyzer["getErrors"]>
       ) => void;

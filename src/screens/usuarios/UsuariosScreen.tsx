@@ -18,14 +18,15 @@ import { useUsuarios, type UsuarioFilter } from "../../hooks/usuarios/usuariosHo
 import { QueryFreshness } from "../components/QueryFreshness";
 import { registerRequestEmployee } from "../../services/auth.service";
 import { useRoles } from "../../hooks/roles/rolesHook";
+import { useTranslation } from "react-i18next";
 import "../../styles/UsuariosScreen.css";
 
 type UsuarioPayload = UsuarioResponse<Usuario[] | UsuarioPagination> | Usuario[];
 
 const filterOptions: { key: UsuarioFilter; label: string }[] = [
-    { key: "todos", label: "Todos" },
-    { key: "activos", label: "Activos" },
-    { key: "inactivos", label: "No activos" },
+    { key: "todos", label: "all" },
+    { key: "activos", label: "active" },
+    { key: "inactivos", label: "inactive" },
 ];
 
 function isUsuarioFilter(value: string): value is UsuarioFilter {
@@ -145,11 +146,12 @@ function getInitials(usuario: Usuario) {
     return name.slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "U";
 }
 
-function getErrorMessage(error: unknown) {
-    return error instanceof Error ? error.message : "Error al cargar los usuarios";
+function getErrorMessage(error: unknown, fallback = "Error al cargar los usuarios") {
+    return error instanceof Error ? error.message : fallback;
 }
 
 function UsuariosScreen() {
+    const { t } = useTranslation();
     const [filter, setFilter] = useState<UsuarioFilter>("todos");
     const navigate = useNavigate();
     const usuariosQuery = useUsuarios(filter);
@@ -167,13 +169,13 @@ function UsuariosScreen() {
 
     useEffect(() => {
         if (!Array.isArray(usuariosPayload) && usuariosPayload?.ok === false) {
-            toast.error(usuariosPayload.message || "Error al cargar los usuarios");
+            toast.error(usuariosPayload.message || t("errorLoadUsers"));
         }
     }, [usuariosPayload]);
 
     useEffect(() => {
         if (usuariosQuery.error) {
-            toast.error(getErrorMessage(usuariosQuery.error));
+            toast.error(getErrorMessage(usuariosQuery.error, t("errorLoadUsers")));
         }
     }, [usuariosQuery.error]);
 
@@ -190,7 +192,7 @@ function UsuariosScreen() {
         event.preventDefault();
         const age = Number(newUser.edad);
         if (!newUser.nombre.trim() || !newUser.apellido.trim() || !newUser.email.trim() || !newUser.password || !newUser.rolId || !Number.isInteger(age) || age < 5 || age > 120) {
-            toast.error("Completa todos los campos y usa una edad válida.");
+            toast.error(t("completeUserFields"));
             return;
         }
         setIsCreating(true);
@@ -200,12 +202,12 @@ function UsuariosScreen() {
                 toast.error(response.error);
                 return;
             }
-            toast.success("Usuario creado correctamente.");
+                toast.success(t("userCreated"));
             setNewUser({ nombre: "", apellido: "", email: "", password: "", edad: "", rolId: "" });
             setShowCreateForm(false);
             await usuariosQuery.refetch();
         } catch (error) {
-            toast.error(getErrorMessage(error));
+            toast.error(getErrorMessage(error, t("errorLoadUsers")));
         } finally {
             setIsCreating(false);
         }
@@ -218,16 +220,16 @@ function UsuariosScreen() {
                     isIconOnly
                     variant="primary"
                     className="usuarios-back"
-                    aria-label="Volver al dashboard"
+                    aria-label={t("backDashboard")}
                     onPress={() => navigate("/dashboard")}
                 >
                     <ArrowLeft size={22} />
                 </Button>
 
                 <div className="usuarios-title">
-                    <span className="usuarios-eyebrow">Panel de administración</span>
-                    <h1>Usuarios</h1>
-                    <p>Una vista clara para administrar las cuentas y conocer su actividad.</p>
+                    <span className="usuarios-eyebrow">{t("adminPanel")}</span>
+                    <h1>{t("users")}</h1>
+                    <p>{t("usersDescription")}</p>
                     <QueryFreshness updatedAt={usuariosQuery.dataUpdatedAt} isFetching={usuariosQuery.isFetching} />
                 </div>
             </section>
@@ -235,21 +237,21 @@ function UsuariosScreen() {
             <section className="usuarios-stats">
                 <Card className="usuarios-stat-card">
                     <Card.Content>
-                        <span>Total mostrado</span>
+                        <span>{t("totalShown")}</span>
                         <strong>{usuariosVisibles.length}</strong>
                     </Card.Content>
                 </Card>
 
                 <Card className="usuarios-stat-card usuarios-stat-card-active">
                     <Card.Content>
-                        <span>Activos</span>
+                        <span>{t("active")}</span>
                         <strong>{filter === "activos" ? usuarios.length : totalActivos}</strong>
                     </Card.Content>
                 </Card>
 
                 <Card className="usuarios-stat-card usuarios-stat-card-inactive">
                     <Card.Content>
-                        <span>No activos</span>
+                        <span>{t("inactive")}</span>
                         <strong>{filter === "activos" ? 0 : totalInactivos}</strong>
                     </Card.Content>
                 </Card>
@@ -262,15 +264,15 @@ function UsuariosScreen() {
                             <div className="usuarios-list-heading">
                                 <div className="usuarios-heading-icon"><Users size={20} /></div>
                                 <div>
-                                    <h2>Directorio de usuarios</h2>
-                                    <p>Gestiona las cuentas registradas en tu plataforma.</p>
+                                    <h2>{t("userDirectory")}</h2>
+                                    <p>{t("userDirectoryDescription")}</p>
                                 </div>
                             </div>
                         </div>
 
                         <div className="usuarios-actions">
                             <label className="usuarios-filter-label">
-                                <span>Filtrar por estado</span>
+                                <span>{t("filterStatus")}</span>
                                 <select
                                     className="usuarios-filter"
                                     value={filter}
@@ -282,7 +284,7 @@ function UsuariosScreen() {
                                 >
                                     {filterOptions.map((option) => (
                                         <option key={option.key} value={option.key}>
-                                            {option.label}
+                                            {t(option.label)}
                                         </option>
                                     ))}
                                 </select>
@@ -295,25 +297,25 @@ function UsuariosScreen() {
                                 onPress={() => void usuariosQuery.refetch()}
                             >
                                 {isLoading ? <Spinner size="sm" /> : <RefreshCw size={18} />}
-                                <span>Actualizar</span>
+                                <span>{t("refresh")}</span>
                             </Button>
                             <Button className="usuarios-create-button" variant="primary" onPress={() => setShowCreateForm((current) => !current)}>
                                 {showCreateForm ? <Users size={18} /> : <Plus size={18} />}
-                                {showCreateForm ? "Cerrar" : "Crear usuario"}
+                                {showCreateForm ? t("close") : t("createUser")}
                             </Button>
                         </div>
                     </div>
 
                     {showCreateForm && (
                         <form className="usuarios-create-form" onSubmit={handleCreateUser}>
-                            <div className="usuarios-create-heading"><div><span>Alta administrativa</span><h3>Crear usuario interno</h3></div><small>Solo disponible para roles autorizados</small></div>
+                            <div className="usuarios-create-heading"><div><span>{t("internalSignup")}</span><h3>{t("createInternalUser")}</h3></div><small>{t("authorizedRoles")}</small></div>
                             <div className="usuarios-create-grid">
                                 {([["nombre", "Nombre"], ["apellido", "Apellido"], ["email", "Correo"]] as const).map(([field, label]) => <label key={field}>{label}<input type={field === "email" ? "email" : "text"} value={newUser[field]} onChange={(event) => setNewUser((current) => ({ ...current, [field]: event.target.value }))} disabled={isCreating} /></label>)}
                                 <label>Edad<input type="number" min="5" max="120" value={newUser.edad} onChange={(event) => setNewUser((current) => ({ ...current, edad: event.target.value }))} disabled={isCreating} /></label>
-                                <label>Contraseña<input type="password" value={newUser.password} onChange={(event) => setNewUser((current) => ({ ...current, password: event.target.value }))} disabled={isCreating} /></label>
-                                <label>Rol<select value={newUser.rolId} onChange={(event) => setNewUser((current) => ({ ...current, rolId: event.target.value }))} disabled={isCreating || rolesQuery.isLoading}><option value="">Selecciona un rol</option>{roles.filter((role) => ["empleado", "1botpersonal"].includes(role.nombre.trim().toLowerCase().replace(/\s+/g, ""))).map((role) => <option key={role.id} value={role.id}>{role.nombre}</option>)}</select></label>
+                                <label>{t("password")}<input type="password" value={newUser.password} onChange={(event) => setNewUser((current) => ({ ...current, password: event.target.value }))} disabled={isCreating} /></label>
+                                <label>{t("role")}<select value={newUser.rolId} onChange={(event) => setNewUser((current) => ({ ...current, rolId: event.target.value }))} disabled={isCreating || rolesQuery.isLoading}><option value="">{t("selectRole")}</option>{roles.filter((role) => ["empleado", "1botpersonal"].includes(role.nombre.trim().toLowerCase().replace(/\s+/g, ""))).map((role) => <option key={role.id} value={role.id}>{role.nombre}</option>)}</select></label>
                             </div>
-                            <Button type="submit" className="usuarios-submit-button" variant="primary" isDisabled={isCreating}>{isCreating ? "Creando..." : "Crear usuario"}</Button>
+                            <Button type="submit" className="usuarios-submit-button" variant="primary" isDisabled={isCreating}>{isCreating ? t("creating") : t("createUser")}</Button>
                         </form>
                     )}
 
@@ -321,11 +323,11 @@ function UsuariosScreen() {
                         <Table.ScrollContainer className="usuarios-table-wrapper">
                             <Table.Content aria-label="Tabla de usuarios">
                                 <Table.Header>
-                                    <Table.Column className="usuarios-table-head" isRowHeader>Usuario</Table.Column>
-                                    <Table.Column className="usuarios-table-head">Email</Table.Column>
-                                    <Table.Column className="usuarios-table-head">Estado</Table.Column>
-                                    <Table.Column className="usuarios-table-head">Creado</Table.Column>
-                                    <Table.Column className="usuarios-table-head">Actualizado</Table.Column>
+                                    <Table.Column className="usuarios-table-head" isRowHeader>{t("users")}</Table.Column>
+                                    <Table.Column className="usuarios-table-head">{t("email")}</Table.Column>
+                                    <Table.Column className="usuarios-table-head">{t("status")}</Table.Column>
+                                    <Table.Column className="usuarios-table-head">{t("created")}</Table.Column>
+                                    <Table.Column className="usuarios-table-head">{t("updated")}</Table.Column>
                                 </Table.Header>
 
                                 <Table.Body>
@@ -351,7 +353,7 @@ function UsuariosScreen() {
                                                         color={estado ? "success" : estado === false ? "danger" : "default"}
                                                         variant="soft"
                                                     >
-                                                        {estado ? "Activo" : estado === false ? "No activo" : "Sin dato"}
+                                                         {estado ? t("activeStatus") : estado === false ? t("inactiveStatus") : t("unknownData")}
                                                     </Chip>
                                                 </Table.Cell>
                                                 <Table.Cell className="usuarios-table-cell usuarios-date-cell">
@@ -373,12 +375,12 @@ function UsuariosScreen() {
                     {isLoading && (
                         <div className="usuarios-loading">
                             <Spinner size="sm" />
-                            <span>Cargando usuarios...</span>
+                            <span>{t("loadingUsers")}</span>
                         </div>
                     )}
 
                     {!isLoading && usuariosVisibles.length === 0 && (
-                        <div className="usuarios-empty">No hay usuarios para mostrar.</div>
+                        <div className="usuarios-empty">{t("noUsers")}</div>
                     )}
                 </Card.Content>
             </Card>

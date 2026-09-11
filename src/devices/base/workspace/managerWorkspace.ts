@@ -6,6 +6,7 @@ import { loadDynamicExtensionCategories } from "../../../screens/extensions/dyna
 type CreateWorkspaceManagerOptions = {
   onSymbolTableChange?: (rows: SymbolTableRow[]) => void;
   editorMode?: "device" | "background";
+  installedExtensionIds?: string[];
 };
 
 export async function createWorkspaceManager(
@@ -20,7 +21,7 @@ export async function createWorkspaceManager(
     return createBackgroundWorkspace(container);
   }
 
-  const extensionCategories = await loadDynamicExtensionCategories(board);
+  const extensionCategories = await loadDynamicExtensionCategories(board, options.installedExtensionIds);
 
   switch (board) {
     case "uno": {

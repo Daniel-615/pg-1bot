@@ -279,6 +279,23 @@
   padding-left: 4px;
 }
 
+.user-identity {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.user-role-icon {
+  display: grid;
+  place-items: center;
+  color: #64748b;
+}
+
+.user-role-admin { color: #7c3aed; }
+.user-role-student { color: #0284c7; }
+.user-role-staff { color: #0f766e; }
+
 .user-name {
   max-width: 120px;
   overflow: hidden;
@@ -290,6 +307,11 @@
 }
 
 .logout-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
   padding: 8px 12px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-full);
@@ -364,7 +386,7 @@
 
   .project-name-container {
     flex: 1;
-    min-width: 80px;
+    min-width: 50px;
     max-width: none;
   }
 
@@ -377,18 +399,39 @@
     padding: 2px;
   }
 
+  .language-btn {
+    width: 28px;
+    height: 28px;
+    padding: 2px;
+  }
+
+  .language-code {
+    display: none;
+  }
+
   .save-btn {
+    width: 34px;
+    justify-content: center;
     padding: 8px;
     border-radius: var(--radius-sm);
   }
 
   .action-btn {
-    padding: 8px 10px;
-    font-size: 12px;
+    width: 34px;
+    min-height: 34px;
+    padding: 5px;
+    border-radius: 10px;
+  }
+
+  .save-btn {
+    width: 30px;
+    padding: 4px;
   }
 
   .logout-btn {
-    padding: 8px 10px;
+    width: 38px;
+    height: 38px;
+    padding: 6px;
   }
 }
 
@@ -408,11 +451,20 @@
   }
 
   .action-btn {
-    padding: 6px 8px;
+    width: 30px;
+    min-height: 30px;
+    padding: 4px;
   }
 
   .logout-btn {
-    padding: 6px 8px;
+    width: 34px;
+    height: 34px;
+    padding: 5px;
+  }
+
+  .action-icon {
+    width: 18px;
+    height: 18px;
   }
 }
 

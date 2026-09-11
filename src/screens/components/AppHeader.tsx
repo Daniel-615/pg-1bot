@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { BriefcaseBusiness, Bug, BugOff, GraduationCap, LogOut, Save, ShieldCheck, UserRound } from "lucide-react";
 import type { Language } from "../../i18n";
 import "../../styles/AppHeader.css";
 
@@ -19,6 +20,7 @@ type AppHeaderProps = {
   canAccessDashboard: boolean;
   isUploading: boolean;
   userName: string;
+  userRole: "admin" | "student" | "staff" | "user";
   t: (key: string, options?: Record<string, string | number>) => string;
 };
 
@@ -39,8 +41,12 @@ export const AppHeader = memo(function AppHeader({
   canAccessDashboard,
   isUploading,
   userName,
+  userRole,
   t,
 }: AppHeaderProps) {
+  const RoleIcon = userRole === "admin" ? ShieldCheck : userRole === "student" ? GraduationCap : userRole === "staff" ? BriefcaseBusiness : UserRound;
+  const roleLabel = userRole === "admin" ? "Administrador" : userRole === "student" ? "Estudiante" : userRole === "staff" ? "Personal" : "Usuario";
+
   return (
     <header className="header">
       <div className="header-left">
@@ -101,6 +107,7 @@ export const AppHeader = memo(function AppHeader({
         </div>
 
         <button className="save-btn" onClick={onSave}>
+          <Save size={16} aria-hidden="true" />
           <span className="btn-text">{t("save")}</span>
         </button>
       </div>
@@ -116,13 +123,19 @@ export const AppHeader = memo(function AppHeader({
           className={`action-btn debug-btn ${debugMode ? "active" : ""}`}
           onClick={onToggleDebug}
         >
+          {debugMode ? <BugOff size={16} aria-hidden="true" /> : <Bug size={16} aria-hidden="true" />}
           <span className="btn-text">{debugMode ? t("exitDebug") : t("debug")}</span>
         </button>
 
         <div className="user-menu">
-          <span className="user-name">{userName}</span>
-          <button className="logout-btn" onClick={onLogout}>
-            Salir
+          <div className="user-identity" title={roleLabel}>
+            <span className={`user-role-icon user-role-${userRole}`} aria-label={roleLabel}>
+              <RoleIcon size={16} aria-hidden="true" />
+            </span>
+            <span className="user-name">{userName}</span>
+          </div>
+          <button className="logout-btn" onClick={onLogout} aria-label="Salir" title="Salir">
+            <LogOut size={16} strokeWidth={2.2} aria-hidden="true" />
           </button>
         </div>
       </div>

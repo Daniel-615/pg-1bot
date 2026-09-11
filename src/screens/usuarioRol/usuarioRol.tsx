@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import type { Usuario } from "../../services/usuario.service";
@@ -65,6 +66,7 @@ function formatDate(value?: string) {
 }
 
 function UsuarioRolScreen() {
+    const { t } = useTranslation();
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [usuarioIdNuevo, setUsuarioIdNuevo] = useState("");
@@ -94,7 +96,7 @@ function UsuarioRolScreen() {
         const rolId = Number(rolIdNuevo);
 
         if (!usuarioIdNuevo.trim() || !rolId) {
-            toast.error("Selecciona un usuario y un rol");
+            toast.error(t("selectUserAndRole"));
             return;
         }
 
@@ -102,48 +104,48 @@ function UsuarioRolScreen() {
             const response = await createRelacionMutation.mutateAsync({ usuarioId: usuarioIdNuevo, rolId });
 
             if (response.ok) {
-                toast.success("Rol asignado al usuario correctamente");
+                toast.success(t("userRoleCreated"));
                 setUsuarioIdNuevo("");
                 setRolIdNuevo("");
                 if (page !== 1) {
                     setPage(1);
                 }
             } else {
-                toast.error(response.message || "Error al asignar el rol al usuario");
+                toast.error(response.message || t("userRoleCreated"));
             }
         } catch (error) {
-            toast.error(getErrorMessage(error, "Error al asignar el rol al usuario"));
+            toast.error(getErrorMessage(error, t("userRoleCreated")));
         }
     };
 
     const handleEliminar = async (usuarioId: string, rolId: number) => {
-        if (!window.confirm("¿Está seguro de eliminar esta relación usuario-rol?")) return;
+        if (!window.confirm(t("confirmDeleteUserRole"))) return;
 
         try {
             const response = await deleteRelacionMutation.mutateAsync({ usuarioId, rolId });
 
             if (response.ok) {
-                toast.success("Relación eliminada correctamente");
+                toast.success(t("relationshipDeleted"));
                 if (relacionesVisibles.length === 1 && page > 1) {
                     setPage(page - 1);
                 }
             } else {
-                toast.error(response.message || "Error al eliminar la relación usuario-rol");
+                toast.error(response.message || t("relationshipDeleted"));
             }
         } catch (error) {
-            toast.error(getErrorMessage(error, "Error al eliminar la relación usuario-rol"));
+            toast.error(getErrorMessage(error, t("relationshipDeleted")));
         }
     };
 
     useEffect(() => {
         if (relacionesResponse && !relacionesResponse.ok) {
-            toast.error(relacionesResponse.message || "Error al cargar las relaciones usuario-rol");
+            toast.error(relacionesResponse.message || t("errorLoadUserRoles"));
         }
     }, [relacionesResponse]);
 
     useEffect(() => {
         if (relacionesQuery.error) {
-            toast.error(getErrorMessage(relacionesQuery.error, "Error al cargar las relaciones usuario-rol"));
+            toast.error(getErrorMessage(relacionesQuery.error, t("errorLoadUserRoles")));
         }
     }, [relacionesQuery.error]);
 
@@ -162,8 +164,8 @@ function UsuarioRolScreen() {
                     </button>
 
                     <div className="rol-title">
-                        <h1>Gestión de Usuario Rol</h1>
-                        <p>Asigna y consulta roles relacionados con cada usuario.</p>
+                        <h1>{t("userRoleTitle")}</h1>
+                        <p>{t("userRoleDescription")}</p>
                         <QueryFreshness updatedAt={relacionesQuery.dataUpdatedAt} isFetching={relacionesQuery.isFetching} />
                     </div>
                 </header>
@@ -171,12 +173,12 @@ function UsuarioRolScreen() {
                 <section className="rol-card">
                     <h2>
                         <Plus size={20} />
-                        Asignale un rol al usuario
+                        {t("assignRole")}
                     </h2>
 
                     <div className="rol-form">
                         <label className="rol-field">
-                            <span className="rol-field-label">Usuario</span>
+                            <span className="rol-field-label">{t("users")}</span>
                             <select
                                 value={usuarioIdNuevo}
                                 onChange={(e) => {
@@ -185,7 +187,7 @@ function UsuarioRolScreen() {
                                 }}
                                 className="rol-input rol-select"
                             >
-                                <option value="">Selecciona un usuario</option>
+                                <option value="">{t("selectUser")}</option>
                                 {usuarios.map((usuario) => (
                                     <option key={String(usuario.id)} value={String(usuario.id)}>
                                         {getUsuarioLabel(usuario)} · {usuario.email || String(usuario.id)}
@@ -195,14 +197,14 @@ function UsuarioRolScreen() {
                         </label>
 
                         <label className="rol-field">
-                            <span className="rol-field-label">Rol <b aria-hidden="true">*</b></span>
+                            <span className="rol-field-label">{t("role")} <b aria-hidden="true">*</b></span>
                             <select
                             value={rolIdNuevo}
                             onChange={(e) => setRolIdNuevo(e.target.value)}
                             className="rol-input rol-select"
                             disabled={!usuarioIdNuevo}
                             >
-                                <option value="">Selecciona un rol</option>
+                                <option value="">{t("selectRole")}</option>
                                 {roles.map((rol) => (
                                     <option key={rol.id} value={rol.id}>{rol.nombre} (ID: {rol.id})</option>
                                 ))}
@@ -210,7 +212,7 @@ function UsuarioRolScreen() {
                         </label>
 
                         <button onClick={handleCrearRelacion} className="rol-button" disabled={!usuarioIdNuevo || !rolIdNuevo}>
-                            Crear
+                            {t("create")}
                         </button>
                     </div>
                 </section>
@@ -218,11 +220,11 @@ function UsuarioRolScreen() {
                 <section className="rol-card">
                     <h2>
                         <Search size={20} />
-                        Buscar rol del usuario
+                        {t("searchUserRole")}
                     </h2>
                     <div className="rol-form">
                         <label className="rol-field">
-                            <span className="rol-field-label">Usuario <b aria-hidden="true">*</b></span>
+                            <span className="rol-field-label">{t("users")} <b aria-hidden="true">*</b></span>
                             <select
                                 value={usuarioIdBusqueda}
                                 onChange={(e) => {
@@ -231,7 +233,7 @@ function UsuarioRolScreen() {
                                 }}
                                 className="rol-input rol-select"
                             >
-                                <option value="">Selecciona un usuario</option>
+                                <option value="">{t("selectUser")}</option>
                                 {usuarios.map((usuario) => (
                                     <option key={String(usuario.id)} value={String(usuario.id)}>
                                         {getUsuarioLabel(usuario)} · {usuario.email || String(usuario.id)}
@@ -244,7 +246,7 @@ function UsuarioRolScreen() {
                             <button type="button" onClick={() => {
                                 setUsuarioIdBusqueda("");
                             }} className="rol-button rol-cancel">
-                                Ver todos
+                                {t("viewAll")}
                             </button>
                         )}
                     </div>
@@ -254,14 +256,14 @@ function UsuarioRolScreen() {
                     <table>
                         <thead>
                             <tr>
-                                <th>Usuario ID</th>
-                                <th>Usuario</th>
-                                <th>Email</th>
-                                <th>Rol ID</th>
-                                <th>Rol</th>
-                                <th>Creado</th>
-                                <th>Actualizado</th>
-                                <th>Acciones</th>
+                                <th>{t("users")} ID</th>
+                                <th>{t("users")}</th>
+                                <th>{t("email")}</th>
+                                <th>{t("role")} ID</th>
+                                <th>{t("role")}</th>
+                                <th>{t("created")}</th>
+                                <th>{t("updated")}</th>
+                                <th>{t("actions")}</th>
                             </tr>
                         </thead>
 
@@ -285,7 +287,7 @@ function UsuarioRolScreen() {
                                                     className="rol-delete"
                                                 >
                                                     <Trash2 size={15} />
-                                                    Eliminar
+                                                    {t("delete")}
                                                 </button>
                                             </div>
                                         </td>
@@ -294,7 +296,7 @@ function UsuarioRolScreen() {
                             ) : (
                                 <tr>
                                     <td colSpan={8} className="rol-empty">
-                                        {usuarioIdBusqueda ? "El usuario no tiene roles asignados." : "No hay relaciones usuario-rol disponibles."}
+                                         {usuarioIdBusqueda ? t("userHasNoRoles") : t("noUserRoles")}
                                     </td>
                                 </tr>
                             )}
@@ -305,8 +307,8 @@ function UsuarioRolScreen() {
                 <section className="rol-pagination">
                     <p>
                         {usuarioIdBusqueda
-                            ? `Mostrando ${relacionesDeTabla.length} roles del usuario`
-                            : `Mostrando ${primeraRelacion} - ${ultimaRelacion} de ${total} relaciones`}
+                             ? `${t("showing")} ${relacionesDeTabla.length} ${t("rolesPage")} ${t("of")} ${t("users").toLowerCase()}`
+                             : `${t("showing")} ${primeraRelacion} - ${ultimaRelacion} ${t("of")} ${total} ${t("relationships")}`}
                     </p>
 
                     {!usuarioIdBusqueda && <div className="rol-pagination-controls">
@@ -318,10 +320,10 @@ function UsuarioRolScreen() {
                             }}
                             className="rol-select"
                         >
-                            <option value={5}>5 por página</option>
-                            <option value={10}>10 por página</option>
-                            <option value={20}>20 por página</option>
-                            <option value={50}>50 por página</option>
+                            <option value={5}>5 {t("perPage")}</option>
+                            <option value={10}>10 {t("perPage")}</option>
+                            <option value={20}>20 {t("perPage")}</option>
+                            <option value={50}>50 {t("perPage")}</option>
                         </select>
 
                         <button
@@ -329,11 +331,11 @@ function UsuarioRolScreen() {
                             className="rol-button rol-pagination-button"
                             disabled={page <= 1}
                         >
-                            Anterior
+                            {t("previous")}
                         </button>
 
                         <span className="rol-page-indicator">
-                            Página {page} de {totalPages}
+                            {t("page")} {page} {t("of")} {totalPages}
                         </span>
 
                         <button
@@ -341,7 +343,7 @@ function UsuarioRolScreen() {
                             className="rol-button rol-pagination-button"
                             disabled={page >= totalPages}
                         >
-                            Siguiente
+                            {t("next")}
                         </button>
                     </div>}
                 </section>

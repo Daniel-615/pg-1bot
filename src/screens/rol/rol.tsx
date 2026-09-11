@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import type { Rol } from "../../services/rol.service";
 import { useCreateRol, useDeleteRol, useRoles, useUpdateRol } from "../../hooks/roles/rolesHook";
@@ -30,6 +31,7 @@ function getRoleIcon(roleName: string) {
 }
 
 function RolScreen() {
+    const { t } = useTranslation();
     const [rolEditando, setRolEditando] = useState<Rol | null>(null);
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
@@ -57,21 +59,21 @@ function RolScreen() {
     const serverPaginated = pagination.serverPaginated;
 
     const handleEliminar = async (id: string | number) => {
-        if (!window.confirm("¿Está seguro de eliminar este rol?")) return;
+        if (!window.confirm(t("confirmDeleteRole"))) return;
 
         try {
             const response = await deleteRolMutation.mutateAsync(id);
 
             if (response.ok) {
-                toast.success("Rol eliminado correctamente");
+                toast.success(t("roleDeleted"));
                 if (!serverPaginated && rolesVisibles.length === 1 && page > 1) {
                     setPage(page - 1);
                 }
             } else {
-                toast.error(response.message || "Error al eliminar el rol");
+                toast.error(response.message || t("roleDeleted"));
             }
         } catch (error) {
-            toast.error(getErrorMessage(error, "Error al eliminar el rol"));
+            toast.error(getErrorMessage(error, t("roleDeleted")));
         }
     };
 
@@ -85,19 +87,19 @@ function RolScreen() {
             });
 
             if (response.ok) {
-                toast.success("Rol actualizado");
+                toast.success(t("roleUpdated"));
                 setRolEditando(null);
             } else {
-                toast.error(response.message || "Error al actualizar el rol");
+                toast.error(response.message || t("roleUpdated"));
             }
         } catch (error) {
-            toast.error(getErrorMessage(error, "Error al actualizar el rol"));
+            toast.error(getErrorMessage(error, t("roleUpdated")));
         }
     };
 
     const handleCrearRol = async () => {
         if (!nombreNuevo.trim()) {
-            toast.error("El nombre del rol no puede estar vacío");
+            toast.error(t("roleNameRequired"));
             return;
         }
 
@@ -105,28 +107,28 @@ function RolScreen() {
             const response = await createRolMutation.mutateAsync({ nombre: nombreNuevo });
 
             if (response.ok) {
-                toast.success("Rol creado correctamente");
+                toast.success(t("roleCreated"));
                 setNombreNuevo("");
                 if (page !== 1) {
                     setPage(1);
                 }
             } else {
-                toast.error(response.message || "Error al crear el rol");
+                toast.error(response.message || t("roleCreated"));
             }
         } catch (error) {
-            toast.error(getErrorMessage(error, "Error al crear el rol"));
+            toast.error(getErrorMessage(error, t("roleCreated")));
         }
     };
 
     useEffect(() => {
         if (rolesResponse && !rolesResponse.ok) {
-            toast.error(rolesResponse.message || "Error al cargar los roles");
+            toast.error(rolesResponse.message || t("errorLoadRoles"));
         }
     }, [rolesResponse]);
 
     useEffect(() => {
         if (rolesQuery.error) {
-            toast.error(getErrorMessage(rolesQuery.error, "Error al cargar los roles"));
+            toast.error(getErrorMessage(rolesQuery.error, t("errorLoadRoles")));
         }
     }, [rolesQuery.error]);
 
@@ -148,39 +150,39 @@ function RolScreen() {
                     </button>
 
                     <div className="rol-title">
-                        <span className="rol-eyebrow">Control de acceso</span>
-                        <h1>Gestión de Roles</h1>
-                        <p>Define quién puede acceder y qué puede hacer dentro del sistema.</p>
+                            <span className="rol-eyebrow">{t("accessControl")}</span>
+                            <h1>{t("rolesTitle")}</h1>
+                            <p>{t("rolesDescription")}</p>
                         <QueryFreshness updatedAt={rolesQuery.dataUpdatedAt} isFetching={rolesQuery.isFetching} />
                     </div>
                 </header>
 
-                <section className="rol-stats" aria-label="Resumen de roles">
+                <section className="rol-stats" aria-label={t("roles")}>
                     <div className="rol-stat-card">
                         <span className="rol-stat-icon rol-stat-icon-purple"><Layers3 size={19} /></span>
-                        <div><small>Roles registrados</small><strong>{total}</strong></div>
+                        <div><small>{t("registeredRoles")}</small><strong>{total}</strong></div>
                     </div>
                     <div className="rol-stat-card">
                         <span className="rol-stat-icon rol-stat-icon-green"><ShieldCheck size={19} /></span>
-                        <div><small>Estado del catálogo</small><strong>Activo</strong></div>
+                        <div><small>{t("catalogStatus")}</small><strong>{t("activeStatus")}</strong></div>
                     </div>
                 </section>
 
                 <section className="rol-card">
                         <h2>
                             <Plus size={20} />
-                            Nuevo rol
+                            {t("newRole")}
                         </h2>
-                        <p className="rol-card-description">Agrega un perfil para organizar los permisos del equipo.</p>
+                        <p className="rol-card-description">{t("newRoleDescription")}</p>
 
                     <div className="rol-form">
                         <label className="rol-field">
-                            <span className="rol-field-label">Nombre del rol <b aria-hidden="true">*</b></span>
+                            <span className="rol-field-label">{t("name")} {t("role")} <b aria-hidden="true">*</b></span>
                             <input type="text" value={nombreNuevo} onChange={(e) => setNombreNuevo(e.target.value)} className="rol-input" placeholder="Ej. supervisor, editor..." />
                         </label>
 
                         <button onClick={handleCrearRol} className="rol-button">
-                            Crear rol
+                            {t("createRole")}
                         </button>
                     </div>
                 </section>
@@ -188,19 +190,19 @@ function RolScreen() {
                 <section className="rol-card">
                     <h2>
                         <Search size={20} />
-                            Buscar rol
+                            {t("searchRole")}
                         </h2>
-                        <p className="rol-card-description">Consulta rápidamente un rol específico por su identificador.</p>
+                        <p className="rol-card-description">{t("searchRoleDescription")}</p>
 
                     <div className="rol-form">
                         <label className="rol-field">
-                            <span className="rol-field-label">Rol <b aria-hidden="true">*</b></span>
+                            <span className="rol-field-label">{t("role")} <b aria-hidden="true">*</b></span>
                             <select value={idBusqueda} onChange={(e) => { setIdBusqueda(e.target.value); setPage(1); }} className="rol-input rol-select">
-                                <option value="">Selecciona un rol</option>
+                                <option value="">{t("selectRoleRequired")}</option>
                                 {rolesCatalog.map((rol) => <option key={rol.id} value={rol.id}>{rol.nombre} (ID: {rol.id})</option>)}
                             </select>
                         </label>
-                        {idBusqueda && <button type="button" onClick={() => setIdBusqueda("")} className="rol-button rol-cancel">Ver todos</button>}
+                        {idBusqueda && <button type="button" onClick={() => setIdBusqueda("")} className="rol-button rol-cancel">{t("allRoles")}</button>}
                     </div>
                 </section>
 
@@ -209,10 +211,10 @@ function RolScreen() {
                         <thead>
                             <tr>
                                         <th>ID</th>
-                                        <th>Rol</th>
-                                        <th>Creado</th>
-                                        <th>Actualizado</th>
-                                        <th>Acciones</th>
+                                        <th>{t("role")}</th>
+                                        <th>{t("created")}</th>
+                                        <th>{t("updated")}</th>
+                                        <th>{t("actions")}</th>
                             </tr>
                         </thead>
 
@@ -244,7 +246,7 @@ function RolScreen() {
                                                     className="rol-edit"
                                                 >
                                                     <Edit2 size={15} />
-                                                    Editar
+                                                    {t("edit")}
                                                 </button>
 
                                                 <button
@@ -252,7 +254,7 @@ function RolScreen() {
                                                     className="rol-delete"
                                                 >
                                                     <Trash2 size={15} />
-                                                    Eliminar
+                                                    {t("delete")}
                                                 </button>
                                             </div>
                                         </td>
@@ -261,7 +263,7 @@ function RolScreen() {
                             ) : (
                                 <tr>
                                     <td colSpan={5} className="rol-empty">
-                                        {idBusqueda ? "No se encontró el rol seleccionado." : "No hay roles disponibles."}
+                                            {idBusqueda ? t("noRoleSelected") : t("noRoles")}
                                     </td>
                                 </tr>
                             )}
@@ -271,7 +273,7 @@ function RolScreen() {
 
                 <section className="rol-pagination">
                     <p>
-                        {idBusqueda ? "Mostrando 1 rol" : `Mostrando ${primerRol} - ${ultimoRol} de ${total} roles`}
+                        {idBusqueda ? `${t("showing")} 1 ${t("rolesPage")}` : `${t("showing")} ${primerRol} - ${ultimoRol} ${t("of")} ${total} ${t("rolesPage")}`}
                     </p>
 
                     {!idBusqueda && <div className="rol-pagination-controls">
@@ -283,10 +285,10 @@ function RolScreen() {
                             }}
                             className="rol-select"
                         >
-                            <option value={5}>5 por página</option>
-                            <option value={10}>10 por página</option>
-                            <option value={20}>20 por página</option>
-                            <option value={50}>50 por página</option>
+                            <option value={5}>5 {t("perPage")}</option>
+                            <option value={10}>10 {t("perPage")}</option>
+                            <option value={20}>20 {t("perPage")}</option>
+                            <option value={50}>50 {t("perPage")}</option>
                         </select>
 
                         <button
@@ -294,11 +296,11 @@ function RolScreen() {
                             className="rol-button rol-pagination-button"
                             disabled={page <= 1}
                         >
-                            Anterior
+                            {t("previous")}
                         </button>
 
                         <span className="rol-page-indicator">
-                            Página {page} de {Math.max(totalPages, 1)}
+                            {t("page")} {page} {t("of")} {Math.max(totalPages, 1)}
                         </span>
 
                         <button
@@ -306,7 +308,7 @@ function RolScreen() {
                             className="rol-button rol-pagination-button"
                             disabled={page >= totalPages}
                         >
-                            Siguiente
+                            {t("next")}
                         </button>
                     </div>}
                 </section>
@@ -315,7 +317,7 @@ function RolScreen() {
                     <section className="rol-modal">
                         <h2>
                             <Edit2 size={20} />
-                            Editar Rol
+                            {t("editRole")}
                         </h2>
 
                         <input
@@ -323,19 +325,19 @@ function RolScreen() {
                             value={nombreEditado}
                             onChange={(e) => setNombreEditado(e.target.value)}
                             className="rol-input"
-                            placeholder="Nombre del rol"
+                            placeholder={t("name") + " " + t("role").toLowerCase()}
                         />
 
                         <div className="rol-modal-buttons">
                             <button onClick={handleGuardarEdicion} className="rol-button">
-                                Guardar
+                                {t("save")}
                             </button>
 
                             <button
                                 onClick={() => setRolEditando(null)}
                                 className="rol-button rol-cancel"
                             >
-                                Cancelar
+                                {t("cancel")}
                             </button>
                         </div>
                     </section>

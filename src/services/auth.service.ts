@@ -1,5 +1,5 @@
 import axios from "axios";
-import { clearAccessToken, getAccessToken } from "./access-token";
+import { clearAccessToken, getAccessToken, setAccessToken } from "./access-token";
 
 const AUTH_API_URL = (import.meta.env.VITE_AUTH_API_URL as string );
 
@@ -38,6 +38,7 @@ export type AuthUser = {
 export type LoginResponse = {
     ok?: boolean;
     message?: string;
+    accessToken?: string;
     user?: AuthUser;
 };
 
@@ -120,6 +121,10 @@ export const LoginRequest = async (credentials: LoginCredentials): Promise<AuthR
             withCredentials: true,
         });
 
+        if (response.data.accessToken) {
+            setAccessToken(response.data.accessToken);
+        }
+
         return {
             success: true,
             data: response.data,
@@ -139,7 +144,12 @@ export const refreshTokenRequest = async (): Promise<AuthResponse> => {
             headers: getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : undefined,
         });
 
-        return { success: true, data: response.data };
+        const data = response.data as { accessToken?: string };
+        if (data.accessToken) {
+            setAccessToken(data.accessToken);
+        }
+
+        return { success: true, data };
     } catch (error) {
         return { success: false, error: getAuthErrorMessage(error, "Error de token") };
     }

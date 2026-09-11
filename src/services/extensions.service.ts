@@ -33,6 +33,17 @@ export type ExtensionBlockParameter = {
   }>;
 };
 
+export type ExtensionBlockPlate = {
+  id_placa?: string;
+  nombre?: string;
+  BloquePlaca?: {
+    codigo_generado?: string;
+    codigo_setup?: string | null;
+    codigo_loop?: string | null;
+    librerias_requeridas?: string;
+  };
+};
+
 export type ExtensionBlockDefinition = {
   id_bloque: string;
   nombre: string;
@@ -42,6 +53,8 @@ export type ExtensionBlockDefinition = {
     id_extension?: string;
     nombre?: string;
     descripcion?: string | null;
+    categorias?: ExtensionCategory[];
+    estado?: { nombre?: string };
   };
   tipo?: {
     nombre?: string;
@@ -50,10 +63,11 @@ export type ExtensionBlockDefinition = {
       nombre?: string;
     };
   };
-  parametros?: ExtensionBlockParameter[];
-  placas?: Array<{
+  estado?: {
     nombre?: string;
-  }>;
+  };
+  parametros?: ExtensionBlockParameter[];
+  placas?: ExtensionBlockPlate[];
   conexiones?: Array<{
     nombre?: string;
     tipo_conexion?: {
@@ -75,7 +89,14 @@ export type Extension = {
   id_usuario: string;
   id_estado_extension: string;
   estado?: ExtensionStatus;
+  categorias?: ExtensionCategory[];
   createdAt?: string;
+};
+
+export type ExtensionCategory = {
+  id_categoria?: string;
+  nombre: string;
+  descripcion?: string | null;
 };
 
 export type BlockType = {
