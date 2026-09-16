@@ -341,3 +341,48 @@
     display: grid;
   }
 }
+.extension-builder {
+  max-width: 860px;
+}
+
+.extension-builder-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #172554, #312e81);
+  color: white;
+}
+
+.extension-builder-heading span { color: #a5b4fc; font-size: 12px; font-weight: 800; letter-spacing: .14em; }
+.extension-builder-heading h2 { margin: 8px 0; font-size: 28px; }
+.extension-builder-heading p { margin: 0; color: #dbeafe; }
+.extension-builder-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 22px 0; }
+.extension-builder-steps div { display: flex; align-items: center; gap: 8px; color: #94a3b8; font-size: 13px; }
+.extension-builder-steps b { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #e2e8f0; }
+.extension-builder-steps .active, .extension-builder-steps .done { color: #4338ca; font-weight: 700; }
+.extension-builder-steps .active b, .extension-builder-steps .done b { background: #4f46e5; color: white; }
+.extension-builder-form { padding: 28px; border: 1px solid #e2e8f0; border-radius: 20px; background: white; }
+.builder-step { display: grid; gap: 16px; }
+.builder-step label { display: grid; gap: 7px; color: #334155; font-weight: 700; }
+.builder-step input, .builder-step select, .builder-step textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 10px; padding: 11px 13px; font: inherit; color: #1e293b; }
+.builder-step textarea { min-height: 90px; resize: vertical; }
+.builder-preview { display: grid; gap: 6px; padding: 18px; border-radius: 14px; background: #eef2ff; color: #312e81; }
+.builder-preview span { color: #475569; font-weight: 400; }
+.builder-parameter { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; align-items: center; }
+.builder-parameter code { padding: 10px; border-radius: 8px; background: #f1f5f9; color: #475569; }
+.code-input, .builder-review pre { font-family: Consolas, monospace !important; background: #0f172a !important; color: #dbeafe !important; }
+.builder-hint { margin: 0; color: #64748b; font-size: 13px; }
+.builder-review { gap: 10px; }
+.builder-review p { margin: 0; color: #475569; }
+.builder-review pre { overflow: auto; padding: 16px; border-radius: 10px; }
+.builder-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.builder-actions button { display: inline-flex; align-items: center; gap: 7px; }
+
+@media (max-width: 700px) {
+  .extension-builder-heading { padding: 20px; }
+  .extension-builder-heading h2 { font-size: 23px; }
+  .extension-builder-steps span { display: none; }
+  .builder-parameter { grid-template-columns: 1fr; }
+}

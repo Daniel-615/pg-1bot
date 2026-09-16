@@ -17,6 +17,7 @@ import { toast } from "react-toastify";
 import { getPaginationRange, normalizePagination, paginateRows } from "../pagination";
 import { QueryFreshness } from "../components/QueryFreshness";
 import "../../styles/rol.css";
+import { togglePermissionSelection } from "./permissionSelection";
 
 function getErrorMessage(error: unknown, fallback: string) {
     if (axios.isAxiosError(error)) {
@@ -58,7 +59,7 @@ function RolPermisoScreen() {
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [rolIdNuevo, setRolIdNuevo] = useState("");
-    const [permisoIdNuevo, setPermisoIdNuevo] = useState("");
+    const [selectedPermisoIds, setSelectedPermisoIds] = useState<number[]>([]);
     const [rolIdBusqueda, setRolIdBusqueda] = useState("");
     const [permisoIdBusqueda, setPermisoIdBusqueda] = useState("");
     const [idsRelacionBuscada, setIdsRelacionBuscada] = useState<{ rolId: string; permisoId: string } | null>(null);
@@ -97,25 +98,26 @@ function RolPermisoScreen() {
 
     const handleCrearRelacion = async () => {
         const rolId = Number(rolIdNuevo);
-        const permisoId = Number(permisoIdNuevo);
 
-        if (!rolId || !permisoId) {
+        if (!rolId || selectedPermisoIds.length === 0) {
             toast.error(t("searchRelationship"));
             return;
         }
 
         try {
-            const response = await createRelacionMutation.mutateAsync({ rolId, permisoId });
+            const responses = await Promise.all(
+                selectedPermisoIds.map((permisoId) => createRelacionMutation.mutateAsync({ rolId, permisoId }))
+            );
+            const createdCount = responses.filter((response) => response.ok || response.success).length;
 
-            if (response.ok || response.success) {
-                toast.success(t("relationshipCreated"));
-                setRolIdNuevo("");
-                setPermisoIdNuevo("");
+            if (createdCount > 0) {
+                toast.success(`${createdCount} ${t("relationshipCreated")}`);
+                setSelectedPermisoIds([]);
                 if (page !== 1) {
                     setPage(1);
                 }
             } else {
-                toast.error(response.message || t("relationshipCreated"));
+                toast.error(t("relationshipCreated"));
             }
         } catch (error) {
             toast.error(getErrorMessage(error, t("relationshipCreated")));
@@ -235,7 +237,7 @@ function RolPermisoScreen() {
                                 value={rolIdNuevo}
                                 onChange={(e) => {
                                     setRolIdNuevo(e.target.value);
-                                    setPermisoIdNuevo("");
+                                    setSelectedPermisoIds([]);
                                 }}
                                 className="rol-input rol-select"
                             >
@@ -250,28 +252,33 @@ function RolPermisoScreen() {
 
                         <label className="rol-field">
                             <span className="rol-field-label">{t("permissions")} <b aria-hidden="true">*</b></span>
-                            <select
-                                value={permisoIdNuevo}
-                                onChange={(e) => setPermisoIdNuevo(e.target.value)}
-                                className="rol-input rol-select"
-                                disabled={!rolIdNuevo || permisosNoAsignadosQuery.isLoading}
-                            >
-                                <option value="">
-                                    {permisosNoAsignadosQuery.isLoading ? t("loadingPermissions") : t("unassignedPermission")}
-                                </option>
-                                {permisosNoAsignados.map((permiso) => (
-                                    <option key={permiso.id} value={permiso.id}>
-                                        {permiso.nombre} (ID: {permiso.id})
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="rol-permission-picker" aria-label={t("permissions")}>
+                                {permisosNoAsignadosQuery.isLoading ? (
+                                    <span className="rol-picker-status">{t("loadingPermissions")}</span>
+                                ) : permisosNoAsignados.length > 0 ? permisosNoAsignados.map((permiso) => {
+                                    const selected = selectedPermisoIds.includes(permiso.id);
+                                    return (
+                                        <button
+                                            key={permiso.id}
+                                            type="button"
+                                            className={`rol-permission-option${selected ? " selected" : ""}`}
+                                            aria-pressed={selected}
+                                            onClick={() => setSelectedPermisoIds((current) => togglePermissionSelection(current, permiso.id))}
+                                        >
+                                            <span>{permiso.nombre}</span>
+                                            <small>#{permiso.id}</small>
+                                        </button>
+                                    );
+                                }) : <span className="rol-picker-status">{t("allPermissionsAssigned")}</span>}
+                            </div>
+                            {selectedPermisoIds.length > 0 && <small className="rol-selection-count">{selectedPermisoIds.length} permiso(s) seleccionado(s)</small>}
                             {rolIdNuevo && !permisosNoAsignadosQuery.isLoading && permisosNoAsignados.length === 0 && (
                                 <small className="rol-field-hint">{t("allPermissionsAssigned")}</small>
                             )}
                         </label>
 
-                        <button onClick={handleCrearRelacion} className="rol-button" disabled={!rolIdNuevo || !permisoIdNuevo}>
-                            {t("create")}
+                        <button onClick={handleCrearRelacion} className="rol-button" disabled={!rolIdNuevo || selectedPermisoIds.length === 0 || createRelacionMutation.isPending}>
+                            {t("addPermissions")}
                         </button>
                     </div>
                 </section>

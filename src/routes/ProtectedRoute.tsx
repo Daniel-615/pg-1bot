@@ -8,6 +8,8 @@ import {
 import AccessDeniedScreen from "../screens/AccessDeniedScreen";
 import { CookieConsent } from "../screens/components/CookieConsent";
 import { OfflineIndicator } from "../screens/components/OfflineIndicator";
+import i18n from "../i18n";
+import "../styles/AppWorkspace.css";
 
 type ProtectedRouteProps = {
     requiredPermissions?: string[];
@@ -77,7 +79,19 @@ function ProtectedRoute({ requiredPermissions = [], children }: ProtectedRoutePr
     if (session.isLoading) {
         return (
             <div className="app-container">
-                <div className="app-loading">Validando permisos...</div>
+                <div className="workspace-loading">
+                    <div className="workspace-loading-brand">
+                        <div className="workspace-loading-orbit orbit-one"></div>
+                        <div className="workspace-loading-orbit orbit-two"></div>
+                        <div className="workspace-loading-logo-wrap">
+                            <img className="workspace-loading-logo" src="logo.webp" alt="1bot" />
+                        </div>
+                    </div>
+                    <div className="workspace-loading-copy">
+                        <strong>{i18n.t("editorLoading")}</strong>
+                        <span>{i18n.t("editorLoadingDescription")}</span>
+                    </div>
+                </div>
             </div>
         );
     }

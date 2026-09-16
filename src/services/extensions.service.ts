@@ -3,14 +3,14 @@ import { attachAccessToken } from "./access-token";
 
 const BLOCKS_API_URL = (import.meta.env.VITE_BLOCKS_API_URL as string | undefined) ?? "";
 
-function getBlocksUrl(path: string) {
+export function getBlocksUrl(path: string) {
   const baseUrl = BLOCKS_API_URL.endsWith("/") ? BLOCKS_API_URL : `${BLOCKS_API_URL}/`;
   const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
 
   return `${baseUrl}${normalizedPath}`;
 }
 
-const blocksApi = attachAccessToken(axios.create());
+export const blocksApi = attachAccessToken(axios.create());
 
 export type BlocksServiceResponse<T> = {
   ok: boolean;
@@ -189,6 +189,17 @@ export type CreateOptionPayload = Omit<ParameterOption, "id_opcion_parametro" | 
 export const createParameterOption = (payload: CreateOptionPayload) => postResource<ParameterOption>("option/parameter", payload);
 export const updateParameterOption = ({ id, ...payload }: { id: string } & CreateOptionPayload) =>
   putResource<ParameterOption>(`option/parameter/${id}`, payload);
+
+export type CreateBlockPlatePayload = {
+  id_bloque: string;
+  id_placa: string;
+  codigo_generado: string;
+  codigo_setup?: string;
+  codigo_loop?: string;
+  librerias_requeridas: string;
+};
+
+export const createBlockPlate = (payload: CreateBlockPlatePayload) => postResource<ExtensionBlockPlate>("blocks-placa", payload);
 
 export async function getExtensions() {
   const response = await blocksApi.get<BlocksServiceResponse<Extension[]>>(

@@ -134,6 +134,7 @@ export const DashboardScreen = ({ user }: DashboardScreenProps) => {
         ...(user?.roles ?? []).map((role) => role.nombre),
     ].map((role) => role.trim().toLowerCase().replace(/\s+/g, ""));
     const isAdmin = roles.some((role) => role === "admin" || role === "1botpersonal");
+    const canViewMetrics = isAdmin || permissions.has("ver_metricas_evaluacion");
     const visibleItems = menuItems.filter((item) => isAdmin || permissions.has(item.requiredPermission));
     const restrictedItems = menuItems.length - visibleItems.length;
     const userId = user?.id ?? user?.userId;
@@ -146,9 +147,11 @@ export const DashboardScreen = ({ user }: DashboardScreenProps) => {
     };
 
     useEffect(() => {
-        if (!userId) return;
+        if (!userId || !canViewMetrics) {
+            return;
+        }
         getEvaluationMetrics(userId).then(setMetrics).catch(() => setMetricsError(true));
-    }, [userId]);
+    }, [userId, canViewMetrics]);
 
     const initialScore = metrics?.inicial ?? 0;
     const finalScore = metrics?.final ?? 0;
@@ -168,7 +171,7 @@ export const DashboardScreen = ({ user }: DashboardScreenProps) => {
             <section className="dashboard-main-content">
                 <header className="dashboard-topbar"><div><span className="dashboard-kicker">Panel de administración</span><h1>Resumen de aprendizaje</h1><p>Una lectura clara del progreso y las herramientas de tu plataforma.</p></div><Button className="dashboard-editor-button" onPress={() => navigate("/")}><ArrowLeft size={16} />Volver al editor</Button></header>
                 <section className="dashboard-overview-cards"><Card><Card.Content><span>Secciones disponibles</span><strong>{visibleItems.length}</strong><small>de {menuItems.length} módulos</small></Card.Content></Card><Card><Card.Content><span>Nivel de acceso</span><strong>{isAdmin ? "Total" : "Operativo"}</strong><small>{restrictedItems} restringidas</small></Card.Content></Card><Card><Card.Content><span>Estado de sesión</span><strong className="status-live">Activa</strong><small>{getDisplayName(user)}</small></Card.Content></Card></section>
-                <section className="dashboard-chart-card"><div className="dashboard-chart-header"><div><span className="dashboard-kicker">Evidencia de progreso</span><h2>Desempeño de programación</h2><p>Comparación entre la evaluación inicial y final.</p></div><div className={`dashboard-growth ${metrics?.mejoraPorcentual && metrics.mejoraPorcentual >= 0 ? "positive" : ""}`}><BarChart3 size={18} /><strong>{metrics?.mejoraPorcentual !== null && metrics?.mejoraPorcentual !== undefined ? `${metrics.mejoraPorcentual >= 0 ? "+" : ""}${metrics.mejoraPorcentual.toFixed(1)}%` : "--"}</strong><span>variación</span></div></div><div className="dashboard-chart-wrap"><svg viewBox="0 0 128 170" role="img" aria-label="Gráfico de desempeño pretest y postest" preserveAspectRatio="none"><defs><linearGradient id="progressFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#818cf8" stopOpacity=".35" /><stop offset="1" stopColor="#818cf8" stopOpacity="0" /></linearGradient></defs><path d="M22 148 H106 M22 112 H106 M22 76 H106 M22 40 H106" className="chart-grid-line" /><polygon points={`22,148 ${chartPoints} 106,148`} fill="url(#progressFill)" /><polyline points={chartPoints} className="chart-line" />{[22, 106].map((x, i) => <circle key={x} cx={x} cy={i === 0 ? 148 - initialScore * 1.16 : 148 - finalScore * 1.16} r="3" className="chart-dot" />)}</svg><div className="chart-labels"><span><b>{metrics?.inicial != null ? `${metrics.inicial.toFixed(0)}%` : "--"}</b>Pretest</span><span><b>{metrics?.final != null ? `${metrics.final.toFixed(0)}%` : "--"}</b>Postest</span></div></div>{metricsError && <p className="dashboard-chart-note">No se pudieron cargar las evaluaciones. Verifica que el servicio esté disponible.</p>}{!metricsError && !metrics?.muestraPretest && <p className="dashboard-chart-note">Registra un pretest y un postest para visualizar el progreso.</p>}</section>
+                {canViewMetrics && <section className="dashboard-chart-card"><div className="dashboard-chart-header"><div><span className="dashboard-kicker">Métricas de evaluación</span><h2>Desempeño de programación</h2><p>Comparación entre la evaluación inicial y final.</p></div><div className={`dashboard-growth ${metrics?.mejoraPorcentual && metrics.mejoraPorcentual >= 0 ? "positive" : ""}`}><BarChart3 size={18} /><strong>{metrics?.mejoraPorcentual !== null && metrics?.mejoraPorcentual !== undefined ? `${metrics.mejoraPorcentual >= 0 ? "+" : ""}${metrics.mejoraPorcentual.toFixed(1)}%` : "--"}</strong><span>variación</span></div></div><div className="dashboard-chart-wrap"><svg viewBox="0 0 128 170" role="img" aria-label="Gráfico de desempeño pretest y postest" preserveAspectRatio="none"><defs><linearGradient id="progressFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#818cf8" stopOpacity=".35" /><stop offset="1" stopColor="#818cf8" stopOpacity="0" /></linearGradient></defs><path d="M22 148 H106 M22 112 H106 M22 76 H106 M22 40 H106" className="chart-grid-line" /><polygon points={`22,148 ${chartPoints} 106,148`} fill="url(#progressFill)" /><polyline points={chartPoints} className="chart-line" />{[22, 106].map((x, i) => <circle key={x} cx={x} cy={i === 0 ? 148 - initialScore * 1.16 : 148 - finalScore * 1.16} r="3" className="chart-dot" />)}</svg><div className="chart-labels"><span><b>{metrics?.inicial != null ? `${metrics.inicial.toFixed(0)}%` : "--"}</b>Pretest</span><span><b>{metrics?.final != null ? `${metrics.final.toFixed(0)}%` : "--"}</b>Postest</span></div></div>{metricsError && <p className="dashboard-chart-note">No se pudieron cargar las evaluaciones. Verifica que el servicio esté disponible.</p>}{!metricsError && !metrics?.muestraPretest && <p className="dashboard-chart-note">Registra un pretest y un postest para visualizar el progreso.</p>}</section>}
             </section>
         </main>
     );

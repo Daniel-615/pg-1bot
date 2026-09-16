@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createBlock, createExtension, createParameter, createParameterOption, getBlockConnections, getBlockPlates, getBlockShapes, getBlockStatuses, getBlockTypes, getBlocks, getCategories, getConnectionTypes, getDataTypes, getExtensionBlocks, getExtensionCategories, getExtensions, getExtensionStatuses, getParameterOptions, getParameters, getPlates, updateBlock, updateExtension, updateParameter, updateParameterOption } from "../../services/extensions.service";
+import { createBlock, createBlockPlate, createExtension, createParameter, createParameterOption, getBlockConnections, getBlockPlates, getBlockShapes, getBlockStatuses, getBlockTypes, getBlocks, getCategories, getConnectionTypes, getDataTypes, getExtensionBlocks, getExtensionCategories, getExtensions, getExtensionStatuses, getParameterOptions, getParameters, getPlates, updateBlock, updateExtension, updateParameter, updateParameterOption } from "../../services/extensions.service";
 import { queryClient } from "../../lib/queryClient";
 
 const extensionBlocksQueryKey = ["extensionBlocks"] as const;
@@ -84,3 +84,4 @@ export const useCreateParameter = () => useAdminMutation(createParameter, [["par
 export const useUpdateParameter = () => useAdminMutation(updateParameter, [["parameters"], ["blocks"], extensionBlocksQueryKey]);
 export const useCreateParameterOption = () => useAdminMutation(createParameterOption, [["parameterOptions"], ["parameters"], ["blocks"], extensionBlocksQueryKey]);
 export const useUpdateParameterOption = () => useAdminMutation(updateParameterOption, [["parameterOptions"], ["parameters"], ["blocks"], extensionBlocksQueryKey]);
+export const useCreateBlockPlate = () => useAdminMutation(createBlockPlate, [["blockPlates"], ["blocks"], extensionBlocksQueryKey]);

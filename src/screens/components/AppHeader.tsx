@@ -1,5 +1,5 @@
-import { memo } from "react";
-import { BriefcaseBusiness, Bug, BugOff, GraduationCap, LogOut, Save, ShieldCheck, UserRound } from "lucide-react";
+import { memo, useState } from "react";
+import { BriefcaseBusiness, Bug, BugOff, FileText, GraduationCap, LayoutDashboard, LogOut, Menu, Pencil, Play, Save, ShieldCheck, UserRound, X } from "lucide-react";
 import type { Language } from "../../i18n";
 import "../../styles/AppHeader.css";
 
@@ -44,8 +44,13 @@ export const AppHeader = memo(function AppHeader({
   userRole,
   t,
 }: AppHeaderProps) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const RoleIcon = userRole === "admin" ? ShieldCheck : userRole === "student" ? GraduationCap : userRole === "staff" ? BriefcaseBusiness : UserRound;
   const roleLabel = userRole === "admin" ? "Administrador" : userRole === "student" ? "Estudiante" : userRole === "staff" ? "Personal" : "Usuario";
+  const runMobileAction = (action: () => void) => {
+    action();
+    setMobileMenuOpen(false);
+  };
 
   return (
     <header className="header">
@@ -75,6 +80,16 @@ export const AppHeader = memo(function AppHeader({
             </button>
           )}
         </nav>
+
+        <button
+          className="mobile-menu-toggle"
+          type="button"
+          aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
+          aria-expanded={mobileMenuOpen}
+          onClick={() => setMobileMenuOpen((open) => !open)}
+        >
+          {mobileMenuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
+        </button>
 
         <div className="project-name-container">
           <input
@@ -139,6 +154,18 @@ export const AppHeader = memo(function AppHeader({
           </button>
         </div>
       </div>
+
+      {mobileMenuOpen && (
+        <div className="mobile-menu">
+          <button type="button" onClick={() => runMobileAction(onFile)}><FileText size={17} aria-hidden="true" />{t("navFile")}</button>
+          <button type="button" onClick={() => runMobileAction(onEdit)}><Pencil size={17} aria-hidden="true" />{t("navEdit")}</button>
+          <button type="button" onClick={() => runMobileAction(onExamples)}><LayoutDashboard size={17} aria-hidden="true" />{t("examples")}</button>
+          {canAccessDashboard && <button type="button" onClick={() => runMobileAction(onDashboard)}><LayoutDashboard size={17} aria-hidden="true" />Dashboard</button>}
+          <div className="mobile-menu-divider" />
+          <button type="button" className="mobile-menu-run" disabled={isUploading} onClick={() => runMobileAction(onRun)}><Play size={17} fill="currentColor" aria-hidden="true" />{isUploading ? t("uploading") : t("run")}</button>
+          <button type="button" className="mobile-menu-debug" onClick={() => runMobileAction(onToggleDebug)}>{debugMode ? <BugOff size={17} aria-hidden="true" /> : <Bug size={17} aria-hidden="true" />}{debugMode ? t("exitDebug") : t("debug")}</button>
+        </div>
+      )}
     </header>
   );
 });

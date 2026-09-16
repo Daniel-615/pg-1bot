@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
-import { Blocks, Cable, ChevronRight, CircleDot, Database, FolderTree, Layers3, ListChecks, Link2, Puzzle, Server, Settings2, Shapes } from "lucide-react";
+import { Blocks, Cable, ChevronRight, CircleDot, Database, FolderTree, Layers3, ListChecks, Link2, Puzzle, Server, Settings2, Shapes, Zap } from "lucide-react";
 import type { AuthUser } from "../../services/auth.service";
 import { useCreateBlock, useCreateExtension, useExtensionAdminData, useUpdateBlock, useUpdateExtension } from "../../hooks/extensions/extensionsHook";
 import { QueryFreshness } from "../components/QueryFreshness";
 import "./ExtensionFormScreen.css";
+import { ExtensionBuilderWizard } from "./ExtensionBuilderWizard";
 
 type ExtensionFormScreenProps = {
   user: AuthUser | null;
@@ -14,9 +15,9 @@ type ExtensionFormScreenProps = {
   initialPanel?: PanelKey;
 };
 
-type PanelKey = "extensions" | "blocks" | "parameters" | "options" | "plates" | "categories" | "extensionCategories" | "blockTypes" | "blockStatuses" | "dataTypes" | "blockShapes" | "connectionTypes" | "blockConnections" | "blockPlates" | "extensionStatuses";
+type PanelKey = "builder" | "extensions" | "blocks" | "parameters" | "options" | "plates" | "categories" | "extensionCategories" | "blockTypes" | "blockStatuses" | "dataTypes" | "blockShapes" | "connectionTypes" | "blockConnections" | "blockPlates" | "extensionStatuses";
 
-export function ExtensionFormScreen({ user, isAdmin, onBack, initialPanel = "extensions" }: ExtensionFormScreenProps) {
+export function ExtensionFormScreen({ user, isAdmin, onBack, initialPanel = "builder" }: ExtensionFormScreenProps) {
   const { t } = useTranslation();
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
@@ -150,6 +151,7 @@ export function ExtensionFormScreen({ user, isAdmin, onBack, initialPanel = "ext
         <nav className="extension-sidebar-nav">
           <span className="extension-sidebar-label">{t("catalog")}</span>
           {[
+            ["builder", Zap, "Crear paso a paso", 0],
             ["extensions", Puzzle, t("extensions"), extensions.length],
             ["blocks", Blocks, t("blocks"), adminData.blocks.data?.length ?? 0],
             ["parameters", Settings2, t("parameters"), adminData.parameters.data?.length ?? 0],
@@ -187,7 +189,7 @@ export function ExtensionFormScreen({ user, isAdmin, onBack, initialPanel = "ext
         </div>
         <QueryFreshness updatedAt={freshness.updatedAt} isFetching={freshness.isFetching} label={`Última obtención: ${freshness.title}`} />
 
-        {activePanel === "extensions" ? <>
+        {activePanel === "builder" ? <ExtensionBuilderWizard user={user} statuses={uniqueStatuses} blockTypes={adminData.blockTypes.data ?? []} blockStatuses={adminData.blockStatuses.data ?? []} dataTypes={adminData.dataTypes.data ?? []} plates={adminData.plates.data ?? []} /> : activePanel === "extensions" ? <>
           <div className="extension-list" aria-live="polite">
             <div className="extension-list-heading">
               <strong>Extensiones registradas</strong>

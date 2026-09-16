@@ -8,7 +8,12 @@ import { AppHeader } from "./screens/components/AppHeader";
 import { AppSidebar } from "../src/screens/components/AppSidebar";
 import { AppWorkspace } from "../src/screens/components/AppWorkspace";
 import { AppStatusBar } from "../src/screens/components/AppStatusBar";
-import { EXAMPLES, ExamplesPanel, getExamplePath } from "../src/screens/components/ExamplesPanel";
+import { ExamplesPanel } from "../src/screens/components/ExamplesPanel";
+import { SaveOptionsDialog } from "../src/screens/components/SaveOptionsDialog";
+import { OpenOptionsDialog } from "../src/screens/components/OpenOptionsDialog";
+import { createExample } from "./services/examples.service";
+import type { CreateExampleInput, StoredExample } from "./services/examples.service";
+import { uploadJsonToCloud, type CloudProject } from "./services/storage.service";
 import {
   getArduinoCompileErrorMessage,
   compileSketch,
@@ -36,6 +41,7 @@ import type {
   Issue
 } from "./core/blockEngine/semantic/arduinoSemanticAnalyzer"
 import { reportCriticalErrors } from "./services/errors.service";
+import { Puzzle } from "lucide-react";
 
 function sanitizeFilename(value: string) {
   return value.replace(/[<>:"/\\|?*]/g, "_");
@@ -74,6 +80,14 @@ function canAccessDashboard(user: AuthUser | null) {
     const normalizedRole = role.trim().toLowerCase().replace(/\s+/g, "");
     return normalizedRole === "admin" || normalizedRole === "1botpersonal";
   });
+}
+
+function canManageExamples(user: AuthUser | null) {
+  const roles = [
+    ...(Array.isArray(user?.rol) ? user.rol : user?.rol ? [user.rol] : []),
+    ...(user?.roles ?? []).map((role) => role.nombre),
+  ].map((role) => role.trim().toLowerCase().replace(/[\s_-]+/g, ""));
+  return roles.some((role) => role === "admin" || role === "1botpersonal");
 }
 
 function getUserRole(user: AuthUser | null): "admin" | "student" | "staff" | "user" {
@@ -154,12 +168,15 @@ function App({ authUser }: AppProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [previewRotation, setPreviewRotation] = useState(0);
   const [examplesOpen, setExamplesOpen] = useState(false);
+  const [saveOptionsOpen, setSaveOptionsOpen] = useState(false);
+  const [isSavingCloud, setIsSavingCloud] = useState(false);
+  const [isSavingExample, setIsSavingExample] = useState(false);
+  const [openOptionsOpen, setOpenOptionsOpen] = useState(false);
   const [isCheckingSession] = useState(false);
   const isExtensionsPage = ["/extensions", "/bloques", "/placas"].includes(location.pathname);
   const canManageExtensions = canManageDashboardContent(authUser);
   const hasDashboardAccess = canAccessDashboard(authUser);
-
-
+  const canCreateExamples = canManageExamples(authUser);
   const {
     blocklyDivRef,
     code,
@@ -188,6 +205,11 @@ function App({ authUser }: AppProps) {
       setDeviceWorkspaceBlocks(blocks);
     },
   });
+
+  const availableBlockTypes = Object.keys(Blockly.Blocks)
+    .filter((type) => !type.startsWith("%") && type !== "program_start")
+    .sort();
+  const hasExampleBlocks = Boolean(workspace?.getAllBlocks(false).some((block) => block.type !== "program_start"));
 
   const handleInstallExtension = useCallback((extensionId: string) => {
     setInstalledExtensionIds((current) => current.includes(extensionId)
@@ -555,23 +577,38 @@ function App({ authUser }: AppProps) {
     []
   );
 
-  const handleSave = useCallback(() => {
+  const getCurrentProjectData = useCallback(() => {
     const workspace = workspaceRef.current;
 
     if (!workspace) {
-      toast.error("No hay un proyecto para guardar.");
-      return;
+      return null;
     }
 
     const state =
       Blockly.serialization.workspaces.save(workspace);
 
-    const projectData = {
+    return {
       version: "1.0",
       board,
       projectName,
       blocks: state,
     };
+  }, [workspaceRef, board, projectName]);
+
+  const handleSave = useCallback(() => {
+    if (!getCurrentProjectData()) {
+      toast.error("No hay un proyecto para guardar.");
+      return;
+    }
+    setSaveOptionsOpen(true);
+  }, [getCurrentProjectData]);
+
+  const handleSaveLocal = useCallback(() => {
+    const projectData = getCurrentProjectData();
+    if (!projectData) {
+      toast.error("No hay un proyecto para guardar.");
+      return;
+    }
 
     const json = JSON.stringify(projectData, null, 2);
 
@@ -585,10 +622,7 @@ function App({ authUser }: AppProps) {
 
     link.href = url;
 
-    link.download = `${projectName.replace(
-      /[^a-z0-9]/gi,
-      "_"
-    )}.1bot.json`;
+    link.download = `${sanitizeFilename(projectName || "proyecto")}.json`;
 
     link.click();
 
@@ -597,13 +631,98 @@ function App({ authUser }: AppProps) {
     toast.success(
       `Proyecto guardado como ${link.download}`
     );
-  }, [workspaceRef, board, projectName]);
+    setSaveOptionsOpen(false);
+  }, [getCurrentProjectData, projectName]);
+
+  const handleSaveCloud = useCallback(async () => {
+    const projectData = getCurrentProjectData();
+    if (!projectData) {
+      toast.error("No hay un proyecto para guardar.");
+      return;
+    }
+
+    setIsSavingCloud(true);
+    try {
+      const filename = `${sanitizeFilename(projectName || "proyecto")}.json`;
+      await uploadJsonToCloud(filename, JSON.stringify(projectData, null, 2), projectName, board);
+      setSaveOptionsOpen(false);
+      toast.success("Proyecto guardado en la nube.");
+    } catch (error) {
+      toast.error(`No se pudo guardar en la nube. ${error instanceof Error ? error.message : ""}`);
+    } finally {
+      setIsSavingCloud(false);
+    }
+  }, [board, getCurrentProjectData, projectName]);
+
+  const handleSaveAsExample = useCallback(async () => {
+    const projectData = getCurrentProjectData();
+    if (!projectData) {
+      toast.error("No hay un proyecto para guardar.");
+      return;
+    }
+    const currentWorkspace = workspaceRef.current;
+    if (!currentWorkspace || !currentWorkspace.getAllBlocks(false).some((block) => block.type !== "program_start")) {
+      toast.error("Agrega al menos un bloque antes de guardar un ejemplo.");
+      return;
+    }
+
+    setIsSavingExample(true);
+    try {
+      const response = await createExample({
+        nombre: projectName.trim() || "Nuevo ejemplo",
+        descripcion: "Ejemplo creado desde el playground.",
+        placa: board,
+        dificultad: "beginner",
+        icono: "book-open",
+        workspace: projectData,
+      });
+      if (!response.ok) throw new Error(response.message || "No se pudo guardar el ejemplo.");
+      setSaveOptionsOpen(false);
+      toast.success("Ejemplo guardado en la biblioteca y listo para cargar en la placa.");
+    } catch (error) {
+      toast.error(`No se pudo guardar como ejemplo. ${error instanceof Error ? error.message : ""}`);
+    } finally {
+      setIsSavingExample(false);
+    }
+  }, [board, getCurrentProjectData, projectName, workspaceRef]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback(() => {
+    setOpenOptionsOpen(true);
+  }, []);
+
+  const handleOpenLocal = useCallback(() => {
+    setOpenOptionsOpen(false);
     fileInputRef.current?.click();
   }, []);
+
+  const loadProjectContent = useCallback((content: string, fallbackName: string) => {
+    const project = JSON.parse(content) as ProjectFileData;
+
+    if (!project.blocks || typeof project.blocks !== "object") {
+      throw new Error("El archivo no contiene bloques Blockly válidos.");
+    }
+
+    const nextBoard = project.board || "esp32";
+    const nextProjectName = project.projectName || fallbackName;
+    setBoard(nextBoard);
+    setProjectName(nextProjectName);
+    setDeviceWorkspaceBlocks(project.blocks);
+    setEditorMode("device");
+    setProjectLoadVersion((current) => current + 1);
+    resetSimulation(nextBoard);
+    setOpenOptionsOpen(false);
+    toast.success(`Proyecto ${nextProjectName} cargado.`);
+  }, [resetSimulation]);
+
+  const handleOpenCloud = useCallback((project: CloudProject, data: unknown) => {
+    try {
+      loadProjectContent(JSON.stringify(data), project.nombre);
+    } catch (error) {
+      toast.error(`No se pudo abrir el proyecto. ${error instanceof Error ? error.message : ""}`);
+    }
+  }, [loadProjectContent]);
 
   const handleProjectFileChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -615,33 +734,15 @@ function App({ authUser }: AppProps) {
         return;
       }
 
-      void file
-        .text()
-        .then((content) => {
-          const project = JSON.parse(content) as ProjectFileData;
-
-          if (!project.blocks || typeof project.blocks !== "object") {
-            throw new Error("El archivo no contiene bloques Blockly válidos.");
-          }
-
-          const nextBoard = project.board || "esp32";
-          const nextProjectName = project.projectName || file.name.replace(/\.1bot\.json$|\.json$/i, "");
-
-          setBoard(nextBoard);
-          setProjectName(nextProjectName);
-          setDeviceWorkspaceBlocks(project.blocks);
-          setEditorMode("device");
-          setProjectLoadVersion((current) => current + 1);
-          resetSimulation(nextBoard);
-          toast.success(`Proyecto ${nextProjectName} cargado.`);
-        })
+      void file.text()
+        .then((content) => loadProjectContent(content, file.name.replace(/\.1bot\.json$|\.json$/i, "")))
         .catch((error) => {
           toast.error(
             `No se pudo abrir el proyecto. ${error instanceof Error ? error.message : ""}`
           );
         });
     },
-    [resetSimulation]
+    [loadProjectContent]
   );
 
   const handleShowExamples = useCallback(() => {
@@ -653,48 +754,74 @@ function App({ authUser }: AppProps) {
   }, []);
 
   const handleSelectExample = useCallback(
-    (exampleId: string) => {
-      const example = EXAMPLES.find((item) => item.id === exampleId);
-
-      if (!example) {
-        toast.error("No se encontró el ejemplo seleccionado.");
+    (example: StoredExample) => {
+      const project = example.workspace;
+      if (!project.blocks || typeof project.blocks !== "object") {
+        toast.error("El ejemplo no contiene bloques Blockly válidos.");
         return;
       }
 
-      void fetch(getExamplePath(example))
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-          }
+      const nextBoard = project.board || example.placa || "esp32";
+      const nextProjectName = project.projectName || example.nombre;
 
-          return response.json() as Promise<ProjectFileData>;
-        })
-        .then((project) => {
-          if (!project.blocks || typeof project.blocks !== "object") {
-            throw new Error("El ejemplo no contiene bloques Blockly válidos.");
-          }
-
-          const nextBoard = project.board || example.boards[0] || "esp32";
-          const nextProjectName = project.projectName || example.filename.replace(/\.json$/i, "");
-
-          setBoard(nextBoard);
-          setProjectName(nextProjectName);
-          setDeviceWorkspaceBlocks(project.blocks);
-          setEditorMode("device");
-          setActiveTab("blocks");
-          setProjectLoadVersion((current) => current + 1);
-          resetSimulation(nextBoard);
-          setExamplesOpen(false);
-          toast.success(`Ejemplo ${nextProjectName} cargado.`);
-        })
-        .catch((error) => {
-          toast.error(
-            `No se pudo cargar el ejemplo. ${error instanceof Error ? error.message : ""}`
-          );
-        });
+      setBoard(nextBoard);
+      setProjectName(nextProjectName);
+      setDeviceWorkspaceBlocks(project.blocks);
+      setEditorMode("device");
+      setActiveTab("blocks");
+      setProjectLoadVersion((current) => current + 1);
+      resetSimulation(nextBoard);
+      setExamplesOpen(false);
+      toast.success(`Ejemplo ${nextProjectName} cargado.`);
     },
     [resetSimulation]
   );
+
+  const handleCreateExample = useCallback(async (input: CreateExampleInput): Promise<StoredExample> => {
+    const workspace = workspaceRef.current;
+    if (!workspace) throw new Error("No hay un workspace para guardar.");
+    const response = await createExample({
+      ...input,
+      workspace: { version: "1.0", board, projectName, blocks: Blockly.serialization.workspaces.save(workspace) },
+    });
+    if (!response.ok || !response.data) throw new Error(response.message || "No se pudo crear el ejemplo.");
+    toast.success("Ejemplo guardado en la biblioteca.");
+    return response.data;
+  }, [board, projectName, workspaceRef]);
+
+  const handleAddExampleBlock = useCallback((type: string) => {
+    if (!workspace) {
+      toast.error("El playground todavía no está listo.");
+      return;
+    }
+
+    try {
+      const block = workspace.newBlock(type) as Blockly.BlockSvg;
+      block.initSvg();
+      block.render();
+      const startBlock = workspace.getTopBlocks(true).find((item) => item.type === "program_start");
+      const startInput = startBlock?.getInput("DO")?.connection;
+      let lastBlock = startBlock?.getInputTargetBlock("DO") ?? null;
+
+      while (lastBlock?.getNextBlock()) {
+        lastBlock = lastBlock.getNextBlock();
+      }
+
+      if (block.previousConnection && startInput) {
+        const targetConnection = lastBlock?.nextConnection ?? startInput;
+        if (targetConnection && !targetConnection.isConnected()) {
+          targetConnection.connect(block.previousConnection);
+        }
+      }
+
+      if (!block.previousConnection || !startInput) {
+        block.moveBy(80 + (workspace.getAllBlocks(false).length % 5) * 180, 80 + Math.floor(workspace.getAllBlocks(false).length / 5) * 100);
+      }
+      toast.success("Bloque agregado al programa de inicio.");
+    } catch {
+      toast.error("No se pudo agregar ese bloque a la placa actual.");
+    }
+  }, [workspace]);
 
   const handleEdit = useCallback(() => { }, []);
 
@@ -805,8 +932,14 @@ function App({ authUser }: AppProps) {
               onClose={() => setExtensionInstallerOpen(false)}
             />
           ) : (
-            <button className="extension-installer-trigger" type="button" onClick={() => setExtensionInstallerOpen(true)}>
-              Extensiones
+            <button
+              className="extension-installer-trigger"
+              type="button"
+              onClick={() => setExtensionInstallerOpen(true)}
+              aria-label="Abrir extensiones"
+              title="Extensiones"
+            >
+              <Puzzle size={18} aria-hidden="true" />
             </button>
           )}
           <AppSidebar
@@ -897,8 +1030,34 @@ function App({ authUser }: AppProps) {
       {examplesOpen && (
         <ExamplesPanel
           board={board}
+          canManageExamples={canCreateExamples}
+          availableBlockTypes={availableBlockTypes}
           onSelectExample={handleSelectExample}
+          onCreateExample={handleCreateExample}
+          onAddBlock={handleAddExampleBlock}
           onClose={handleCloseExamples}
+        />
+      )}
+
+      {saveOptionsOpen && (
+        <SaveOptionsDialog
+          projectName={sanitizeFilename(projectName || "proyecto")}
+          isSavingCloud={isSavingCloud}
+          isSavingExample={isSavingExample}
+          canManageExamples={canCreateExamples}
+          hasExampleBlocks={hasExampleBlocks}
+          onLocal={handleSaveLocal}
+          onCloud={() => void handleSaveCloud()}
+          onExample={() => void handleSaveAsExample()}
+          onClose={() => setSaveOptionsOpen(false)}
+        />
+      )}
+
+      {openOptionsOpen && (
+        <OpenOptionsDialog
+          onLocal={handleOpenLocal}
+          onCloud={handleOpenCloud}
+          onClose={() => setOpenOptionsOpen(false)}
         />
       )}
 

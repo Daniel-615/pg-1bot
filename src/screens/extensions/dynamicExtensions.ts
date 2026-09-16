@@ -154,7 +154,7 @@ export async function loadDynamicExtensionCategories(board: string, installedExt
   }
 }
 
-function parseLibraries(value: string | undefined) {
+export function parseLibraries(value: string | undefined) {
   if (!value?.trim()) return [];
 
   try {
@@ -167,7 +167,7 @@ function parseLibraries(value: string | undefined) {
   return value.split(/[\n,;]/).map((item) => item.trim()).filter(Boolean);
 }
 
-function interpolate(template: string, values: Record<string, string>, orderedValues: string[]) {
+export function interpolate(template: string, values: Record<string, string>, orderedValues: string[]) {
   return template.replace(/\{\{\s*([^}]+?)\s*\}\}|%([a-zA-Z_][\w]*)%|%(\d+)/g, (_match, braces, percent, index) => {
     if (index) return orderedValues[Number(index) - 1] ?? "";
     return values[braces ?? percent] ?? "";

@@ -93,6 +93,59 @@
     border-color: #15b8e5;
 }
 
+.rol-permission-picker {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+    min-height: 54px;
+    max-height: 180px;
+    overflow-y: auto;
+    padding: 8px;
+    border: 1px solid #dcdcdc;
+    border-radius: 12px;
+    background: #fbfcfe;
+}
+
+.rol-permission-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid #dce4e8;
+    border-radius: 9px;
+    background: white;
+    color: #34454c;
+    cursor: pointer;
+    text-align: left;
+    transition: .2s;
+}
+
+.rol-permission-option:hover,
+.rol-permission-option.selected {
+    border-color: #15b8e5;
+    background: #eafaff;
+    color: #087d9c;
+}
+
+.rol-permission-option small {
+    color: #87949a;
+}
+
+.rol-picker-status {
+    align-self: center;
+    padding: 8px;
+    color: #777;
+}
+
+.rol-selection-count {
+    display: block;
+    margin-top: 6px;
+    color: #087d9c;
+    font-weight: 600;
+}
+
 .rol-result {
     margin-top: 18px;
     padding: 14px 18px;

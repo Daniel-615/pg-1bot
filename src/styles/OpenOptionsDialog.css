@@ -1,0 +1,17 @@
+.open-options-overlay { position: fixed; inset: 0; z-index: 1100; display: grid; place-items: center; padding: 18px; background: rgba(15, 23, 42, .42); }
+.open-options-dialog { width: min(500px, 100%); max-height: min(700px, 90vh); overflow: auto; padding: 22px; background: var(--bg-white); border: 1px solid var(--border-color); border-radius: 18px; box-shadow: 0 24px 70px rgba(15, 23, 42, .22); }
+.open-options-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.open-options-kicker { color: var(--primary-dark); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.open-options-header h2 { margin-top: 5px; color: var(--text-primary); font-size: 20px; }
+.open-options-header button { display: grid; place-items: center; width: 32px; height: 32px; color: var(--text-secondary); background: var(--bg-main); border: 0; border-radius: 8px; cursor: pointer; }
+.open-local-option, .cloud-project-row { display: flex; align-items: center; width: 100%; gap: 12px; padding: 13px; color: #0369a1; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 11px; text-align: left; cursor: pointer; }
+.open-local-option span, .cloud-project-row span { display: grid; gap: 3px; }
+.open-local-option small, .cloud-project-row small { color: var(--text-secondary); font-size: 11px; }
+.cloud-projects-heading { display: flex; align-items: center; gap: 7px; margin: 20px 0 9px; color: #0f766e; font-size: 13px; }
+.cloud-projects-list { display: grid; gap: 7px; }
+.cloud-project-row { color: #0f766e; background: #f0fdfa; border-color: #99f6e4; }
+.cloud-project-row strong { color: var(--text-primary); font-size: 13px; }
+.cloud-project-row:disabled { opacity: .65; cursor: wait; }
+.open-options-state { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 80px; color: var(--text-secondary); font-size: 12px; }
+.open-options-spin { animation: open-options-spin .8s linear infinite; }
+@keyframes open-options-spin { to { transform: rotate(360deg); } }
