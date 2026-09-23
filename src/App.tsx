@@ -153,7 +153,7 @@ function App({ authUser }: AppProps) {
       return [];
     }
   });
-  const [extensionInstallerOpen, setExtensionInstallerOpen] = useState(true);
+  const [extensionInstallerOpen, setExtensionInstallerOpen] = useState(false);
 
   const [ports, setPorts] = useState<SerialPortOption[]>([]);
   const [selectedPort, setSelectedPort] = useState("");
@@ -903,6 +903,7 @@ function App({ authUser }: AppProps) {
         onRun={handleRun}
         onToggleDebug={handleToggleDebug}
         onExamples={handleShowExamples}
+        onExtensions={() => setExtensionInstallerOpen(true)}
         onSave={handleSave}
         onFile={handleFile}
         onEdit={handleEdit}

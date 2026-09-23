@@ -1,5 +1,5 @@
 import { memo, useState } from "react";
-import { BriefcaseBusiness, Bug, BugOff, FileText, GraduationCap, LayoutDashboard, LogOut, Menu, Pencil, Play, Save, ShieldCheck, UserRound, X } from "lucide-react";
+import { BriefcaseBusiness, Bug, BugOff, FileText, GraduationCap, LayoutDashboard, LogOut, Menu, Pencil, Play, Puzzle, Save, ShieldCheck, UserRound, X } from "lucide-react";
 import type { Language } from "../../i18n";
 import "../../styles/AppHeader.css";
 
@@ -16,6 +16,7 @@ type AppHeaderProps = {
   onRun: () => void;
   onToggleDebug: () => void;
   onExamples: () => void;
+  onExtensions: () => void;
   onLogout: () => void;
   canAccessDashboard: boolean;
   isUploading: boolean;
@@ -37,6 +38,7 @@ export const AppHeader = memo(function AppHeader({
   onRun,
   onToggleDebug,
   onExamples,
+  onExtensions,
   onLogout,
   canAccessDashboard,
   isUploading,
@@ -159,8 +161,9 @@ export const AppHeader = memo(function AppHeader({
         <div className="mobile-menu">
           <button type="button" onClick={() => runMobileAction(onFile)}><FileText size={17} aria-hidden="true" />{t("navFile")}</button>
           <button type="button" onClick={() => runMobileAction(onEdit)}><Pencil size={17} aria-hidden="true" />{t("navEdit")}</button>
-          <button type="button" onClick={() => runMobileAction(onExamples)}><LayoutDashboard size={17} aria-hidden="true" />{t("examples")}</button>
-          {canAccessDashboard && <button type="button" onClick={() => runMobileAction(onDashboard)}><LayoutDashboard size={17} aria-hidden="true" />Dashboard</button>}
+           <button type="button" onClick={() => runMobileAction(onExamples)}><LayoutDashboard size={17} aria-hidden="true" />{t("examples")}</button>
+           <button type="button" onClick={() => runMobileAction(onExtensions)}><Puzzle size={17} aria-hidden="true" />{t("extensions")}</button>
+           {canAccessDashboard && <button type="button" onClick={() => runMobileAction(onDashboard)}><LayoutDashboard size={17} aria-hidden="true" />Dashboard</button>}
           <div className="mobile-menu-divider" />
           <button type="button" className="mobile-menu-run" disabled={isUploading} onClick={() => runMobileAction(onRun)}><Play size={17} fill="currentColor" aria-hidden="true" />{isUploading ? t("uploading") : t("run")}</button>
           <button type="button" className="mobile-menu-debug" onClick={() => runMobileAction(onToggleDebug)}>{debugMode ? <BugOff size={17} aria-hidden="true" /> : <Bug size={17} aria-hidden="true" />}{debugMode ? t("exitDebug") : t("debug")}</button>

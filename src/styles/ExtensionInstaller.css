@@ -37,4 +37,4 @@
 .extension-install-button:disabled { opacity: .45; cursor: not-allowed; }
 .extension-installer-state { padding: 20px 10px; color: var(--text-secondary); text-align: center; font-size: 12px; }
 
-@media (max-width: 768px) { .extension-installer { top: 9px; right: 9px; width: min(350px, calc(100% - 18px)); } .extension-installer-trigger { top: 9px; right: 9px; } .extension-installer-list { max-height: 55vh; } .extension-card { align-items: flex-start; flex-direction: column; } .extension-install-button { width: 100%; } }
+@media (max-width: 768px) { .extension-installer { top: 9px; right: 9px; width: min(350px, calc(100% - 18px)); } .extension-installer-trigger { display: none; } .extension-installer-list { max-height: 55vh; } .extension-card { align-items: flex-start; flex-direction: column; } .extension-install-button { width: 100%; } }

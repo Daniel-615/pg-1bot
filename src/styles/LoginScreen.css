@@ -148,6 +148,14 @@
     color: #555;
 }
 
+.login-card .email-requirements {
+    margin-top: 8px;
+}
+
+.login-card .form-group input[aria-invalid="true"] {
+    border-color: #d64545;
+}
+
 .login-card .password-strength {
     margin: 10px 0 0;
     color: #1689e8;

@@ -20,6 +20,11 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
     const [showPassword, setShowPassword] = useState(false);
     const registerMutation = useRegister();
     const isSubmitting = registerMutation.isPending;
+    const emailRequirements = [
+        { label: "No contiene espacios", valid: email.trim().length > 0 && !/\s/.test(email.trim()) },
+        { label: "Incluye un usuario antes de @", valid: /^[^\s@]+@/.test(email.trim()) },
+        { label: "Incluye un dominio válido (ej. .com)", valid: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim()) },
+    ];
     const passwordRequirements = [
         { label: "Mínimo 8 caracteres", valid: password.length >= 8 },
         { label: "Una letra mayúscula", valid: /[A-Z]/.test(password) },
@@ -45,6 +50,11 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
         const numericAge = Number(edad);
         if (!trimmedNombre || !trimmedEmail || !trimmedLastName || !password || !confirmPassword || !Number.isInteger(numericAge) || numericAge < 5 || numericAge > 120) {
             toast.error("Completa todos los campos");
+            return;
+        }
+
+        if (!emailRequirements.every((requirement) => requirement.valid)) {
+            toast.error("Ingresa un correo electrónico válido");
             return;
         }
 
@@ -143,8 +153,20 @@ export default function RegisterScreen({ onRegisterSuccess }: RegisterScreenProp
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="maria.garcia@gmail.com"
                         autoComplete="email"
+                        aria-describedby="register-email-requirements"
+                        aria-invalid={email.length > 0 && !emailRequirements.every((requirement) => requirement.valid)}
                         disabled={isSubmitting}
                     />
+                    {email.length > 0 && (
+                        <ul id="register-email-requirements" className="password-requirements email-requirements">
+                            {emailRequirements.map((requirement) => (
+                                <li className={requirement.valid ? "is-valid" : ""} key={requirement.label}>
+                                    <span className="requirement-check" aria-hidden="true">{requirement.valid ? "✓" : "×"}</span>
+                                    {requirement.label}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                 </div>
 
                 <div className="form-group">
