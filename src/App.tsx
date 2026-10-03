@@ -41,6 +41,7 @@ import type {
   Issue
 } from "./core/blockEngine/semantic/arduinoSemanticAnalyzer"
 import { reportCriticalErrors } from "./services/errors.service";
+import { getAccessToken, getAuthorizationHeader } from "./services/access-token";
 import { Puzzle } from "lucide-react";
 
 function sanitizeFilename(value: string) {
@@ -142,6 +143,7 @@ function App({ authUser }: AppProps) {
   const [debugMode, setDebugMode] = useState(false);
   const [, setLanguageVersion] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const compileInFlightRef = useRef(false);
   const [wokwiState, setWokwiState] = useState<WokwiSimulationState>(
     emptyWokwiSimulationState
   );
@@ -233,12 +235,16 @@ function App({ authUser }: AppProps) {
     [clientPlatform]
   );
 
+  const arduinoApiUrl = (
+    (import.meta.env.VITE_ARDUINO_API_URL as string | undefined) ||
+    compileTarget.apiUrl
+  ).replace(/\/+$/, "");
+
+  const [isArduinoServiceOnline, setIsArduinoServiceOnline] = useState(false);
+
   const compileTargetLabel = useMemo(
-    () =>
-      clientPlatform === "mobile"
-        ? t("compileTargetBackend", { apiUrl: compileTarget.apiUrl })
-        : t("compileTargetLocal", { apiUrl: compileTarget.apiUrl }),
-    [clientPlatform, compileTarget.apiUrl, t]
+    () => isArduinoServiceOnline ? t("arduinoServiceOnline") : "",
+    [isArduinoServiceOnline, t]
   );
 
   const currentDevice = useMemo(
@@ -284,13 +290,29 @@ function App({ authUser }: AppProps) {
   );
 
   useEffect(() => {
-    const backendUrl = import.meta.env.VITE_ARDUINO_API_URL;
-    if (!backendUrl) {
-      toast.error(
-        "La URL del servicio de compilación no está configurada"
-      );
+    if (!arduinoApiUrl) {
+      setIsArduinoServiceOnline(false);
+      return;
     }
-    const socket = io(backendUrl);
+
+    const checkService = async () => {
+      try {
+        const response = await fetch(`${arduinoApiUrl}/health`, {
+          cache: "no-store",
+        });
+        setIsArduinoServiceOnline(response.ok);
+      } catch {
+        setIsArduinoServiceOnline(false);
+      }
+    };
+
+    void checkService();
+    const healthCheck = window.setInterval(() => void checkService(), 30000);
+    const socket = io(arduinoApiUrl, {
+      auth: {
+        token: getAccessToken(),
+      },
+    });
 
     socket.on("serial-data", (line: string) => {
       setSerialLogs((prev) =>
@@ -299,9 +321,10 @@ function App({ authUser }: AppProps) {
     });
 
     return () => {
+      window.clearInterval(healthCheck);
       socket.disconnect();
     };
-  }, []);
+  }, [arduinoApiUrl]);
 
   useEffect(() => {
     const syncFullscreenState = () => {
@@ -323,7 +346,8 @@ function App({ authUser }: AppProps) {
   const fetchPorts = useCallback(async () => {
     try {
       const res = await fetch(
-        "http://localhost:3000/api/arduino/ports"
+        `${arduinoApiUrl}/api/arduino/ports`,
+        { headers: getAuthorizationHeader() }
       );
 
       const data = await res.json();
@@ -340,11 +364,11 @@ function App({ authUser }: AppProps) {
       );
     } catch (err) {
       toast.error(
-        `No se pudo conectar con el servicio local. ${err instanceof Error ? err.message : ""
+        `No se pudo conectar con el servicio Arduino. ${err instanceof Error ? err.message : ""
         }`
       );
     }
-  }, []);
+  }, [arduinoApiUrl]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -364,11 +388,12 @@ function App({ authUser }: AppProps) {
 
     try {
       const res = await fetch(
-        "http://localhost:3000/api/arduino/monitor/start",
+        `${arduinoApiUrl}/api/arduino/monitor/start`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            ...getAuthorizationHeader(),
           },
           body: JSON.stringify({
             port: selectedPort,
@@ -393,14 +418,15 @@ function App({ authUser }: AppProps) {
         }`
       );
     }
-  }, [selectedPort]);
+  }, [arduinoApiUrl, selectedPort]);
 
   const stopSerialMonitor = useCallback(async () => {
     try {
       const res = await fetch(
-        "http://localhost:3000/api/arduino/monitor/stop",
+        `${arduinoApiUrl}/api/arduino/monitor/stop`,
         {
           method: "POST",
+          headers: getAuthorizationHeader(),
         }
       );
 
@@ -478,6 +504,12 @@ function App({ authUser }: AppProps) {
       return;
     }
 
+    if (compileInFlightRef.current) {
+      return;
+    }
+
+    compileInFlightRef.current = true;
+
     const isCodey = board === "codey";
     const filename = `${sanitizeFilename(projectName)}.${isCodey ? "py" : "ino"}`;
 
@@ -505,6 +537,7 @@ function App({ authUser }: AppProps) {
       toast.error(getArduinoCompileErrorMessage(err));
     } finally {
       setIsUploading(false);
+      compileInFlightRef.current = false;
     }
   }, [authUser?.edad, authUser?.id, authUser?.userId, board, code, compileTarget, projectName, selectedPort, semanticErrors]);
 
@@ -690,7 +723,7 @@ function App({ authUser }: AppProps) {
 
   const handleFile = useCallback(() => {
     setOpenOptionsOpen(true);
-  }, []);
+  }, [arduinoApiUrl]);
 
   const handleOpenLocal = useCallback(() => {
     setOpenOptionsOpen(false);

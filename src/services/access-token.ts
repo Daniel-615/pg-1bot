@@ -29,11 +29,17 @@ export function setAccessToken(token: string) {
     }
 }
 
+export function getAuthorizationHeader(): Record<string, string> {
+    const token = getAccessToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export function attachAccessToken(client: AxiosInstance) {
     client.interceptors.request.use((config) => {
         const token = getAccessToken();
         if (token) {
-            config.headers.set("Authorization", `Bearer ${token}`);
+            config.headers = config.headers || {};
+            config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
     });

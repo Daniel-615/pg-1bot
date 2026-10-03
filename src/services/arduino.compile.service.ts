@@ -1,6 +1,7 @@
 import axios from "axios";
 import type { ClientPlatform } from "../screens/platform";
 import { toast } from "react-toastify";
+import { attachAccessToken } from "./access-token";
 const DEFAULT_BACKEND_API_URL = import.meta.env.VITE_ARDUINO_API_URL;
 if (!DEFAULT_BACKEND_API_URL) {
   toast.error(
@@ -40,6 +41,8 @@ const BOARD_FQBN_MAP: Record<string, string> = {
   nano: "arduino:avr:nano",
   esp32: "esp32:esp32:esp32",
 };
+
+const arduinoApi = attachAccessToken(axios.create());
 
 function sanitizeFilename(value: string) {
   return value
@@ -108,7 +111,7 @@ export class ArduinoApi {
     }
 
     const endpoint = isCodey ? "/api/codey/compile" : "/api/arduino/compile";
-    const response = await axios.post(`${this.apiUrl}${endpoint}`, formData);
+    const response = await arduinoApi.post(`${this.apiUrl}${endpoint}`, formData);
 
     const payload = response.data as { ok?: boolean; message?: string };
 
@@ -122,6 +125,18 @@ export class ArduinoApi {
 }
 
 export function resolveCompileTarget(platform: ClientPlatform): CompileTarget {
+  const onlineApiUrl = normalizeApiUrl(
+    import.meta.env.VITE_ARDUINO_API_URL as string | undefined,
+  );
+
+  if (onlineApiUrl) {
+    return {
+      apiUrl: onlineApiUrl,
+      transport: "backend",
+      platform,
+    };
+  }
+
   if (platform === "mobile") {
     return {
       apiUrl: normalizeApiUrl(
