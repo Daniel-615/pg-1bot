@@ -10,6 +10,7 @@ import { CookieConsent } from "../screens/components/CookieConsent";
 import { OfflineIndicator } from "../screens/components/OfflineIndicator";
 import i18n from "../i18n";
 import "../styles/AppWorkspace.css";
+import { hasRequiredPermissions } from "./permissions";
 
 type ProtectedRouteProps = {
     requiredPermissions?: string[];
@@ -21,17 +22,6 @@ type SessionState = {
     user: AuthUser | null;
     shouldLogin: boolean;
 };
-
-function hasRequiredPermissions(user: AuthUser | null, requiredPermissions: string[]) {
-    const roles = [
-        ...(Array.isArray(user?.rol) ? user.rol : user?.rol ? [user.rol] : []),
-        ...(user?.roles ?? []).map((role) => role.nombre),
-    ].map((role) => role.trim().toLowerCase().replace(/\s+/g, ""));
-    if (roles.some((role) => role === "admin" || role === "1botpersonal")) return true;
-
-    const permissions = new Set(user?.permisos ?? []);
-    return requiredPermissions.every((permission) => permissions.has(permission));
-}
 
 function ProtectedRoute({ requiredPermissions = [], children }: ProtectedRouteProps) {
     const [session, setSession] = useState<SessionState>({

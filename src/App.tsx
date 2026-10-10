@@ -43,19 +43,13 @@ import type {
 import { reportCriticalErrors } from "./services/errors.service";
 import { getAccessToken, getAuthorizationHeader } from "./services/access-token";
 import { Puzzle } from "lucide-react";
+import { parseProjectFile, serializeProjectFile } from "./services/project-file.service";
 
 function sanitizeFilename(value: string) {
   return value.replace(/[<>:"/\\|?*]/g, "_");
 }
 
 const MAX_SERIAL_LOG_LINES = 300;
-
-type ProjectFileData = {
-  version?: string;
-  board?: string;
-  projectName?: string;
-  blocks?: unknown;
-};
 
 type EditorMode = "device" | "background";
 
@@ -643,7 +637,7 @@ function App({ authUser }: AppProps) {
       return;
     }
 
-    const json = JSON.stringify(projectData, null, 2);
+    const json = serializeProjectFile(projectData);
 
     const blob = new Blob([json], {
       type: "application/json",
@@ -677,7 +671,7 @@ function App({ authUser }: AppProps) {
     setIsSavingCloud(true);
     try {
       const filename = `${sanitizeFilename(projectName || "proyecto")}.json`;
-      await uploadJsonToCloud(filename, JSON.stringify(projectData, null, 2), projectName, board);
+      await uploadJsonToCloud(filename, serializeProjectFile(projectData), projectName, board);
       setSaveOptionsOpen(false);
       toast.success("Proyecto guardado en la nube.");
     } catch (error) {
@@ -731,11 +725,7 @@ function App({ authUser }: AppProps) {
   }, []);
 
   const loadProjectContent = useCallback((content: string, fallbackName: string) => {
-    const project = JSON.parse(content) as ProjectFileData;
-
-    if (!project.blocks || typeof project.blocks !== "object") {
-      throw new Error("El archivo no contiene bloques Blockly válidos.");
-    }
+    const project = parseProjectFile(content, fallbackName);
 
     const nextBoard = project.board || "esp32";
     const nextProjectName = project.projectName || fallbackName;

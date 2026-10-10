@@ -35,6 +35,11 @@ export async function getEvaluationMetrics(userId: string): Promise<EvaluationMe
   return response.data.data;
 }
 
+export async function getGlobalEvaluationMetrics(): Promise<EvaluationMetrics> {
+  const response = await api.get<{ data: EvaluationMetrics }>(`${API_URL}/api/evaluations/metrics`);
+  return response.data.data;
+}
+
 export async function createEvaluation(userId: string, payload: EvaluationPayload) {
   const instrument = payload.instrumento?.trim() || "Evaluación de programación";
   if (!validateEvaluationPayload(userId, payload)) throw new Error("Los datos de la evaluación son inválidos.");

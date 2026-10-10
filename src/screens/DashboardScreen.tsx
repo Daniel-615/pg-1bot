@@ -21,7 +21,7 @@ import type { AuthUser } from "../services/auth.service";
 import { Logout } from "../services/auth.service";
 import { toast } from "react-toastify";
 import "../styles/DashboardScreen.css";
-import { getEvaluationMetrics, type EvaluationMetrics } from "../services/evaluations.service";
+import { getEvaluationMetrics, getGlobalEvaluationMetrics, type EvaluationMetrics } from "../services/evaluations.service";
 
 type MenuItem = {
     title: string;
@@ -133,7 +133,7 @@ export const DashboardScreen = ({ user }: DashboardScreenProps) => {
         ...(Array.isArray(user?.rol) ? user.rol : user?.rol ? [user.rol] : []),
         ...(user?.roles ?? []).map((role) => role.nombre),
     ].map((role) => role.trim().toLowerCase().replace(/\s+/g, ""));
-    const isAdmin = roles.some((role) => role === "admin" || role === "1botpersonal");
+    const isAdmin = roles.some((role) => ["admin", "administrador", "1botpersonal", "personal", "empleado", "profesor", "teacher"].includes(role));
     const canViewMetrics = isAdmin || permissions.has("ver_metricas_evaluacion");
     const visibleItems = menuItems.filter((item) => isAdmin || permissions.has(item.requiredPermission));
     const restrictedItems = menuItems.length - visibleItems.length;
@@ -150,8 +150,9 @@ export const DashboardScreen = ({ user }: DashboardScreenProps) => {
         if (!userId || !canViewMetrics) {
             return;
         }
-        getEvaluationMetrics(userId).then(setMetrics).catch(() => setMetricsError(true));
-    }, [userId, canViewMetrics]);
+        const request = isAdmin ? getGlobalEvaluationMetrics() : getEvaluationMetrics(userId);
+        request.then(setMetrics).catch(() => setMetricsError(true));
+    }, [userId, canViewMetrics, isAdmin]);
 
     const initialScore = metrics?.inicial ?? 0;
     const finalScore = metrics?.final ?? 0;
