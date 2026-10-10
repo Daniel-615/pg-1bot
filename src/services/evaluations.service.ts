@@ -35,8 +35,9 @@ export async function getEvaluationMetrics(userId: string): Promise<EvaluationMe
   return response.data.data;
 }
 
-export async function getGlobalEvaluationMetrics(): Promise<EvaluationMetrics> {
-  const response = await api.get<{ data: EvaluationMetrics }>(`${API_URL}/api/evaluations/metrics`);
+export async function getGlobalEvaluationMetrics(ageMin?: number, ageMax?: number): Promise<EvaluationMetrics> {
+  const params = ageMin === undefined && ageMax === undefined ? undefined : { edadMin: ageMin, edadMax: ageMax };
+  const response = await api.get<{ data: EvaluationMetrics }>(`${API_URL}/api/evaluations/metrics`, { params });
   return response.data.data;
 }
 
