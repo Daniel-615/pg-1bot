@@ -6,6 +6,8 @@ type AppStatusBarProps = {
   connectionType: "usb" | "bluetooth" | "wifi";
   isConnected: boolean;
   compileTargetLabel: string;
+  agentDownloadUrl?: string;
+  agentOffline: boolean;
   t: (key: string, options?: Record<string, string | number>) => string;
 };
 
@@ -14,6 +16,8 @@ export const AppStatusBar = memo(function AppStatusBar({
   connectionType,
   isConnected,
   compileTargetLabel,
+  agentDownloadUrl,
+  agentOffline,
   t,
 }: AppStatusBarProps) {
   return (
@@ -30,7 +34,22 @@ export const AppStatusBar = memo(function AppStatusBar({
         </span>
       </div>
       <div className="status-right">
-        <span>{compileTargetLabel}</span>
+        {agentOffline ? (
+          <div className="agent-install-prompt">
+            <span className="agent-install-message">{t("arduinoAgentRequired")}</span>
+            <a
+              className="agent-install-link"
+              href={agentDownloadUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t("installArduinoAgent")}
+            </a>
+            <span className="agent-install-help">{t("arduinoAgentInstallHelp")}</span>
+          </div>
+        ) : (
+          <span>{compileTargetLabel}</span>
+        )}
         <span>{t("appTitle")}</span>
       </div>
     </footer>

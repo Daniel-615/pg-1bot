@@ -18,6 +18,28 @@
   gap: 8px;
 }
 
+.agent-install-prompt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.agent-install-message {
+  color: #fbbf24;
+}
+
+.agent-install-link {
+  color: #93c5fd;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.agent-install-help {
+  color: rgba(255, 255, 255, 0.45);
+}
+
 .status-indicator {
   flex-shrink: 0;
   width: 8px;
@@ -42,6 +64,10 @@
 
 @media (max-width: 480px) {
   .status-text {
+    display: none;
+  }
+
+  .agent-install-help {
     display: none;
   }
 }

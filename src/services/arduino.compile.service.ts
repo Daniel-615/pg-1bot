@@ -1,18 +1,14 @@
 import axios from "axios";
 import type { ClientPlatform } from "../screens/platform";
-import { toast } from "react-toastify";
 import { attachAccessToken } from "./access-token";
 const DEFAULT_BACKEND_API_URL = import.meta.env.VITE_ARDUINO_API_URL;
-if (!DEFAULT_BACKEND_API_URL) {
-  toast.error(
-    "La URL del servicio de compilación no está configurado"
-  )
-}
+const LOCAL_AGENT_API_URL = import.meta.env.VITE_ARDUINO_LOCAL_API_URL || "http://localhost:3000";
 type CompileSketchParams = {
   code: string;
   board: string;
   filename?: string;
   port?: string;
+  upload?: boolean;
 };
 
 type CompileSketchResult = {
@@ -83,7 +79,7 @@ export class ArduinoApi {
     this.apiUrl = normalizeApiUrl(apiUrl);
   }
 
-  async postCompile({ code, board, filename, port }: CompileSketchParams): Promise<CompileSketchResult> {
+  async postCompile({ code, board, filename, port, upload = false }: CompileSketchParams): Promise<CompileSketchResult> {
     /*
       Converts code to arduino sketch (ino), and call the api to compile this returns a status and message
     */
@@ -98,7 +94,7 @@ export class ArduinoApi {
     }
 
     formData.append("file", file, resolvedFilename);
-    formData.append("upload", "true");
+    formData.append("upload", String(upload));
     if (fqbn) {
       formData.append("fqbn", fqbn);
     }
@@ -125,33 +121,20 @@ export class ArduinoApi {
 }
 
 export function resolveCompileTarget(platform: ClientPlatform): CompileTarget {
-  const onlineApiUrl = normalizeApiUrl(
-    import.meta.env.VITE_ARDUINO_API_URL as string | undefined,
-  );
-
-  if (onlineApiUrl) {
+  if (platform === "desktop") {
     return {
-      apiUrl: onlineApiUrl,
-      transport: "backend",
-      platform,
-    };
-  }
-
-  if (platform === "mobile") {
-    return {
-      apiUrl: normalizeApiUrl(
-        import.meta.env.VITE_ARDUINO_BACKEND_API_URL as string,
-      ),
-      transport: "backend",
+      apiUrl: normalizeApiUrl(LOCAL_AGENT_API_URL),
+      transport: "local",
       platform,
     };
   }
 
   return {
     apiUrl: normalizeApiUrl(
-      (import.meta.env.VITE_ARDUINO_LOCAL_API_URL as string),
+      (import.meta.env.VITE_ARDUINO_BACKEND_API_URL as string | undefined) ||
+      (import.meta.env.VITE_ARDUINO_API_URL as string | undefined),
     ),
-    transport: "local",
+    transport: "backend",
     platform,
   };
 }
@@ -163,7 +146,10 @@ export async function compileSketch(
 ): Promise<CompileSketchResult> {
   const client = new ArduinoApi(params.target.apiUrl);
 
-  return client.postCompile(params);
+  return client.postCompile({
+    ...params,
+    upload: params.target.transport === "local",
+  });
 }
 
 export function getArduinoCompileErrorMessage(error: unknown) {

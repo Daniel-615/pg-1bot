@@ -229,10 +229,10 @@ function App({ authUser }: AppProps) {
     [clientPlatform]
   );
 
-  const arduinoApiUrl = (
-    (import.meta.env.VITE_ARDUINO_API_URL as string | undefined) ||
-    compileTarget.apiUrl
-  ).replace(/\/+$/, "");
+  const arduinoApiUrl = compileTarget.apiUrl.replace(/\/+$/, "");
+  const agentDownloadUrl =
+    (import.meta.env.VITE_ARDUINO_AGENT_DOWNLOAD_URL as string | undefined) ||
+    "https://github.com/Daniel-615/pg-1bot-arduino/releases/download/v1/1bot-arduino-agent-setup.exe";
 
   const [isArduinoServiceOnline, setIsArduinoServiceOnline] = useState(false);
 
@@ -306,6 +306,11 @@ function App({ authUser }: AppProps) {
       auth: {
         token: getAccessToken(),
       },
+      withCredentials: true,
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error("No se pudo autenticar Socket.IO:", error.message);
     });
 
     socket.on("serial-data", (line: string) => {
@@ -510,7 +515,7 @@ function App({ authUser }: AppProps) {
     setIsUploading(true);
 
     try {
-      const result = await compileSketch({ code, board, filename, port: selectedPort, target: compileTarget });
+       const result = await compileSketch({ code, board, filename, port: selectedPort, target: compileTarget });
 
       if (result.ok) {
         setIsConnected(true);
@@ -1018,6 +1023,8 @@ function App({ authUser }: AppProps) {
         board={board}
         connectionType={connectionType}
         isConnected={isConnected}
+        agentDownloadUrl={agentDownloadUrl}
+        agentOffline={compileTarget.transport === "local" && !isArduinoServiceOnline}
         compileTargetLabel={
           isConnected
             ? "Arduino conectado"
