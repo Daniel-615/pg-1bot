@@ -157,6 +157,7 @@ function App({ authUser }: AppProps) {
 
   const [ports, setPorts] = useState<SerialPortOption[]>([]);
   const [selectedPort, setSelectedPort] = useState("");
+  const [webSerialDeviceLabel, setWebSerialDeviceLabel] = useState("");
 
   useEffect(() => {
     window.localStorage.setItem("1bot-installed-extensions", JSON.stringify(installedExtensionIds));
@@ -526,7 +527,7 @@ function App({ authUser }: AppProps) {
       if (compileTarget.transport === "backend" && board !== "codey") {
         if (!flashOrchestratorRef.current) flashOrchestratorRef.current = new FlashOrchestrator(compileTarget);
         const orchestrator = flashOrchestratorRef.current;
-        await orchestrator.requestDevice();
+        if (!orchestrator.selectedDevice) await orchestrator.requestDevice();
         const boardId = board === "uno" ? "arduino-uno-r3" : board === "nano" ? "arduino-nano-classic-optiboot" : board === "mega" ? "arduino-mega-2560" : "esp32";
         await orchestrator.selectBoard(boardId);
         await orchestrator.compileAndFlash(code, {
@@ -563,6 +564,22 @@ function App({ authUser }: AppProps) {
       compileInFlightRef.current = false;
     }
   }, [authUser?.edad, authUser?.id, authUser?.userId, board, code, compileTarget, projectName, selectedPort, semanticErrors]);
+
+  const requestBrowserSerialDevice = useCallback(async () => {
+    if (compileTarget.transport !== "backend") {
+      toast.info("Cambia la compilación a Nube para seleccionar un puerto Web Serial.");
+      return;
+    }
+    if (!flashOrchestratorRef.current) flashOrchestratorRef.current = new FlashOrchestrator(compileTarget);
+    try {
+      const device = await flashOrchestratorRef.current.requestDevice();
+      const vendor = device.vendorId === undefined ? "USB" : `VID ${device.vendorId.toString(16).toUpperCase()}`;
+      const product = device.productId === undefined ? "" : ` / PID ${device.productId.toString(16).toUpperCase()}`;
+      setWebSerialDeviceLabel(`${vendor}${product}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo seleccionar el puerto Web Serial.");
+    }
+  }, [compileTarget]);
 
   const handleRun = useCallback(() => {
     void compileAndUpload();
@@ -947,8 +964,6 @@ function App({ authUser }: AppProps) {
   return (
     <div className="app-container">
           <AppHeader
-            compileMode={compileMode}
-            onCompileModeChange={setCompileMode}
         language={language}
         projectName={projectName}
         debugMode={debugMode}
@@ -1013,6 +1028,10 @@ function App({ authUser }: AppProps) {
             selectedPort={selectedPort}
             setSelectedPort={setSelectedPort}
             fetchPorts={fetchPorts}
+            compileMode={compileMode}
+            onCompileModeChange={setCompileMode}
+            onRequestSerialDevice={requestBrowserSerialDevice}
+            webSerialDeviceLabel={webSerialDeviceLabel}
             serialOpen={serialOpen}
             startSerialMonitor={startSerialMonitor}
             stopSerialMonitor={stopSerialMonitor}

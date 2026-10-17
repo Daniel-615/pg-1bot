@@ -4,8 +4,6 @@ import type { Language } from "../../i18n";
 import "../../styles/AppHeader.css";
 
 type AppHeaderProps = {
-  compileMode: "cloud" | "local";
-  onCompileModeChange: (mode: "cloud" | "local") => void;
   language: Language;
   projectName: string;
   debugMode: boolean;
@@ -28,8 +26,6 @@ type AppHeaderProps = {
 };
 
 export const AppHeader = memo(function AppHeader({
-  compileMode,
-  onCompileModeChange,
   language,
   projectName,
   debugMode,
@@ -159,13 +155,6 @@ export const AppHeader = memo(function AppHeader({
             <LogOut size={16} strokeWidth={2.2} aria-hidden="true" />
           </button>
         </div>
-        <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.75rem" }}>
-          <span>{t("compileMode")}</span>
-          <select value={compileMode} onChange={(event) => onCompileModeChange(event.target.value as "cloud" | "local")} disabled={isUploading}>
-            <option value="cloud">{t("compileCloud")}</option>
-            <option value="local">{t("compileLocal")}</option>
-          </select>
-        </label>
       </div>
 
       {mobileMenuOpen && (

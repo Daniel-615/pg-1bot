@@ -17,6 +17,7 @@ export class FlashOrchestrator {
   constructor(target: CompileTarget) { this.target = target; }
   detectAuthorizedDevices(): Promise<DetectedDevice[]> { this.emit("detecting", 0, "Buscando puertos Web Serial autorizados."); return this.devices.detectAuthorizedDevices(); }
   async requestDevice(): Promise<DetectedDevice> { this.emit("requesting-permission", 0, "Selecciona un puerto en el diálogo del navegador."); const device = await this.devices.requestDevice(); this.selected = device; this.emit("detecting", 100, "Puerto autorizado."); return device; }
+  get selectedDevice(): DetectedDevice | null { return this.selected; }
   async selectBoard(boardId: string): Promise<void> { getBoardProfile(boardId); this.boardId = boardId; this.emit("board-selected", 100, `Placa seleccionada: ${boardId}.`); }
   onProgress(callback: (progress: FlashProgress) => void): () => void { this.listeners.add(callback); return () => this.listeners.delete(callback); }
   async compileAndFlash(code: string, options: CompileFlashOptions = {}): Promise<FlashResult> {

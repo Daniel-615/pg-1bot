@@ -23,6 +23,10 @@ type AppSidebarProps = {
   selectedPort: string;
   setSelectedPort: (port: string) => void;
   fetchPorts: () => void;
+  compileMode: "cloud" | "local";
+  onCompileModeChange: (mode: "cloud" | "local") => void;
+  onRequestSerialDevice: () => void;
+  webSerialDeviceLabel: string;
   serialOpen: boolean;
   startSerialMonitor: () => void;
   stopSerialMonitor: () => void;
@@ -47,6 +51,10 @@ export const AppSidebar = memo(function AppSidebar({
   selectedPort,
   setSelectedPort,
   fetchPorts,
+  compileMode,
+  onCompileModeChange,
+  onRequestSerialDevice,
+  webSerialDeviceLabel,
   serialOpen,
   startSerialMonitor,
   stopSerialMonitor,
@@ -170,6 +178,16 @@ export const AppSidebar = memo(function AppSidebar({
           {activeTab === "ports" && (
             <div className="ports-panel">
               <label>Puerto COM</label>
+
+              <button type="button" onClick={onRequestSerialDevice}>
+                {webSerialDeviceLabel || "Seleccionar puerto USB"}
+              </button>
+
+              <label htmlFor="compile-mode">Compilación</label>
+              <select id="compile-mode" value={compileMode} onChange={(event) => onCompileModeChange(event.target.value as "cloud" | "local")}>
+                <option value="cloud">Nube</option>
+                <option value="local">Agente local</option>
+              </select>
 
               <select
                 value={selectedPort}
