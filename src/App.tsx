@@ -18,6 +18,7 @@ import {
   getArduinoCompileErrorMessage,
   compileSketch,
   resolveCompileTarget,
+  type CompileMode,
 } from "./services/arduino.compile.service";
 import { detectClientPlatform } from "./screens/platform";
 import type { SerialPortOption } from "./screens/types";
@@ -44,6 +45,7 @@ import { reportCriticalErrors } from "./services/errors.service";
 import { getAccessToken, getAuthorizationHeader } from "./services/access-token";
 import { Puzzle } from "lucide-react";
 import { parseProjectFile, serializeProjectFile } from "./services/project-file.service";
+import { FlashOrchestrator } from "./services/flashing";
 
 function sanitizeFilename(value: string) {
   return value.replace(/[<>:"/\\|?*]/g, "_");
@@ -124,6 +126,7 @@ function App({ authUser }: AppProps) {
   const [backgroundWorkspaceBlocks, setBackgroundWorkspaceBlocks] = useState<unknown | null>(null);
   const [editorMode, setEditorMode] = useState<EditorMode>("device");
   const [board, setBoard] = useState(initialWorkspace.board);
+  const [compileMode, setCompileMode] = useState<CompileMode>(() => detectClientPlatform() === "desktop" ? "local" : "cloud");
   const [projectName, setProjectName] = useState(initialWorkspace.projectName);
 
   const [activeTab, setActiveTab] = useState<
@@ -138,6 +141,7 @@ function App({ authUser }: AppProps) {
   const [, setLanguageVersion] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const compileInFlightRef = useRef(false);
+  const flashOrchestratorRef = useRef<FlashOrchestrator | null>(null);
   const [wokwiState, setWokwiState] = useState<WokwiSimulationState>(
     emptyWokwiSimulationState
   );
@@ -225,9 +229,13 @@ function App({ authUser }: AppProps) {
   const clientPlatform = useMemo(() => detectClientPlatform(), []);
 
   const compileTarget = useMemo(
-    () => resolveCompileTarget(clientPlatform),
-    [clientPlatform]
+    () => resolveCompileTarget(clientPlatform, compileMode),
+    [clientPlatform, compileMode]
   );
+
+  useEffect(() => {
+    flashOrchestratorRef.current = null;
+  }, [compileTarget]);
 
   const arduinoApiUrl = compileTarget.apiUrl.replace(/\/+$/, "");
   const agentDownloadUrl =
@@ -515,7 +523,23 @@ function App({ authUser }: AppProps) {
     setIsUploading(true);
 
     try {
-       const result = await compileSketch({ code, board, filename, port: selectedPort, target: compileTarget });
+      if (compileTarget.transport === "backend" && board !== "codey") {
+        if (!flashOrchestratorRef.current) flashOrchestratorRef.current = new FlashOrchestrator(compileTarget);
+        const orchestrator = flashOrchestratorRef.current;
+        await orchestrator.requestDevice();
+        const boardId = board === "uno" ? "arduino-uno-r3" : board === "nano" ? "arduino-nano-classic-optiboot" : board === "mega" ? "arduino-mega-2560" : "esp32";
+        await orchestrator.selectBoard(boardId);
+        await orchestrator.compileAndFlash(code, {
+          filename,
+          verify: true,
+          confirm: () => window.confirm("Se sobrescribirá la memoria del microcontrolador. ¿Continuar?"),
+        });
+        setIsConnected(true);
+        toast.success("Programa compilado, grabado y verificado correctamente.");
+        return;
+      }
+
+      const result = await compileSketch({ code, board, filename, port: selectedPort, target: compileTarget });
 
       if (result.ok) {
         setIsConnected(true);
@@ -922,7 +946,9 @@ function App({ authUser }: AppProps) {
 
   return (
     <div className="app-container">
-      <AppHeader
+          <AppHeader
+            compileMode={compileMode}
+            onCompileModeChange={setCompileMode}
         language={language}
         projectName={projectName}
         debugMode={debugMode}

@@ -1,8 +1,14 @@
 import axios from "axios";
 import type { ClientPlatform } from "../screens/platform";
 import { attachAccessToken } from "./access-token";
-const DEFAULT_BACKEND_API_URL = import.meta.env.VITE_ARDUINO_API_URL;
-const LOCAL_AGENT_API_URL = import.meta.env.VITE_ARDUINO_LOCAL_API_URL || "http://localhost:3000";
+const CLOUD_API_URL =
+  import.meta.env.VITE_ARDUINO_API_URL_CLOUD ||
+  import.meta.env.VITE_ARDUINO_BACKEND_API_URL ||
+  import.meta.env.VITE_ARDUINO_API_URL;
+const LOCAL_AGENT_API_URL =
+  import.meta.env.VITE_ARDUINO_API ||
+  import.meta.env.VITE_ARDUINO_LOCAL_API_URL ||
+  "http://localhost:3000";
 type CompileSketchParams = {
   code: string;
   board: string;
@@ -18,6 +24,7 @@ type CompileSketchResult = {
 };
 
 export type CompileTransport = "local" | "backend";
+export type CompileMode = "cloud" | "local";
 
 export type CompileTarget = {
   apiUrl: string;
@@ -38,6 +45,14 @@ const BOARD_FQBN_MAP: Record<string, string> = {
   esp32: "esp32:esp32:esp32",
 };
 
+export type CompiledArtifact = {
+  bytes: ArrayBuffer;
+  format: "intel-hex" | "binary";
+  fileName: string;
+  fqbn?: string;
+  compileLog?: string;
+};
+
 const arduinoApi = attachAccessToken(axios.create());
 
 function sanitizeFilename(value: string) {
@@ -54,7 +69,7 @@ function sanitizeFilename(value: string) {
 function normalizeApiUrl(value: string | undefined) {
   const trimmed = value?.trim();
   if (!trimmed) {
-    return DEFAULT_BACKEND_API_URL;
+     return CLOUD_API_URL;
   }
 
   return trimmed.replace(/\/+$/, "");
@@ -118,10 +133,22 @@ export class ArduinoApi {
     };
   }
 
+  async compileArtifact({ code, board, filename }: CompileSketchParams): Promise<CompiledArtifact> {
+    const formData = new FormData();
+    const fileName = board === "codey" ? normalizeCodeyFilename(filename) : normalizeFilename(filename);
+    formData.append("file", new Blob([code], { type: "text/plain" }), fileName);
+    const fqbn = BOARD_FQBN_MAP[board];
+    if (!fqbn) throw new Error(`La placa "${board}" no tiene un FQBN compilable configurado.`);
+    formData.append("fqbn", fqbn);
+    const response = await arduinoApi.post(`${this.apiUrl}/api/arduino/compile/artifact`, formData, { responseType: "arraybuffer" });
+    const responseFileName = /filename="?([^";]+)"?/i.exec(String(response.headers["content-disposition"] || ""))?.[1] || "firmware.bin";
+    const format = String(response.headers["x-firmware-format"] || responseFileName.split(".").pop() || "bin").toLowerCase() === "hex" ? "intel-hex" : "binary";
+    return { bytes: response.data as ArrayBuffer, format, fileName: responseFileName, fqbn: String(response.headers["x-firmware-fqbn"] || fqbn), compileLog: String(response.headers["x-firmware-compile-log"] || "") };
+  }
 }
 
-export function resolveCompileTarget(platform: ClientPlatform): CompileTarget {
-  if (platform === "desktop") {
+export function resolveCompileTarget(platform: ClientPlatform, mode: CompileMode = platform === "desktop" ? "local" : "cloud"): CompileTarget {
+  if (mode === "local") {
     return {
       apiUrl: normalizeApiUrl(LOCAL_AGENT_API_URL),
       transport: "local",
@@ -131,12 +158,15 @@ export function resolveCompileTarget(platform: ClientPlatform): CompileTarget {
 
   return {
     apiUrl: normalizeApiUrl(
-      (import.meta.env.VITE_ARDUINO_BACKEND_API_URL as string | undefined) ||
-      (import.meta.env.VITE_ARDUINO_API_URL as string | undefined),
+      CLOUD_API_URL,
     ),
     transport: "backend",
     platform,
   };
+}
+
+export async function compileFirmware(params: CompileSketchParams & { target: CompileTarget }): Promise<CompiledArtifact> {
+  return new ArduinoApi(params.target.apiUrl).compileArtifact(params);
 }
 
 export async function compileSketch(
