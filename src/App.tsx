@@ -516,10 +516,11 @@ function App({ authUser }: AppProps) {
       setSerialOpen(false);
 
       toast.success("Monitor serial cerrado.");
-    } catch (err) {
-      toast.error(getArduinoUserErrorMessage(err, "No se pudo cerrar el monitor serial."));
+    } catch {
+      setSerialOpen(false);
+      toast.info("Monitor serial cerrado.");
     }
-  }, []);
+  }, [arduinoApiUrl, compileTarget.transport]);
 
   useEffect(() => {
     void i18n.changeLanguage(language).then(() => {
@@ -627,7 +628,12 @@ function App({ authUser }: AppProps) {
         "La compilación falló."
       );
     } catch (err) {
-      toast.error(getArduinoCompileErrorMessage(err));
+      toast.error(getArduinoCompileErrorMessage(
+        err,
+        compileTarget.transport === "backend"
+          ? "No se pudo conectar con el servicio Arduino en la nube. Comprueba la URL del backend y vuelve a intentarlo."
+          : "No se pudo conectar con el agente Arduino. Comprueba que esté iniciado."
+      ));
     } finally {
       setIsUploading(false);
       compileInFlightRef.current = false;
@@ -1117,19 +1123,21 @@ function App({ authUser }: AppProps) {
         </div>
       )}
 
-      <AppStatusBar
-        board={board}
-        connectionType={connectionType}
-        isConnected={isConnected}
-        agentDownloadUrl={agentDownloadUrl}
-        agentOffline={compileTarget.transport === "local" && !isArduinoServiceOnline}
-        compileTargetLabel={
-          isConnected
-            ? "Arduino conectado"
-            : compileTargetLabel
-        }
-        t={t}
-      />
+      {!serialOpen && (
+        <AppStatusBar
+          board={board}
+          connectionType={connectionType}
+          isConnected={isConnected}
+          agentDownloadUrl={agentDownloadUrl}
+          agentOffline={compileTarget.transport === "local" && !isArduinoServiceOnline}
+          compileTargetLabel={
+            isConnected
+              ? "Arduino conectado"
+              : compileTargetLabel
+          }
+          t={t}
+        />
+      )}
 
       {serialOpen && (
         <div className="serial-monitor">

@@ -82,7 +82,7 @@ select:focus-visible {
 
 .serial-monitor {
   position: fixed;
-  bottom: 28px;
+  bottom: 0;
   left: 0;
   right: 0;
   height: 220px;

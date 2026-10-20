@@ -188,8 +188,11 @@ export async function compileSketch(
   });
 }
 
-export function getArduinoCompileErrorMessage(error: unknown) {
-  return getArduinoUserErrorMessage(error, "No se pudo compilar el programa.");
+export function getArduinoCompileErrorMessage(
+  error: unknown,
+  fallback = "No se pudo compilar el programa."
+) {
+  return getArduinoUserErrorMessage(error, fallback);
 }
 
 export function getArduinoUserErrorMessage(error: unknown, fallback = "No se pudo completar la operación con Arduino.") {
@@ -207,7 +210,7 @@ export function getArduinoUserErrorMessage(error: unknown, fallback = "No se pud
     rawMessage = payload?.message || payload?.error || error.message || "";
 
     if (error.code === "ERR_NETWORK") {
-      return "No se pudo conectar con el agente Arduino. Comprueba que esté iniciado.";
+      return fallback;
     }
   } else if (error instanceof Error) {
     rawMessage = error.message;

@@ -1,8 +1,16 @@
 import type { DetectedDevice, SerialPortLike } from "./types";
 import { detectBoard } from "./boards";
 
-type SerialNavigator = { serial?: { getPorts(): Promise<SerialPortLike[]>; requestPort(): Promise<SerialPortLike>; addEventListener?(event: string, listener: EventListener): void } };
+type SerialNavigator = { serial?: { getPorts(): Promise<SerialPortLike[]>; requestPort(options?: { filters?: Array<{ usbVendorId?: number; usbProductId?: number }> }): Promise<SerialPortLike>; addEventListener?(event: string, listener: EventListener): void } };
 const serial = (): SerialNavigator["serial"] => (navigator as unknown as SerialNavigator).serial;
+const ARDUINO_USB_FILTERS = [
+  { usbVendorId: 0x2341 }, // Arduino
+  { usbVendorId: 0x1a86 }, // CH340/CH341
+  { usbVendorId: 0x10c4 }, // CP210x
+  { usbVendorId: 0x0403 }, // FTDI
+  { usbVendorId: 0x303a }, // Espressif
+  { usbVendorId: 0x2e8a }, // Raspberry Pi Pico
+];
 
 export class SerialDeviceManager {
   private current: SerialPortLike | null = null;
@@ -14,7 +22,7 @@ export class SerialDeviceManager {
   async requestDevice(): Promise<DetectedDevice> {
     const api = serial();
     if (!api) throw new Error("Este navegador no soporta Web Serial API.");
-    const port = await api.requestPort();
+    const port = await api.requestPort({ filters: ARDUINO_USB_FILTERS });
     return this.describe(port);
   }
   private describe(port: SerialPortLike): DetectedDevice {
