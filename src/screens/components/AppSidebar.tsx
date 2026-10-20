@@ -177,42 +177,52 @@ export const AppSidebar = memo(function AppSidebar({
 
           {activeTab === "ports" && (
             <div className="ports-panel">
-              <label>Puerto COM</label>
+               <label htmlFor="compile-mode">Compilación</label>
+               <select id="compile-mode" value={compileMode} onChange={(event) => onCompileModeChange(event.target.value as "cloud" | "local")}>
+                 <option value="cloud">Nube</option>
+                 <option value="local">Agente local</option>
+               </select>
 
-              <button type="button" onClick={onRequestSerialDevice}>
-                {webSerialDeviceLabel || "Seleccionar puerto USB"}
-              </button>
+               {compileMode === "cloud" ? (
+                 <>
+                   <label>Puerto Web Serial</label>
+                   <button type="button" onClick={onRequestSerialDevice}>
+                     {webSerialDeviceLabel || "Seleccionar puerto USB"}
+                   </button>
+                 </>
+               ) : (
+                 <>
+                   <label>Puerto COM del agente local</label>
+                   <select
+                     value={selectedPort}
+                     onChange={(event) => setSelectedPort(event.target.value)}
+                     aria-label="Puerto COM del agente local"
+                   >
+                     <option value="">Seleccionar puerto COM</option>
+                     {ports.map((port) => (
+                       <option key={port.path} value={port.path}>
+                         {port.friendlyName || port.path}
+                       </option>
+                     ))}
+                   </select>
+                   <div className="port-actions">
+                     <button onClick={fetchPorts}>Actualizar puertos</button>
+                   </div>
+                 </>
+               )}
 
-              <label htmlFor="compile-mode">Compilación</label>
-              <select id="compile-mode" value={compileMode} onChange={(event) => onCompileModeChange(event.target.value as "cloud" | "local")}>
-                <option value="cloud">Nube</option>
-                <option value="local">Agente local</option>
-              </select>
+               <div className="port-actions">
+                 <button
+                   onClick={() => {
+                     if (serialOpen) stopSerialMonitor();
+                     else startSerialMonitor();
+                   }}
+                 >
+                   {serialOpen ? "Cerrar monitor" : "Abrir monitor"}
+                 </button>
+               </div>
 
-              <select
-                value={selectedPort}
-                onChange={(event) => setSelectedPort(event.target.value)}
-              >
-                <option value="">Seleccionar</option>
-                {ports.map((port) => (
-                  <option key={port.path} value={port.path}>
-                    {port.friendlyName || port.path}
-                  </option>
-                ))}
-              </select>
-
-              <div className="port-actions">
-                <button onClick={fetchPorts}>Actualizar</button>
-                <button
-                  onClick={() => {
-                    if (serialOpen) stopSerialMonitor();
-                    else startSerialMonitor();
-                  }}
-                >
-                  {serialOpen ? "Cerrar monitor" : "Abrir monitor"}
-                </button>
-              </div>
-            </div>
+             </div>
           )}
 
           {activeTab === "background" && (

@@ -77,6 +77,11 @@ function isActive(value?: { nombre?: string }) {
   return !status || !status.includes("inactiv") && !status.includes("desactiv") && !status.includes("inactive");
 }
 
+function isBuiltInHardwareExtension(extension?: { nombre?: string }) {
+  const name = extension?.nombre ?? "";
+  return name.startsWith("Arduino AVR:") || name.startsWith("ESP32:");
+}
+
 function defineDynamicBlocks(blocks: ExtensionBlockDefinition[]) {
   const jsonBlocks = blocks.map((block) => {
     const parameters = [...(block.parametros ?? [])].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
@@ -121,7 +126,7 @@ export async function loadDynamicExtensionCategories(board: string, installedExt
       boardMatches(block, board) &&
       isActive(block.estado) &&
       isActive(block.extension?.estado) &&
-      installedExtensionIds.includes(block.extension?.id_extension ?? "")
+      (installedExtensionIds.includes(block.extension?.id_extension ?? "") || isBuiltInHardwareExtension(block.extension))
     );
 
     if (blocks.length === 0) {

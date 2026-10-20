@@ -48,6 +48,6 @@ export class ESP32Generator extends ArduinoBaseGenerator {
     registerESP32LightGenerator(this);
     registerESP32PinGenerator(this);
     registerESP32SensorGenerator(this);
-    registerESP32WifiGenerator(this);
+  registerESP32WifiGenerator(this);
   }
 }

@@ -113,9 +113,7 @@ export function useBlocklyEditor({
       setEditorLoadError("");
 
       loadingTimeout = setTimeout(() => {
-        if (!isCancelled) {
-          setShowEditorLoading(true);
-        }
+        if (!isCancelled) setShowEditorLoading(true);
       }, 180);
 
       if (workspaceRef.current) {
@@ -213,11 +211,12 @@ export function useBlocklyEditor({
           clearTimeout(loadingTimeout);
           loadingTimeout = null;
         }
-
         setIsEditorLoading(false);
         setShowEditorLoading(false);
+
       } catch (error) {
         console.error("Failed to load Blockly editor", error);
+
         if (loadingTimeout) {
           clearTimeout(loadingTimeout);
           loadingTimeout = null;

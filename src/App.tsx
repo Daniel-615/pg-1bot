@@ -16,12 +16,14 @@ import type { CreateExampleInput, StoredExample } from "./services/examples.serv
 import { uploadJsonToCloud, type CloudProject } from "./services/storage.service";
 import {
   getArduinoCompileErrorMessage,
+  getArduinoUserErrorMessage,
   compileSketch,
   resolveCompileTarget,
   type CompileMode,
 } from "./services/arduino.compile.service";
 import { detectClientPlatform } from "./screens/platform";
 import type { SerialPortOption } from "./screens/types";
+import type { DetectedDevice, SerialPortLike } from "./services/flashing/types";
 import {
   createWokwiProjectFiles,
   emptyWokwiSimulationState,
@@ -165,6 +167,9 @@ function App({ authUser }: AppProps) {
 
   const [serialOpen, setSerialOpen] = useState(false);
   const [serialLogs, setSerialLogs] = useState<string[]>([]);
+  const webSerialPortRef = useRef<SerialPortLike | null>(null);
+  const webSerialReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
+  const webSerialMonitorClosingRef = useRef(false);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [previewRotation, setPreviewRotation] = useState(0);
@@ -181,11 +186,11 @@ function App({ authUser }: AppProps) {
   const {
     blocklyDivRef,
     code,
-    workspaceVersion,
-    workspace,
-    isEditorLoading,
-    showEditorLoading,
-    editorLoadError,
+     workspaceVersion,
+     workspace,
+     isEditorLoading,
+     showEditorLoading,
+     editorLoadError,
     workspaceRef,
     semanticErrors
   } = useBlocklyEditor({
@@ -245,6 +250,38 @@ function App({ authUser }: AppProps) {
 
   const [isArduinoServiceOnline, setIsArduinoServiceOnline] = useState(false);
 
+  useEffect(() => {
+    if (compileTarget.transport !== "local") {
+      setIsArduinoServiceOnline(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const checkArduinoAgent = async () => {
+      try {
+        const response = await fetch(`${compileTarget.apiUrl}/health`, {
+          cache: "no-store",
+        });
+        if (!cancelled) {
+          setIsArduinoServiceOnline(response.ok);
+        }
+      } catch {
+        if (!cancelled) {
+          setIsArduinoServiceOnline(false);
+        }
+      }
+    };
+
+    void checkArduinoAgent();
+    const intervalId = window.setInterval(checkArduinoAgent, 5000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [compileTarget.apiUrl, compileTarget.transport]);
+
   const compileTargetLabel = useMemo(
     () => isArduinoServiceOnline ? t("arduinoServiceOnline") : "",
     [isArduinoServiceOnline, t]
@@ -293,24 +330,8 @@ function App({ authUser }: AppProps) {
   );
 
   useEffect(() => {
-    if (!arduinoApiUrl) {
-      setIsArduinoServiceOnline(false);
-      return;
-    }
+    if (compileTarget.transport !== "local") return;
 
-    const checkService = async () => {
-      try {
-        const response = await fetch(`${arduinoApiUrl}/health`, {
-          cache: "no-store",
-        });
-        setIsArduinoServiceOnline(response.ok);
-      } catch {
-        setIsArduinoServiceOnline(false);
-      }
-    };
-
-    void checkService();
-    const healthCheck = window.setInterval(() => void checkService(), 30000);
     const socket = io(arduinoApiUrl, {
       auth: {
         token: getAccessToken(),
@@ -329,10 +350,9 @@ function App({ authUser }: AppProps) {
     });
 
     return () => {
-      window.clearInterval(healthCheck);
       socket.disconnect();
     };
-  }, [arduinoApiUrl]);
+  }, [arduinoApiUrl, compileTarget.transport]);
 
   useEffect(() => {
     const syncFullscreenState = () => {
@@ -352,6 +372,8 @@ function App({ authUser }: AppProps) {
   }, []);
 
   const fetchPorts = useCallback(async () => {
+    if (compileTarget.transport !== "local") return;
+
     try {
       const res = await fetch(
         `${arduinoApiUrl}/api/arduino/ports`,
@@ -366,69 +388,118 @@ function App({ authUser }: AppProps) {
         return;
       }
 
-      toast.error(
-        data.error ||
-        "No se pudieron cargar los puertos COM."
-      );
+      toast.error(getArduinoUserErrorMessage(data.error, "No se pudieron cargar los puertos de la placa."));
     } catch (err) {
-      toast.error(
-        `No se pudo conectar con el servicio Arduino. ${err instanceof Error ? err.message : ""
-        }`
-      );
+      toast.error(getArduinoUserErrorMessage(err, "No se pudo conectar con el agente Arduino."));
     }
-  }, [arduinoApiUrl]);
+  }, [arduinoApiUrl, compileTarget.transport]);
 
   useEffect(() => {
+    if (compileTarget.transport !== "local") return;
     const timeoutId = window.setTimeout(() => {
       void fetchPorts();
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [fetchPorts]);
+  }, [compileTarget.transport, fetchPorts]);
+
+  const requestBrowserSerialDevice = useCallback(async (): Promise<DetectedDevice | null> => {
+    if (!flashOrchestratorRef.current) flashOrchestratorRef.current = new FlashOrchestrator(compileTarget);
+    try {
+      const device = await flashOrchestratorRef.current.requestDevice();
+      webSerialPortRef.current = device.port;
+      const vendor = device.vendorId === undefined ? "USB" : `VID ${device.vendorId.toString(16).toUpperCase()}`;
+      const product = device.productId === undefined ? "" : ` / PID ${device.productId.toString(16).toUpperCase()}`;
+      setWebSerialDeviceLabel(`${vendor}${product}`);
+      return device;
+    } catch (error) {
+      toast.error(getArduinoUserErrorMessage(error, "No se pudo seleccionar el puerto Web Serial."));
+      return null;
+    }
+  }, [compileTarget]);
 
   const startSerialMonitor = useCallback(async () => {
+    if (compileTarget.transport === "backend") {
+      let port = webSerialPortRef.current;
+      if (!port) {
+        const device = await requestBrowserSerialDevice();
+        port = device?.port || null;
+      }
+      if (!port) return;
+
+      try {
+        await port.open({ baudRate: 115200 });
+        if (!port.readable) throw new Error("El puerto no permite leer datos seriales.");
+        const reader = port.readable.getReader();
+        webSerialReaderRef.current = reader;
+        webSerialMonitorClosingRef.current = false;
+        setSerialLogs([]);
+        setSerialOpen(true);
+        toast.success("Monitor Web Serial abierto.");
+
+        void (async () => {
+          const decoder = new TextDecoder();
+          let pending = "";
+          try {
+            while (!webSerialMonitorClosingRef.current) {
+              const { value, done } = await reader.read();
+              if (done) break;
+              pending += decoder.decode(value, { stream: true });
+              const lines = pending.split(/\r?\n/);
+              pending = lines.pop() || "";
+              if (lines.length) setSerialLogs((current) => [...current, ...lines].slice(-MAX_SERIAL_LOG_LINES));
+            }
+          } catch (error) {
+            if (!webSerialMonitorClosingRef.current) {
+              toast.error(getArduinoUserErrorMessage(error, "Se perdió la conexión con la placa."));
+            }
+          } finally {
+            reader.releaseLock();
+            webSerialReaderRef.current = null;
+            setSerialOpen(false);
+          }
+        })();
+      } catch (error) {
+        toast.error(getArduinoUserErrorMessage(error, "No se pudo abrir el monitor Web Serial."));
+      }
+      return;
+    }
+
     if (!selectedPort) {
-      toast.error(
-        "Selecciona un puerto COM antes de abrir el monitor serial."
-      );
+      toast.error("Selecciona un puerto COM antes de abrir el monitor serial.");
       return;
     }
 
     try {
-      const res = await fetch(
-        `${arduinoApiUrl}/api/arduino/monitor/start`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...getAuthorizationHeader(),
-          },
-          body: JSON.stringify({
-            port: selectedPort,
-            baud: 115200,
-          }),
-        }
-      );
-
+      const res = await fetch(`${arduinoApiUrl}/api/arduino/monitor/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthorizationHeader() },
+        body: JSON.stringify({ port: selectedPort, baud: 115200 }),
+      });
       if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
+        const data = await res.json().catch(() => null) as { error?: string; message?: string } | null;
+        throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
       }
-
       setSerialLogs([]);
       setSerialOpen(true);
-
-      toast.success(
-        `Monitor serial abierto en ${selectedPort}.`
-      );
+      toast.success(`Monitor serial abierto en ${selectedPort}.`);
     } catch (err) {
-      toast.error(
-        `No se pudo abrir el monitor serial. ${err instanceof Error ? err.message : ""
-        }`
-      );
+      toast.error(getArduinoUserErrorMessage(err, "No se pudo abrir el monitor serial."));
     }
-  }, [arduinoApiUrl, selectedPort]);
+  }, [arduinoApiUrl, compileTarget.transport, requestBrowserSerialDevice, selectedPort]);
 
   const stopSerialMonitor = useCallback(async () => {
+    if (compileTarget.transport === "backend") {
+      webSerialMonitorClosingRef.current = true;
+      await webSerialReaderRef.current?.cancel().catch(() => undefined);
+      const port = webSerialPortRef.current;
+      if (port) await port.close().catch(() => undefined);
+      webSerialReaderRef.current = null;
+      setSerialOpen(false);
+      toast.success("Monitor Web Serial cerrado.");
+      return;
+    }
+
     try {
       const res = await fetch(
         `${arduinoApiUrl}/api/arduino/monitor/stop`,
@@ -446,10 +517,7 @@ function App({ authUser }: AppProps) {
 
       toast.success("Monitor serial cerrado.");
     } catch (err) {
-      toast.error(
-        `No se pudo cerrar el monitor serial. ${err instanceof Error ? err.message : ""
-        }`
-      );
+      toast.error(getArduinoUserErrorMessage(err, "No se pudo cerrar el monitor serial."));
     }
   }, []);
 
@@ -522,6 +590,7 @@ function App({ authUser }: AppProps) {
     const filename = `${sanitizeFilename(projectName)}.${isCodey ? "py" : "ino"}`;
 
     setIsUploading(true);
+    toast.info(compileTarget.transport === "backend" ? "Compilando el programa en la nube..." : "Compilando y cargando el programa...");
 
     try {
       if (compileTarget.transport === "backend" && board !== "codey") {
@@ -564,22 +633,6 @@ function App({ authUser }: AppProps) {
       compileInFlightRef.current = false;
     }
   }, [authUser?.edad, authUser?.id, authUser?.userId, board, code, compileTarget, projectName, selectedPort, semanticErrors]);
-
-  const requestBrowserSerialDevice = useCallback(async () => {
-    if (compileTarget.transport !== "backend") {
-      toast.info("Cambia la compilación a Nube para seleccionar un puerto Web Serial.");
-      return;
-    }
-    if (!flashOrchestratorRef.current) flashOrchestratorRef.current = new FlashOrchestrator(compileTarget);
-    try {
-      const device = await flashOrchestratorRef.current.requestDevice();
-      const vendor = device.vendorId === undefined ? "USB" : `VID ${device.vendorId.toString(16).toUpperCase()}`;
-      const product = device.productId === undefined ? "" : ` / PID ${device.productId.toString(16).toUpperCase()}`;
-      setWebSerialDeviceLabel(`${vendor}${product}`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo seleccionar el puerto Web Serial.");
-    }
-  }, [compileTarget]);
 
   const handleRun = useCallback(() => {
     void compileAndUpload();
@@ -768,7 +821,7 @@ function App({ authUser }: AppProps) {
   const handleOpenLocal = useCallback(() => {
     setOpenOptionsOpen(false);
     fileInputRef.current?.click();
-  }, []);
+  }, [arduinoApiUrl, compileTarget.transport]);
 
   const loadProjectContent = useCallback((content: string, fallbackName: string) => {
     const project = parseProjectFile(content, fallbackName);
@@ -1046,10 +1099,10 @@ function App({ authUser }: AppProps) {
             code={code}
             debugMode={debugMode}
             symbolRows={symbolRows}
-            workspaceVersion={workspaceVersion}
-            isEditorLoading={isEditorLoading}
-            showEditorLoading={showEditorLoading}
-            editorLoadError={editorLoadError}
+             workspaceVersion={workspaceVersion}
+             isEditorLoading={isEditorLoading}
+             showEditorLoading={showEditorLoading}
+             editorLoadError={editorLoadError}
             blocklyDivRef={blocklyDivRef}
             wokwiState={wokwiState}
             wokwiPreviewFiles={wokwiPreviewFiles}

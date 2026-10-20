@@ -141,16 +141,10 @@ export const AppWorkspace = memo(function AppWorkspace({
             <div className="workspace-loading-brand">
               <div className="workspace-loading-orbit orbit-one"></div>
               <div className="workspace-loading-orbit orbit-two"></div>
-
               <div className="workspace-loading-logo-wrap">
-                <img
-                  className="workspace-loading-logo"
-                  src="logo.webp"
-                  alt="1bot"
-                />
+                <img className="workspace-loading-logo" src="logo.webp" alt="1bot" />
               </div>
             </div>
-
             <div className="workspace-loading-copy">
               <strong>{t("editorLoading")}</strong>
               <span>{t("editorLoadingDescription")}</span>

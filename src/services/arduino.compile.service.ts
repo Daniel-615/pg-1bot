@@ -53,7 +53,10 @@ export type CompiledArtifact = {
   compileLog?: string;
 };
 
-const arduinoApi = attachAccessToken(axios.create());
+// Send both the JWT header and the auth cookie when the browser has one.
+// The local agent normally bypasses auth on loopback, while the cloud backend
+// validates the bearer token.
+const arduinoApi = attachAccessToken(axios.create({ withCredentials: true }));
 
 function sanitizeFilename(value: string) {
   return value
@@ -122,7 +125,7 @@ export class ArduinoApi {
     }
 
     const endpoint = isCodey ? "/api/codey/compile" : "/api/arduino/compile";
-    const response = await arduinoApi.post(`${this.apiUrl}${endpoint}`, formData);
+    const response = await arduinoApi.post(`${this.apiUrl}${endpoint}`, formData, { timeout: 300000 });
 
     const payload = response.data as { ok?: boolean; message?: string };
 
@@ -140,7 +143,10 @@ export class ArduinoApi {
     const fqbn = BOARD_FQBN_MAP[board];
     if (!fqbn) throw new Error(`La placa "${board}" no tiene un FQBN compilable configurado.`);
     formData.append("fqbn", fqbn);
-    const response = await arduinoApi.post(`${this.apiUrl}/api/arduino/compile/artifact`, formData, { responseType: "arraybuffer" });
+    const response = await arduinoApi.post(`${this.apiUrl}/api/arduino/compile/artifact`, formData, {
+      responseType: "arraybuffer",
+      timeout: 300000,
+    });
     const responseFileName = /filename="?([^";]+)"?/i.exec(String(response.headers["content-disposition"] || ""))?.[1] || "firmware.bin";
     const format = String(response.headers["x-firmware-format"] || responseFileName.split(".").pop() || "bin").toLowerCase() === "hex" ? "intel-hex" : "binary";
     return { bytes: response.data as ArrayBuffer, format, fileName: responseFileName, fqbn: String(response.headers["x-firmware-fqbn"] || fqbn), compileLog: String(response.headers["x-firmware-compile-log"] || "") };
@@ -183,31 +189,63 @@ export async function compileSketch(
 }
 
 export function getArduinoCompileErrorMessage(error: unknown) {
-  /*
-    Call the backend api, and start compiling if get an error it shown on screen with TOAST
-   */
+  return getArduinoUserErrorMessage(error, "No se pudo compilar el programa.");
+}
+
+export function getArduinoUserErrorMessage(error: unknown, fallback = "No se pudo completar la operación con Arduino.") {
+  let rawMessage = "";
+
   if (axios.isAxiosError(error)) {
-    const payload = error.response?.data as BackendErrorPayload | undefined;
-    if (payload?.message && payload?.error) {
-      return `${payload.message}: ${payload.error}`;
+    let payload = error.response?.data as BackendErrorPayload | undefined;
+    if (payload instanceof ArrayBuffer) {
+      try {
+        payload = JSON.parse(new TextDecoder().decode(payload)) as BackendErrorPayload;
+      } catch {
+        payload = undefined;
+      }
     }
-
-    if (payload?.message) {
-      return payload.message;
-    }
-
-    if (payload?.error) {
-      return payload.error;
-    }
+    rawMessage = payload?.message || payload?.error || error.message || "";
 
     if (error.code === "ERR_NETWORK") {
-      return "No se pudo contactar el servicio de compilacion. En computadora debes levantar un servicio local con acceso a arduino-cli; en telefono debes configurar un backend remoto accesible.";
+      return "No se pudo conectar con el agente Arduino. Comprueba que esté iniciado.";
     }
+  } else if (error instanceof Error) {
+    rawMessage = error.message;
+  } else if (typeof error === "string") {
+    rawMessage = error;
   }
 
-  if (error instanceof Error) {
-    return error.message;
+  const message = rawMessage.toLowerCase();
+
+  if (
+    message.includes("abort") ||
+    message.includes("cancel") ||
+    message.includes("canceled") ||
+    message.includes("cancelled") ||
+    message.includes("no port selected") ||
+    message.includes("user denied")
+  ) {
+    return "Operación cancelada. No se realizaron cambios en la placa.";
   }
 
-  return "No se pudo compilar el archivo.";
+  if (
+    message.includes("no arduino port detected") ||
+    message.includes("no device found") ||
+    message.includes("port is not available") ||
+    message.includes("cannot open port") ||
+    message.includes("access is denied") ||
+    message.includes("resource busy")
+  ) {
+    return "No se encontró el puerto de la placa. Conecta la placa y selecciona un puerto disponible.";
+  }
+
+  if (message.includes("spawn udevadm") || message.includes("udevadm")) {
+    return "No se pudieron consultar los puertos del sistema. Conecta la placa e inténtalo de nuevo.";
+  }
+
+  if (message.includes("timed out") || message.includes("timeout")) {
+    return "La placa no respondió a tiempo. Comprueba la conexión USB e inténtalo de nuevo.";
+  }
+
+  return rawMessage || fallback;
 }
