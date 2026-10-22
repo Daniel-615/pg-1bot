@@ -10,6 +10,7 @@ import { CookieConsent } from "../screens/components/CookieConsent";
 import { OfflineIndicator } from "../screens/components/OfflineIndicator";
 import "../styles/AppWorkspace.css";
 import { hasRequiredPermissions } from "./permissions";
+import { LoadingScreen } from "../screens/components/LoadingScreen";
 
 type ProtectedRouteProps = {
     requiredPermissions?: string[];
@@ -19,14 +20,30 @@ type ProtectedRouteProps = {
 type SessionState = {
     isLoading: boolean;
     user: AuthUser | null;
-    shouldLogin: boolean;
+    redirectTo: "/login" | "/informacion" | null;
 };
+
+const INFORMATION_SEEN_KEY = "1bot-information-seen";
+
+function getUnauthenticatedRedirect(): "/login" | "/informacion" {
+    try {
+        const informationWasSeen = window.localStorage.getItem(INFORMATION_SEEN_KEY) === "true";
+        if (!informationWasSeen) {
+            window.localStorage.setItem(INFORMATION_SEEN_KEY, "true");
+            return "/informacion";
+        }
+    } catch {
+        // If storage is unavailable, keep the normal login flow.
+    }
+
+    return "/login";
+}
 
 function ProtectedRoute({ requiredPermissions = [], children }: ProtectedRouteProps) {
     const [session, setSession] = useState<SessionState>({
         isLoading: true,
         user: null,
-        shouldLogin: false,
+        redirectTo: null,
     });
 
     useEffect(() => {
@@ -35,7 +52,7 @@ function ProtectedRoute({ requiredPermissions = [], children }: ProtectedRoutePr
         void verifySessionRequest().then(async (currentSession) => {
             if (currentSession.success) {
                 if (isMounted) {
-                    setSession({ isLoading: false, user: currentSession.data, shouldLogin: false });
+                    setSession({ isLoading: false, user: currentSession.data, redirectTo: null });
                 }
 
                 return;
@@ -48,7 +65,7 @@ function ProtectedRoute({ requiredPermissions = [], children }: ProtectedRoutePr
 
                 if (retrySession.success) {
                     if (isMounted) {
-                        setSession({ isLoading: false, user: retrySession.data, shouldLogin: false });
+                        setSession({ isLoading: false, user: retrySession.data, redirectTo: null });
                     }
 
                     return;
@@ -56,7 +73,7 @@ function ProtectedRoute({ requiredPermissions = [], children }: ProtectedRoutePr
             }
 
             if (isMounted) {
-                setSession({ isLoading: false, user: null, shouldLogin: true });
+                setSession({ isLoading: false, user: null, redirectTo: getUnauthenticatedRedirect() });
             }
         });
 
@@ -66,11 +83,11 @@ function ProtectedRoute({ requiredPermissions = [], children }: ProtectedRoutePr
     }, []);
 
     if (session.isLoading) {
-        return null;
+        return <LoadingScreen label="Validando sesión" />;
     }
 
-    if (session.shouldLogin) {
-        return <Navigate to="/login" replace />;
+    if (session.redirectTo) {
+        return <Navigate to={session.redirectTo} replace />;
     }
 
     if (!hasRequiredPermissions(session.user, requiredPermissions)) {

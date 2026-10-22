@@ -186,6 +186,23 @@
   line-height: 1.4;
 }
 
+.workspace-loading-progress {
+  width: min(210px, 100%);
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dcecef;
+}
+
+.workspace-loading-progress span {
+  display: block;
+  width: 42%;
+  height: 100%;
+  background: linear-gradient(90deg, #00b8d4, #5cdbd8);
+  border-radius: inherit;
+  animation: workspace-loading-progress 1.35s ease-in-out infinite;
+}
+
 .workspace-loading-error {
   border-color: rgba(239, 68, 68, 0.24);
   box-shadow: 0 20px 40px rgba(127, 29, 29, 0.14);
@@ -220,6 +237,11 @@
   50% {
     transform: translateY(-4px) scale(1.02);
   }
+}
+
+@keyframes workspace-loading-progress {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(300%); }
 }
 
 .symbol-table-panel {

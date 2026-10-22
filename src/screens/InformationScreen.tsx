@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, Blocks, Check, ChevronDown, Cloud, Cpu, Download, ExternalLink, Play, Radio, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import "../styles/InformationScreen.css";
@@ -6,6 +6,7 @@ import "../styles/InformationScreen.css";
 const AGENT_DOWNLOAD_URL =
   (import.meta.env.VITE_ARDUINO_AGENT_DOWNLOAD_URL as string | undefined) ||
   "https://github.com/Daniel-615/pg-1bot-arduino/releases/download/v1/1bot-arduino-agent-setup.exe";
+const INFORMATION_SEEN_KEY = "1bot-information-seen";
 
 const workflows = [
   {
@@ -48,6 +49,14 @@ export default function InformationScreen() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const workflow = workflows.find((item) => item.id === activeWorkflow) ?? workflows[0];
   const WorkflowIcon = workflow.icon;
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(INFORMATION_SEEN_KEY, "true");
+    } catch {
+      // The information page remains public when storage is unavailable.
+    }
+  }, []);
 
   return (
     <main className="information-page">

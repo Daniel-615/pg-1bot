@@ -125,6 +125,7 @@ export const AppWorkspace = memo(function AppWorkspace({
         className={`workspace ${
           activeTab === "blocks" ? "visible" : "hidden"
         }`}
+        aria-busy={isEditorLoading}
       >
         <div ref={blocklyDivRef} className="blockly-container" />
 
@@ -150,6 +151,7 @@ export const AppWorkspace = memo(function AppWorkspace({
               <strong>{t("editorLoading")}</strong>
               <span>{t("editorLoadingDescription")}</span>
             </div>
+            <div className="workspace-loading-progress" aria-hidden="true"><span /></div>
           </div>
         )}
 

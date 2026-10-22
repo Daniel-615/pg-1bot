@@ -48,6 +48,7 @@ import { getAccessToken, getAuthorizationHeader } from "./services/access-token"
 import { Puzzle } from "lucide-react";
 import { parseProjectFile, serializeProjectFile } from "./services/project-file.service";
 import { FlashOrchestrator } from "./services/flashing";
+import { Onboarding } from "./screens/components/Onboarding";
 
 function sanitizeFilename(value: string) {
   return value.replace(/[<>:"/\\|?*]/g, "_");
@@ -163,6 +164,16 @@ function App({ authUser }: AppProps) {
     }
   });
   const [extensionInstallerOpen, setExtensionInstallerOpen] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    try {
+      return window.localStorage.getItem("1bot-onboarding-complete") !== "true";
+    } catch {
+      return true;
+    }
+  });
+  const onboardingProjectRequestedRef = useRef(false);
+  const onboardingProjectLoadedRef = useRef(false);
 
   const [ports, setPorts] = useState<SerialPortOption[]>([]);
   const [selectedPort, setSelectedPort] = useState("");
@@ -962,6 +973,45 @@ function App({ authUser }: AppProps) {
     }
   }, [workspace]);
 
+  const dismissOnboarding = useCallback(() => {
+    setShowOnboarding(false);
+    onboardingProjectRequestedRef.current = false;
+    try {
+      window.localStorage.setItem("1bot-onboarding-complete", "true");
+    } catch {
+      // The guide can still be dismissed when storage is unavailable.
+    }
+  }, []);
+
+  const startOnboardingProject = useCallback(() => {
+    setBoard("uno");
+    setProjectName("Mi primer semáforo");
+    setEditorMode("device");
+    setDeviceWorkspaceBlocks(null);
+    setProjectLoadVersion((version) => version + 1);
+    onboardingProjectRequestedRef.current = true;
+    onboardingProjectLoadedRef.current = false;
+  }, []);
+
+  useEffect(() => {
+    if (
+      !onboardingProjectRequestedRef.current ||
+      onboardingProjectLoadedRef.current ||
+      isEditorLoading ||
+      !workspace ||
+      board !== "uno"
+    ) return;
+
+    const timeoutId = window.setTimeout(() => {
+      if (workspaceRef.current !== workspace || onboardingProjectLoadedRef.current) return;
+      handleAddExampleBlock("arduino_uno_digital_write");
+      handleAddExampleBlock("arduino_uno_tone_play");
+      onboardingProjectLoadedRef.current = true;
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [board, handleAddExampleBlock, isEditorLoading, workspace, workspaceRef]);
+
   const handleEdit = useCallback(() => { }, []);
 
   const handleDashboard = useCallback(() => {
@@ -1184,6 +1234,15 @@ function App({ authUser }: AppProps) {
           onCreateExample={handleCreateExample}
           onAddBlock={handleAddExampleBlock}
           onClose={handleCloseExamples}
+        />
+      )}
+
+      {showOnboarding && (
+        <Onboarding
+          step={onboardingStep}
+          onStepChange={setOnboardingStep}
+          onStartProject={startOnboardingProject}
+          onDismiss={dismissOnboarding}
         />
       )}
 
