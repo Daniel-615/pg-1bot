@@ -16,4 +16,4 @@ Disallow: /extensions
 Disallow: /bloques
 Disallow: /placas
 
-Sitemap: https://1bot.org/sitemap.xml
+Sitemap: https://1botide.online/sitemap.xml

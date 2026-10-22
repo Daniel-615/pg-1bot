@@ -59,7 +59,7 @@ export const AppHeader = memo(function AppHeader({
       <div className="header-left">
         <div
           className="logo"
-          onClick={() => window.open("https://1bot.org", "_blank")}
+          onClick={() => window.open("https://1botide.online/informacion", "_blank")}
           style={{ cursor: "pointer" }}
         >
           <img src="logo.webp" alt="1bot-logo" />
