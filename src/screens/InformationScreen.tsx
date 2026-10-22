@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, Blocks, Check, ChevronDown, Cloud, Cpu, Download, ExternalLink, Play, Radio, Sparkles } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, Blocks, Check, ChevronDown, Cloud, Cpu, Download, ExternalLink, Play, Radio, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import "../styles/InformationScreen.css";
 
@@ -43,10 +43,12 @@ const faqs = [
   ["¿Qué placas puedo usar?", "1bot trabaja con Arduino Uno, Nano, Mega, ESP32 y Codey. El editor adapta los bloques y el código a la placa que elijas."],
   ["¿Puedo guardar mis proyectos?", "Sí. Guarda tus proyectos localmente como archivo o en la nube para retomarlos desde cualquier lugar."],
 ];
+const informationSectionIds = ["inicio", "como-funciona", "capacidades", "preguntas"];
 
 export default function InformationScreen() {
   const [activeWorkflow, setActiveWorkflow] = useState("blocks");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [activeSection, setActiveSection] = useState("inicio");
   const workflow = workflows.find((item) => item.id === activeWorkflow) ?? workflows[0];
   const WorkflowIcon = workflow.icon;
 
@@ -58,6 +60,33 @@ export default function InformationScreen() {
     }
   }, []);
 
+  useEffect(() => {
+    const sections = informationSectionIds
+      .map((id) => document.getElementById(id))
+      .filter((section): section is HTMLElement => Boolean(section));
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleSection = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visibleSection) setActiveSection(visibleSection.target.id);
+      },
+      { rootMargin: "-18% 0px -60%", threshold: [0.05, 0.25, 0.5] }
+    );
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
+
+  const scrollToSection = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const moveSection = (direction: -1 | 1) => {
+    const currentIndex = informationSectionIds.indexOf(activeSection);
+    const nextIndex = Math.min(informationSectionIds.length - 1, Math.max(0, currentIndex + direction));
+    scrollToSection(informationSectionIds[nextIndex]);
+  };
+
   return (
     <main className="information-page">
       <div className="information-glow information-glow-one" />
@@ -68,14 +97,16 @@ export default function InformationScreen() {
           <span>1bot<span className="brand-dot">.</span></span>
         </Link>
         <nav aria-label="Navegación principal">
+          <a href="#inicio">Inicio</a>
           <a href="#como-funciona">Cómo funciona</a>
           <a href="#capacidades">Capacidades</a>
+          <a href="#preguntas">Preguntas</a>
           <Link to="/login" className="information-login">Iniciar sesión</Link>
           <Link to="/register" className="information-cta">Crear cuenta <ArrowRight size={15} /></Link>
         </nav>
       </header>
 
-      <section className="information-hero">
+      <section className="information-hero" id="inicio">
         <div className="hero-copy">
           <p className="information-eyebrow"><Sparkles size={14} /> Aprende haciendo</p>
           <h1>Convierte ideas en <em>proyectos reales.</em></h1>
@@ -111,7 +142,13 @@ export default function InformationScreen() {
 
       <section className="agent-banner"><div className="agent-visual"><div className="agent-ring"><Download size={28} /></div><div className="agent-pulse" /></div><div><p className="information-eyebrow">¿Quieres trabajar sin límites?</p><h2>Descarga el agente Arduino</h2><p>Compila y carga tus programas por USB directamente desde tu ordenador. Instalación rápida para Windows.</p></div><a className="agent-download" href={AGENT_DOWNLOAD_URL} download><Download size={17} /> Descargar agente <span>.exe</span></a></section>
 
-      <section className="information-section faq-section" aria-labelledby="faq-title"><div className="faq-intro"><p className="information-eyebrow">Preguntas frecuentes</p><h2 id="faq-title">Antes de empezar</h2><p>Si tienes una idea, ya tienes lo más importante. Aquí resolvemos lo demás.</p><Link to="/register">Crear mi cuenta <ArrowRight size={15} /></Link></div><div className="faq-list">{faqs.map(([question, answer], index) => <div className={`faq-item ${openFaq === index ? "is-open" : ""}`} key={question}><button type="button" onClick={() => setOpenFaq(openFaq === index ? null : index)}><span>{question}</span><ChevronDown size={18} /></button><div className="faq-answer"><p>{answer}</p></div></div>)}</div></section>
+      <section className="information-section faq-section" id="preguntas" aria-labelledby="faq-title"><div className="faq-intro"><p className="information-eyebrow">Preguntas frecuentes</p><h2 id="faq-title">Antes de empezar</h2><p>Si tienes una idea, ya tienes lo más importante. Aquí resolvemos lo demás.</p><Link to="/register">Crear mi cuenta <ArrowRight size={15} /></Link></div><div className="faq-list">{faqs.map(([question, answer], index) => <div className={`faq-item ${openFaq === index ? "is-open" : ""}`} key={question}><button type="button" onClick={() => setOpenFaq(openFaq === index ? null : index)}><span>{question}</span><ChevronDown size={18} /></button><div className="faq-answer"><p>{answer}</p></div></div>)}</div></section>
+
+      <nav className="information-side-nav" aria-label="Navegación de la página">
+        <button type="button" onClick={() => moveSection(-1)} disabled={activeSection === informationSectionIds[0]} aria-label="Subir a la sección anterior"><ArrowUp size={16} /></button>
+        <div className="information-side-dots">{informationSectionIds.map((id, index) => <button key={id} type="button" className={activeSection === id ? "is-active" : ""} onClick={() => scrollToSection(id)} aria-label={`Ir a ${id}`}><span>{String(index + 1).padStart(2, "0")}</span></button>)}</div>
+        <button type="button" onClick={() => moveSection(1)} disabled={activeSection === informationSectionIds[informationSectionIds.length - 1]} aria-label="Bajar a la siguiente sección"><ArrowDown size={16} /></button>
+      </nav>
 
       <footer className="information-footer"><Link to="/informacion" className="information-brand"><img src="/logo.webp" alt="" /><span>1bot<span className="brand-dot">.</span></span></Link><span>Aprender. Crear. Conectar.</span><div><a href="https://github.com/Daniel-615" target="_blank" rel="noreferrer" aria-label="Código de 1bot"><ExternalLink size={16} /></a><a href="#como-funciona" aria-label="Volver arriba"><ArrowRight size={16} /></a></div></footer>
     </main>

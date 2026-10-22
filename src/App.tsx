@@ -49,6 +49,7 @@ import { Puzzle } from "lucide-react";
 import { parseProjectFile, serializeProjectFile } from "./services/project-file.service";
 import { FlashOrchestrator } from "./services/flashing";
 import { Onboarding } from "./screens/components/Onboarding";
+import { GuidedTutorial } from "./screens/components/GuidedTutorial";
 
 function sanitizeFilename(value: string) {
   return value.replace(/[<>:"/\\|?*]/g, "_");
@@ -172,8 +173,7 @@ function App({ authUser }: AppProps) {
       return true;
     }
   });
-  const onboardingProjectRequestedRef = useRef(false);
-  const onboardingProjectLoadedRef = useRef(false);
+  const [showGuidedTutorial, setShowGuidedTutorial] = useState(false);
 
   const [ports, setPorts] = useState<SerialPortOption[]>([]);
   const [selectedPort, setSelectedPort] = useState("");
@@ -975,7 +975,6 @@ function App({ authUser }: AppProps) {
 
   const dismissOnboarding = useCallback(() => {
     setShowOnboarding(false);
-    onboardingProjectRequestedRef.current = false;
     try {
       window.localStorage.setItem("1bot-onboarding-complete", "true");
     } catch {
@@ -989,28 +988,27 @@ function App({ authUser }: AppProps) {
     setEditorMode("device");
     setDeviceWorkspaceBlocks(null);
     setProjectLoadVersion((version) => version + 1);
-    onboardingProjectRequestedRef.current = true;
-    onboardingProjectLoadedRef.current = false;
+    setShowOnboarding(false);
+    setShowGuidedTutorial(true);
   }, []);
 
-  useEffect(() => {
-    if (
-      !onboardingProjectRequestedRef.current ||
-      onboardingProjectLoadedRef.current ||
-      isEditorLoading ||
-      !workspace ||
-      board !== "uno"
-    ) return;
+  const completeGuidedTutorial = useCallback(() => {
+    setShowGuidedTutorial(false);
+    try {
+      window.localStorage.setItem("1bot-onboarding-complete", "true");
+    } catch {
+      // The tutorial remains usable when storage is unavailable.
+    }
+  }, []);
 
-    const timeoutId = window.setTimeout(() => {
-      if (workspaceRef.current !== workspace || onboardingProjectLoadedRef.current) return;
-      handleAddExampleBlock("arduino_uno_digital_write");
-      handleAddExampleBlock("arduino_uno_tone_play");
-      onboardingProjectLoadedRef.current = true;
-    }, 0);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [board, handleAddExampleBlock, isEditorLoading, workspace, workspaceRef]);
+  const closeGuidedTutorial = useCallback(() => {
+    setShowGuidedTutorial(false);
+    try {
+      window.localStorage.setItem("1bot-onboarding-complete", "true");
+    } catch {
+      // The tutorial remains usable when storage is unavailable.
+    }
+  }, []);
 
   const handleEdit = useCallback(() => { }, []);
 
@@ -1243,6 +1241,14 @@ function App({ authUser }: AppProps) {
           onStepChange={setOnboardingStep}
           onStartProject={startOnboardingProject}
           onDismiss={dismissOnboarding}
+        />
+      )}
+
+      {showGuidedTutorial && (
+        <GuidedTutorial
+          workspace={workspace}
+          onComplete={completeGuidedTutorial}
+          onClose={closeGuidedTutorial}
         />
       )}
 
