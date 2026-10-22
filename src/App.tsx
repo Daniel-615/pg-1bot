@@ -122,6 +122,7 @@ function App({ authUser }: AppProps) {
   );
 
   const [projectLoadVersion, setProjectLoadVersion] = useState(0);
+  const animateExampleLoadRef = useRef(false);
   const [deviceWorkspaceBlocks, setDeviceWorkspaceBlocks] = useState<unknown | null>(
     initialWorkspace.blocks
   );
@@ -130,6 +131,12 @@ function App({ authUser }: AppProps) {
   const [board, setBoard] = useState(initialWorkspace.board);
   const [compileMode, setCompileMode] = useState<CompileMode>(() => detectClientPlatform() === "desktop" ? "local" : "cloud");
   const [projectName, setProjectName] = useState(initialWorkspace.projectName);
+
+  useEffect(() => {
+    if (animateExampleLoadRef.current) {
+      animateExampleLoadRef.current = false;
+    }
+  });
 
   const [activeTab, setActiveTab] = useState<
     "blocks" | "code" | "simulator"
@@ -183,6 +190,15 @@ function App({ authUser }: AppProps) {
   const canManageExtensions = canManageDashboardContent(authUser);
   const hasDashboardAccess = canAccessDashboard(authUser);
   const canCreateExamples = canManageExamples(authUser);
+  const handleWorkspaceChange = useCallback((blocks: unknown) => {
+    if (editorMode === "background") {
+      setBackgroundWorkspaceBlocks(blocks);
+      return;
+    }
+
+    setDeviceWorkspaceBlocks(blocks);
+  }, [editorMode]);
+
   const {
     blocklyDivRef,
     code,
@@ -200,16 +216,10 @@ function App({ authUser }: AppProps) {
     workspaceKey: `${editorMode}:${projectLoadVersion}`,
     installedExtensionIds,
     initialBlocks: editorMode === "background" ? backgroundWorkspaceBlocks : deviceWorkspaceBlocks,
+    animateInitialBlocks: animateExampleLoadRef.current,
     enabled: !isCheckingSession,
     onSymbolTableChange: setSymbolRows,
-    onWorkspaceChange: (blocks) => {
-      if (editorMode === "background") {
-        setBackgroundWorkspaceBlocks(blocks);
-        return;
-      }
-
-      setDeviceWorkspaceBlocks(blocks);
-    },
+    onWorkspaceChange: handleWorkspaceChange,
   });
 
   const availableBlockTypes = Object.keys(Blockly.Blocks)
@@ -894,6 +904,7 @@ function App({ authUser }: AppProps) {
 
       setBoard(nextBoard);
       setProjectName(nextProjectName);
+      animateExampleLoadRef.current = true;
       setDeviceWorkspaceBlocks(project.blocks);
       setEditorMode("device");
       setActiveTab("blocks");

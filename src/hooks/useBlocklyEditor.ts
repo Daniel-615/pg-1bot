@@ -14,6 +14,7 @@ type UseBlocklyEditorOptions = {
   onSymbolTableChange: (rows: SymbolTableRow[]) => void;
   onWorkspaceChange?: (blocks: unknown) => void;
   installedExtensionIds?: string[];
+  animateInitialBlocks?: boolean;
 };
 
 
@@ -28,6 +29,7 @@ export function useBlocklyEditor({
   onSymbolTableChange,
   onWorkspaceChange,
   installedExtensionIds = [],
+  animateInitialBlocks = false,
 }: UseBlocklyEditorOptions) {
   /*
     The core of the software, it has the logic to show TOAST errors, to renderize arduino uno, nano, esp32, codey, etc.
@@ -37,6 +39,7 @@ export function useBlocklyEditor({
   const workspaceRef = useRef<Blockly.Workspace | null>(null);
   const runtimeRef = useRef<EditorRuntime | null>(null);
   const initialBlocksRef = useRef(initialBlocks);
+  const animateInitialBlocksRef = useRef(animateInitialBlocks);
   const lastCodeRef = useRef("");
   const onWorkspaceChangeRef = useRef(onWorkspaceChange);
   const [code, setCode] = useState("");
@@ -51,8 +54,9 @@ export function useBlocklyEditor({
 
   useEffect(() => {
     initialBlocksRef.current = initialBlocks;
+    animateInitialBlocksRef.current = animateInitialBlocks;
     onWorkspaceChangeRef.current = onWorkspaceChange;
-  }, [initialBlocks, onWorkspaceChange]);
+  }, [animateInitialBlocks, initialBlocks, onWorkspaceChange]);
 
   useEffect(() => {
     if (!enabled || !blocklyDivRef.current) return;
@@ -60,8 +64,10 @@ export function useBlocklyEditor({
     let isCancelled = false;
     let compileTimeout: ReturnType<typeof setTimeout> | null = null;
     let loadingTimeout: ReturnType<typeof setTimeout> | null = null;
+    const animationTimeouts: ReturnType<typeof setTimeout>[] = [];
     let compileRequestId = 0;
     let localWorkspace: Blockly.Workspace | null = null;
+    const shouldAnimateInitialBlocks = animateInitialBlocksRef.current;
 
     const cleanupWorkspace = () => {
       if (compileTimeout) {
@@ -73,6 +79,8 @@ export function useBlocklyEditor({
         clearTimeout(loadingTimeout);
         loadingTimeout = null;
       }
+
+      animationTimeouts.forEach((timeout) => clearTimeout(timeout));
 
       if (localWorkspace) {
         localWorkspace.dispose();
@@ -195,6 +203,20 @@ export function useBlocklyEditor({
             initialBlocksRef.current as Parameters<typeof Blockly.serialization.workspaces.load>[0],
             localWorkspace
           );
+
+          if (shouldAnimateInitialBlocks) {
+            localWorkspace.getAllBlocks(false).forEach((block, index) => {
+              const blockSvg = block as Blockly.BlockSvg;
+              blockSvg.getSvgRoot().classList.add("blockly-example-entering");
+              blockSvg.getSvgRoot().style.animationDelay = `${index * 65}ms`;
+
+              const animationTimeout = window.setTimeout(() => {
+                blockSvg.getSvgRoot().classList.remove("blockly-example-entering");
+                blockSvg.getSvgRoot().style.animationDelay = "";
+              }, 750 + index * 65);
+              animationTimeouts.push(animationTimeout);
+            });
+          }
         }
 
         if (isCancelled) {

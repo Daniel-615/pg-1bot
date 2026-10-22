@@ -37,4 +37,67 @@
 .extension-install-button:disabled { opacity: .45; cursor: not-allowed; }
 .extension-installer-state { padding: 20px 10px; color: var(--text-secondary); text-align: center; font-size: 12px; }
 
-@media (max-width: 768px) { .extension-installer { top: 9px; right: 9px; width: min(350px, calc(100% - 18px)); } .extension-installer-trigger { display: none; } .extension-installer-list { max-height: 55vh; } .extension-card { align-items: flex-start; flex-direction: column; } .extension-install-button { width: 100%; } }
+@media (max-width: 768px) {
+  .extension-installer {
+    top: 8px;
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    display: flex;
+    width: auto;
+    max-height: none;
+    flex-direction: column;
+    border-radius: 14px;
+  }
+
+  .extension-installer-trigger {
+    display: none;
+  }
+
+  .extension-installer-header {
+    flex-shrink: 0;
+    padding: 11px 12px;
+  }
+
+  .extension-installer-list {
+    min-height: 0;
+    flex: 1;
+    max-height: none;
+    padding: 8px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .extension-card {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 9px;
+    padding: 10px;
+  }
+
+  .extension-install-button {
+    width: 100%;
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 380px) {
+  .extension-installer {
+    top: 5px;
+    right: 5px;
+    bottom: 5px;
+    left: 5px;
+  }
+
+  .extension-installer-title strong {
+    font-size: 13px;
+  }
+
+  .extension-installer-title small {
+    font-size: 9px;
+  }
+
+  .extension-card p {
+    font-size: 10px;
+  }
+}

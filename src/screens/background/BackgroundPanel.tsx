@@ -21,6 +21,10 @@ type BackgroundStageProps = {
   actor: BackgroundActorState;
 };
 
+function setBlockHighlight(block: Blockly.Block, highlighted: boolean) {
+  (block as Blockly.BlockSvg).setHighlighted(highlighted);
+}
+
 export function BackgroundStage({ actor }: BackgroundStageProps) {
   const customImageStyle =
     actor.scene === "custom" && actor.customImageUrl
@@ -129,12 +133,26 @@ export function BackgroundPanel({
 
     setIsRunning(true);
 
-    const nextActor = await playBackgroundProgram(workspace, actor, (nextState) => {
-      setActor(nextState);
-    });
+    const clearHighlight = () => {
+      workspace?.getAllBlocks(false).forEach((block) => setBlockHighlight(block, false));
+    };
 
-    setActor(nextActor);
-    setIsRunning(false);
+    try {
+      const nextActor = await playBackgroundProgram(
+        workspace,
+        actor,
+        (nextState) => setActor(nextState),
+        (block) => {
+          clearHighlight();
+          setBlockHighlight(block, true);
+        },
+      );
+
+      setActor(nextActor);
+    } finally {
+      clearHighlight();
+      setIsRunning(false);
+    }
   };
 
   const handleReset = () => {
@@ -142,6 +160,7 @@ export function BackgroundPanel({
       return;
     }
 
+    workspace?.getAllBlocks(false).forEach((block) => setBlockHighlight(block, false));
     setActor((current) => ({
       ...initialBackgroundState,
       scene: current.scene,

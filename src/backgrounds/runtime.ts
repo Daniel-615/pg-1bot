@@ -465,12 +465,15 @@ export function runBackgroundProgram(
 async function playStatementChain(
   block: Blockly.Block | null,
   currentState: BackgroundActorState,
-  onStep: (state: BackgroundActorState) => void
+  onStep: (state: BackgroundActorState, block: Blockly.Block) => void,
+  onBlockStart: (block: Blockly.Block) => void
 ) {
   let state = currentState;
   let currentBlock = block;
 
   while (currentBlock) {
+    onBlockStart(currentBlock);
+
     switch (currentBlock.type) {
       case "background_wait_ms":
         await sleep(Math.min(evaluateNumber(currentBlock.getInputTargetBlock("TIME"), readNumber(currentBlock, "TIME"), state.variables), 3000));
@@ -478,7 +481,7 @@ async function playStatementChain(
 
       case "if":
         if (evaluateBoolean(currentBlock.getInputTargetBlock("CONDITION"), state.variables)) {
-          state = await playStatementChain(currentBlock.getInputTargetBlock("IF_BODY"), state, onStep);
+          state = await playStatementChain(currentBlock.getInputTargetBlock("IF_BODY"), state, onStep, onBlockStart);
         }
         break;
 
@@ -488,7 +491,8 @@ async function playStatementChain(
             ? currentBlock.getInputTargetBlock("IF_BODY")
             : currentBlock.getInputTargetBlock("ELSE_BODY"),
           state,
-          onStep
+          onStep,
+          onBlockStart
         );
         break;
 
@@ -509,7 +513,7 @@ async function playStatementChain(
             ...state,
             variables: variableName ? { ...state.variables, [variableName]: value } : state.variables,
           };
-          state = await playStatementChain(currentBlock.getInputTargetBlock("BODY"), state, onStep);
+          state = await playStatementChain(currentBlock.getInputTargetBlock("BODY"), state, onStep, onBlockStart);
           iterations += 1;
         }
         break;
@@ -519,7 +523,7 @@ async function playStatementChain(
         let iterations = 0;
 
         while (evaluateBoolean(currentBlock.getInputTargetBlock("CONDITION"), state.variables) && iterations < MAX_BACKGROUND_LOOP_ITERATIONS) {
-          state = await playStatementChain(currentBlock.getInputTargetBlock("BODY"), state, onStep);
+          state = await playStatementChain(currentBlock.getInputTargetBlock("BODY"), state, onStep, onBlockStart);
           iterations += 1;
         }
         break;
@@ -529,7 +533,7 @@ async function playStatementChain(
         let iterations = 0;
 
         do {
-          state = await playStatementChain(currentBlock.getInputTargetBlock("BODY"), state, onStep);
+          state = await playStatementChain(currentBlock.getInputTargetBlock("BODY"), state, onStep, onBlockStart);
           iterations += 1;
         } while (evaluateBoolean(currentBlock.getInputTargetBlock("CONDITION"), state.variables) && iterations < MAX_BACKGROUND_LOOP_ITERATIONS);
         break;
@@ -539,7 +543,7 @@ async function playStatementChain(
         let iterations = 0;
 
         while (!evaluateBoolean(currentBlock.getInputTargetBlock("CONDITION"), state.variables) && iterations < MAX_BACKGROUND_LOOP_ITERATIONS) {
-          state = await playStatementChain(currentBlock.getInputTargetBlock("BODY"), state, onStep);
+          state = await playStatementChain(currentBlock.getInputTargetBlock("BODY"), state, onStep, onBlockStart);
           iterations += 1;
         }
         break;
@@ -547,7 +551,7 @@ async function playStatementChain(
 
       default:
         state = runBlock(currentBlock, state);
-        onStep(state);
+        onStep(state, currentBlock);
         await sleep(220);
         break;
     }
@@ -561,7 +565,8 @@ async function playStatementChain(
 export async function playBackgroundProgram(
   workspace: Blockly.Workspace | null,
   currentState: BackgroundActorState,
-  onStep: (state: BackgroundActorState) => void
+  onStep: (state: BackgroundActorState, block: Blockly.Block) => void,
+  onBlockStart: (block: Blockly.Block) => void
 ) {
   if (!workspace) {
     return currentState;
@@ -574,7 +579,7 @@ export async function playBackgroundProgram(
     const block: Blockly.Block | null =
       chain.type === "background_when_run" ? chain.getNextBlock() : chain;
 
-    state = await playStatementChain(block, state, onStep);
+    state = await playStatementChain(block, state, onStep, onBlockStart);
   }
 
   return state;

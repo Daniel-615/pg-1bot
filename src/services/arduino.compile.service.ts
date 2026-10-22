@@ -8,7 +8,7 @@ const CLOUD_API_URL =
 const LOCAL_AGENT_API_URL =
   import.meta.env.VITE_ARDUINO_API ||
   import.meta.env.VITE_ARDUINO_LOCAL_API_URL ||
-  "http://localhost:3000";
+  "http://127.0.0.1:3000";
 type CompileSketchParams = {
   code: string;
   board: string;
@@ -153,10 +153,14 @@ export class ArduinoApi {
   }
 }
 
+function normalizeLocalAgentUrl(value: string) {
+  return value.replace(/^http:\/\/localhost(?=[:/]|$)/i, "http://127.0.0.1");
+}
+
 export function resolveCompileTarget(platform: ClientPlatform, mode: CompileMode = platform === "desktop" ? "local" : "cloud"): CompileTarget {
   if (mode === "local") {
     return {
-      apiUrl: normalizeApiUrl(LOCAL_AGENT_API_URL),
+      apiUrl: normalizeLocalAgentUrl(normalizeApiUrl(LOCAL_AGENT_API_URL)),
       transport: "local",
       platform,
     };
