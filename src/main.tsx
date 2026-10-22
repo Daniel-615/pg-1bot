@@ -20,12 +20,14 @@ import { queryClient } from "./lib/queryClient";
 import ForgotPasswordScreen from "./screens/ForgotPasswordScreen";
 import ResetPasswordScreen from "./screens/ResetPasswordScreen";
 import VerifyAccountScreen from "./screens/VerifyAccountScreen";
+import InformationScreen from "./screens/InformationScreen";
 import { Analytics } from "@vercel/analytics/react";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
+          <Route path="/informacion" element={<InformationScreen />} />
           <Route path="/login" element={<LoginScreen />} />
           <Route path="/register" element={<RegisterScreen />} />
           <Route path="/forgot-password" element={<ForgotPasswordScreen />} />

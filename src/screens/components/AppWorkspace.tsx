@@ -68,6 +68,7 @@ export const AppWorkspace = memo(function AppWorkspace({
 
   return (
     <main className="workspace-container">
+      <h1 className="workspace-seo-heading">Editor visual de programación para Arduino y ESP32</h1>
       <div className="workspace-tabs">
         <button
           className={`workspace-tab ${activeTab === "blocks" ? "active" : ""}`}

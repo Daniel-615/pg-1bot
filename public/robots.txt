@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /informacion
+Disallow: /
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /verify-account
+Disallow: /dashboard
+Disallow: /usuarios
+Disallow: /rol
+Disallow: /permisos
+Disallow: /rol-permiso
+Disallow: /usuario-rol
+Disallow: /extensions
+Disallow: /bloques
+Disallow: /placas
+
+Sitemap: https://1bot.org/sitemap.xml
