@@ -17,27 +17,27 @@ type ExamplesPanelProps = {
 };
 
 const boardLabels: Record<string, string> = {
-  esp32: "ESP32",
-  uno: "Arduino Uno",
-  nano: "Arduino Nano",
-  mega: "Arduino Mega",
-  codey: "Codey",
+  esp32: "exampleBoardEsp32",
+  uno: "exampleBoardUno",
+  nano: "exampleBoardNano",
+  mega: "exampleBoardMega",
+  codey: "exampleBoardCodey",
 };
 
 const exampleIcons: Array<{ value: string; label: string; Icon: LucideIcon }> = [
-  { value: "book-open", label: "Libro", Icon: BookOpen },
-  { value: "lightbulb", label: "Idea", Icon: Lightbulb },
-  { value: "wifi", label: "WiFi", Icon: Wifi },
-  { value: "cpu", label: "Placa", Icon: Cpu },
-  { value: "bot", label: "Robot", Icon: Bot },
-  { value: "settings", label: "Configuración", Icon: Settings },
-  { value: "zap", label: "Energía", Icon: Zap },
-  { value: "radio", label: "Radio", Icon: Radio },
-  { value: "gamepad", label: "Juego", Icon: Gamepad2 },
-  { value: "code", label: "Código", Icon: Code2 },
-  { value: "monitor", label: "Monitor", Icon: Monitor },
-  { value: "cloud", label: "Nube", Icon: Cloud },
-  { value: "sparkles", label: "Especial", Icon: Sparkles },
+  { value: "book-open", label: "iconBook", Icon: BookOpen },
+  { value: "lightbulb", label: "iconIdea", Icon: Lightbulb },
+  { value: "wifi", label: "iconWifi", Icon: Wifi },
+  { value: "cpu", label: "iconBoard", Icon: Cpu },
+  { value: "bot", label: "iconRobot", Icon: Bot },
+  { value: "settings", label: "iconSettings", Icon: Settings },
+  { value: "zap", label: "iconEnergy", Icon: Zap },
+  { value: "radio", label: "iconRadio", Icon: Radio },
+  { value: "gamepad", label: "iconGame", Icon: Gamepad2 },
+  { value: "code", label: "iconCode", Icon: Code2 },
+  { value: "monitor", label: "iconMonitor", Icon: Monitor },
+  { value: "cloud", label: "iconCloud", Icon: Cloud },
+  { value: "sparkles", label: "iconSpecial", Icon: Sparkles },
 ];
 
 const iconByValue = new Map(exampleIcons.map((option) => [option.value, option.Icon]));
@@ -91,6 +91,7 @@ export const ExamplesPanel = memo(function ExamplesPanel({
 
   const filteredExamples = examples.filter((example) => filter === "all" || example.placa === filter);
   const blockLabel = (type: string) => type.replace(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+  const difficultyLabel = (difficulty: StoredExample["dificultad"]) => t(`exampleDifficulty${difficulty[0].toUpperCase()}${difficulty.slice(1)}`);
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -101,7 +102,7 @@ export const ExamplesPanel = memo(function ExamplesPanel({
       setForm({ nombre: "", descripcion: "", icono: "book-open", dificultad: "beginner" });
       setFormOpen(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo guardar el ejemplo.");
+      toast.error(error instanceof Error ? error.message : t("exampleSaveError"));
     } finally {
       setSaving(false);
     }
@@ -113,9 +114,9 @@ export const ExamplesPanel = memo(function ExamplesPanel({
         <div className="examples-header">
           <div>
             <h2>{t("examplesTitle")}</h2>
-            <p>Proyectos guardados para cargar en tu espacio de trabajo</p>
+            <p>{t("examplesDescription")}</p>
           </div>
-          <button className="examples-close" onClick={onClose} aria-label="Cerrar"><X size={18} /></button>
+          <button className="examples-close" onClick={onClose} aria-label={t("close")}><X size={18} /></button>
         </div>
 
         <div className="examples-toolbar">
@@ -123,63 +124,63 @@ export const ExamplesPanel = memo(function ExamplesPanel({
             <span className="examples-filter-label">{t("examplesFilter")}</span>
             <div className="examples-filter-chips">
               <button type="button" className={filter === "all" ? "active" : ""} onClick={() => setFilter("all")}>{t("examplesAll")}</button>
-              {Object.entries(boardLabels).map(([value, label]) => <button key={value} type="button" className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{label}</button>)}
+              {Object.entries(boardLabels).map(([value, label]) => <button key={value} type="button" className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{t(label)}</button>)}
             </div>
           </div>
-          {canManageExamples && <button className="examples-create-button" type="button" onClick={() => setFormOpen((open) => !open)}><Plus size={16} />Nuevo ejemplo</button>}
+          {canManageExamples && <button className="examples-create-button" type="button" onClick={() => setFormOpen((open) => !open)}><Plus size={16} />{t("examplesCreate")}</button>}
         </div>
 
         {formOpen && (
           <form className="examples-create-form" onSubmit={handleCreate}>
-            <strong>Crear ejemplo para {boardLabels[board] || board}</strong>
+            <strong>{t("examplesCreateFor", { board: t(boardLabels[board] || board) })}</strong>
             <div className="examples-main-fields">
               <label className="examples-field">
-                <span>Nombre <em aria-hidden="true">*</em></span>
-                <input required maxLength={120} placeholder="Nombre" value={form.nombre} onChange={(event) => setForm({ ...form, nombre: event.target.value })} />
+                <span>{t("examplesName")} <em aria-hidden="true">*</em></span>
+                <input required maxLength={120} placeholder={t("examplesName")} value={form.nombre} onChange={(event) => setForm({ ...form, nombre: event.target.value })} />
               </label>
               <label className="examples-field">
-                <span>Descripción</span>
-                <input maxLength={500} placeholder="Descripción" value={form.descripcion} onChange={(event) => setForm({ ...form, descripcion: event.target.value })} />
+                <span>{t("examplesDescriptionLabel")}</span>
+                <input maxLength={500} placeholder={t("examplesDescriptionLabel")} value={form.descripcion} onChange={(event) => setForm({ ...form, descripcion: event.target.value })} />
               </label>
               <label className="examples-field">
-                <span>Nivel</span>
+                <span>{t("examplesLevel")}</span>
                 <select value={form.dificultad} onChange={(event) => setForm({ ...form, dificultad: event.target.value as CreateExampleInput["dificultad"] })}>
-                  <option value="beginner">Principiante</option><option value="intermediate">Intermedio</option><option value="advanced">Avanzado</option>
+                  <option value="beginner">{t("exampleDifficultyBeginner")}</option><option value="intermediate">{t("exampleDifficultyIntermediate")}</option><option value="advanced">{t("exampleDifficultyAdvanced")}</option>
                 </select>
               </label>
             </div>
             <div className="examples-secondary-fields">
               <div className="examples-icon-field">
-                <span>Icono SVG</span>
-                <div className="examples-icon-picker" role="radiogroup" aria-label="Icono del ejemplo">
-                  {exampleIcons.map(({ value, label, Icon }) => <button key={value} type="button" className={form.icono === value ? "selected" : ""} aria-label={label} aria-pressed={form.icono === value} onClick={() => setForm({ ...form, icono: value })}><Icon size={18} aria-hidden="true" /></button>)}
+                <span>{t("examplesIcon")}</span>
+                <div className="examples-icon-picker" role="radiogroup" aria-label={t("examplesIconAria")}>
+                  {exampleIcons.map(({ value, label, Icon }) => <button key={value} type="button" className={form.icono === value ? "selected" : ""} aria-label={t(label)} aria-pressed={form.icono === value} onClick={() => setForm({ ...form, icono: value })}><Icon size={18} aria-hidden="true" /></button>)}
                 </div>
               </div>
             </div>
             <div className="examples-block-picker">
-              <label htmlFor="example-block-type">Agregar bloque al playground</label>
+              <label htmlFor="example-block-type">{t("examplesAddBlockLabel")}</label>
               <div>
                 <select id="example-block-type" value={selectedBlockType} onChange={(event) => setSelectedBlockType(event.target.value)}>
                   {availableBlockTypes.map((type) => <option key={type} value={type}>{blockLabel(type)}</option>)}
                 </select>
-                <button type="button" onClick={() => selectedBlockType && onAddBlock(selectedBlockType)} disabled={!selectedBlockType}>Agregar bloque</button>
+                 <button type="button" onClick={() => selectedBlockType && onAddBlock(selectedBlockType)} disabled={!selectedBlockType}>{t("examplesAddBlock")}</button>
               </div>
             </div>
-            <p className="examples-form-help">Se guardará el workspace actual como archivo JSON.</p>
-            <button className="examples-save-button" disabled={saving} type="submit">{saving ? <LoaderCircle className="spin" size={16} /> : <Check size={16} />}Guardar ejemplo</button>
+            <p className="examples-form-help">{t("examplesSaveWorkspace")}</p>
+            <button className="examples-save-button" disabled={saving} type="submit">{saving ? <LoaderCircle className="spin" size={16} /> : <Check size={16} />}{t("examplesSave")}</button>
           </form>
         )}
 
         <div className="examples-grid">
-          {loading ? <div className="examples-state"><LoaderCircle className="spin" />Cargando ejemplos...</div> : filteredExamples.map((example) => (
+          {loading ? <div className="examples-state"><LoaderCircle className="spin" />{t("examplesLoading")}</div> : filteredExamples.map((example) => (
             <button key={example.id} className="example-card" onClick={() => onSelectExample(example)}>
               <span className="example-icon">{renderExampleIcon(example.icono || "book-open")}</span>
               <h3>{example.nombre}</h3>
-              <p>{example.descripcion || "Sin descripción"}</p>
-              <div className="example-tags"><span className={`example-board board-${example.placa}`}>{boardLabels[example.placa] || example.placa}</span><span className={`example-difficulty ${example.dificultad}`}>{example.dificultad}</span></div>
+              <p>{example.descripcion || t("examplesNoDescription")}</p>
+              <div className="example-tags"><span className={`example-board board-${example.placa}`}>{t(boardLabels[example.placa] || example.placa)}</span><span className={`example-difficulty ${example.dificultad}`}>{difficultyLabel(example.dificultad)}</span></div>
             </button>
           ))}
-          {!loading && filteredExamples.length === 0 && <div className="examples-state">No hay ejemplos para esta placa.</div>}
+          {!loading && filteredExamples.length === 0 && <div className="examples-state">{t("examplesNoResults")}</div>}
         </div>
       </div>
     </div>

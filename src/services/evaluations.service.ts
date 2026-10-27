@@ -12,6 +12,17 @@ export type EvaluationMetrics = {
   muestraPostest: number;
 };
 
+export type EvaluationRecord = EvaluationPayload & {
+  id_evaluacion: string;
+  id_usuario: string;
+  createdAt: string;
+};
+
+export type EvaluationProgress = {
+  metrics: EvaluationMetrics;
+  evaluations: EvaluationRecord[];
+};
+
 export type EvaluationPayload = {
   momento: "pretest" | "postest";
   puntuacion: number;
@@ -32,6 +43,11 @@ export function validateEvaluationPayload(userId: string, payload: EvaluationPay
 
 export async function getEvaluationMetrics(userId: string): Promise<EvaluationMetrics> {
   const response = await api.get<{ data: EvaluationMetrics }>(`${API_URL}/api/evaluations/${userId}/metrics`);
+  return response.data.data;
+}
+
+export async function getOwnEvaluationProgress(): Promise<EvaluationProgress> {
+  const response = await api.get<{ data: EvaluationProgress }>(`${API_URL}/api/evaluations/me/progress`);
   return response.data.data;
 }
 

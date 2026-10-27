@@ -248,6 +248,17 @@
   background: var(--primary-light);
 }
 
+.port-actions button:disabled {
+  background: var(--border-light);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.port-actions button:disabled:hover {
+  background: var(--border-light);
+}
+
 .sidebar-empty-state {
   padding: 14px;
   background: var(--bg-main);

@@ -21,6 +21,7 @@ import ForgotPasswordScreen from "./screens/ForgotPasswordScreen";
 import ResetPasswordScreen from "./screens/ResetPasswordScreen";
 import VerifyAccountScreen from "./screens/VerifyAccountScreen";
 import InformationScreen from "./screens/InformationScreen";
+import ProgressScreen from "./screens/ProgressScreen";
 import { Analytics } from "@vercel/analytics/react";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -70,6 +71,14 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             element={
                 <ProtectedRoute>
                 {(user) => <DashboardScreen user={user} />}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/progreso"
+            element={
+              <ProtectedRoute>
+                {(user) => <ProgressScreen user={user} />}
               </ProtectedRoute>
             }
           />

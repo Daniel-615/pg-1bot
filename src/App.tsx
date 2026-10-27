@@ -344,6 +344,12 @@ function App({ authUser }: AppProps) {
 
   const handleBoardChange = useCallback(
     (value: string) => {
+      // A Web Serial port is tied to the previously selected board. Force a
+      // fresh selection so a stale VID/PID cannot be flashed with another profile.
+      void flashOrchestratorRef.current?.disconnect();
+      flashOrchestratorRef.current = null;
+      webSerialPortRef.current = null;
+      setWebSerialDeviceLabel("");
       setBoard(value);
       resetSimulation(value);
     },
@@ -615,6 +621,10 @@ function App({ authUser }: AppProps) {
     toast.info(compileTarget.transport === "backend" ? "Compilando el programa en la nube..." : "Compilando y cargando el programa...");
 
     try {
+      // The same browser serial port cannot be open for monitoring and flashing
+      // at the same time. Close the monitor before starting a cloud flash.
+      if (serialOpen) await stopSerialMonitor();
+
       if (compileTarget.transport === "backend" && board !== "codey") {
         if (!flashOrchestratorRef.current) flashOrchestratorRef.current = new FlashOrchestrator(compileTarget);
         const orchestrator = flashOrchestratorRef.current;
@@ -659,7 +669,7 @@ function App({ authUser }: AppProps) {
       setIsUploading(false);
       compileInFlightRef.current = false;
     }
-  }, [authUser?.edad, authUser?.id, authUser?.userId, board, code, compileTarget, projectName, selectedPort, semanticErrors]);
+  }, [authUser?.edad, authUser?.id, authUser?.userId, board, code, compileTarget, projectName, selectedPort, semanticErrors, serialOpen, stopSerialMonitor]);
 
   const handleRun = useCallback(() => {
     void compileAndUpload();
@@ -822,18 +832,18 @@ function App({ authUser }: AppProps) {
     setIsSavingExample(true);
     try {
       const response = await createExample({
-        nombre: projectName.trim() || "Nuevo ejemplo",
-        descripcion: "Ejemplo creado desde el playground.",
+         nombre: projectName.trim() || i18n.t("exampleSaveDefaultName"),
+         descripcion: i18n.t("exampleSaveDescription"),
         placa: board,
         dificultad: "beginner",
         icono: "book-open",
         workspace: projectData,
       });
-      if (!response.ok) throw new Error(response.message || "No se pudo guardar el ejemplo.");
-      setSaveOptionsOpen(false);
-      toast.success("Ejemplo guardado en la biblioteca y listo para cargar en la placa.");
-    } catch (error) {
-      toast.error(`No se pudo guardar como ejemplo. ${error instanceof Error ? error.message : ""}`);
+       if (!response.ok) throw new Error(response.message || i18n.t("exampleSaveError"));
+       setSaveOptionsOpen(false);
+       toast.success(i18n.t("exampleSavedReady"));
+     } catch (error) {
+       toast.error(`${i18n.t("exampleSaveError")} ${error instanceof Error ? error.message : ""}`);
     } finally {
       setIsSavingExample(false);
     }
@@ -906,7 +916,7 @@ function App({ authUser }: AppProps) {
     (example: StoredExample) => {
       const project = example.workspace;
       if (!project.blocks || typeof project.blocks !== "object") {
-        toast.error("El ejemplo no contiene bloques Blockly válidos.");
+         toast.error(i18n.t("exampleInvalidBlocks"));
         return;
       }
 
@@ -922,26 +932,26 @@ function App({ authUser }: AppProps) {
       setProjectLoadVersion((current) => current + 1);
       resetSimulation(nextBoard);
       setExamplesOpen(false);
-      toast.success(`Ejemplo ${nextProjectName} cargado.`);
+       toast.success(i18n.t("exampleLoaded", { name: nextProjectName }));
     },
     [resetSimulation]
   );
 
   const handleCreateExample = useCallback(async (input: CreateExampleInput): Promise<StoredExample> => {
     const workspace = workspaceRef.current;
-    if (!workspace) throw new Error("No hay un workspace para guardar.");
+     if (!workspace) throw new Error(i18n.t("exampleWorkspaceUnavailable"));
     const response = await createExample({
       ...input,
       workspace: { version: "1.0", board, projectName, blocks: Blockly.serialization.workspaces.save(workspace) },
     });
-    if (!response.ok || !response.data) throw new Error(response.message || "No se pudo crear el ejemplo.");
-    toast.success("Ejemplo guardado en la biblioteca.");
+     if (!response.ok || !response.data) throw new Error(response.message || i18n.t("exampleSaveError"));
+     toast.success(i18n.t("exampleSaved"));
     return response.data;
   }, [board, projectName, workspaceRef]);
 
   const handleAddExampleBlock = useCallback((type: string) => {
     if (!workspace) {
-      toast.error("El playground todavía no está listo.");
+       toast.error(i18n.t("playgroundNotReady"));
       return;
     }
 
@@ -1015,6 +1025,9 @@ function App({ authUser }: AppProps) {
   const handleDashboard = useCallback(() => {
     navigate("/dashboard");
   }, [navigate])
+  const handleProgress = useCallback(() => {
+    navigate("/progreso");
+  }, [navigate]);
   const handleBackToEditor = useCallback(() => {
     setProjectLoadVersion((current) => current + 1);
     navigate("/");
@@ -1095,6 +1108,7 @@ function App({ authUser }: AppProps) {
         onFile={handleFile}
         onEdit={handleEdit}
         onDashboard={handleDashboard}
+        onProgress={handleProgress}
         isUploading={isUploading}
         userName={authUser?.nombre ?? authUser?.email ?? "Usuario"}
         userRole={getUserRole(authUser)}

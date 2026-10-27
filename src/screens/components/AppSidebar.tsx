@@ -211,16 +211,18 @@ export const AppSidebar = memo(function AppSidebar({
                  </>
                )}
 
-               <div className="port-actions">
-                 <button
-                   onClick={() => {
-                     if (serialOpen) stopSerialMonitor();
-                     else startSerialMonitor();
-                   }}
-                 >
-                   {serialOpen ? "Cerrar monitor" : "Abrir monitor"}
-                 </button>
-               </div>
+                <div className="port-actions">
+                  <button
+                    disabled={compileMode === "cloud"}
+                    title={compileMode === "cloud" ? "El monitor serial requiere el agente local" : undefined}
+                    onClick={() => {
+                      if (serialOpen) stopSerialMonitor();
+                      else startSerialMonitor();
+                    }}
+                  >
+                    {compileMode === "cloud" ? "Monitor solo local" : serialOpen ? "Cerrar monitor" : "Abrir monitor"}
+                  </button>
+                </div>
 
              </div>
           )}
