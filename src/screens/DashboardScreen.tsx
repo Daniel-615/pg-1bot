@@ -38,10 +38,15 @@ function formatScore(value: number | null | undefined) {
   return value == null ? "--" : `${value.toFixed(0)}%`;
 }
 
+function formatMetricDate(value: string | null | undefined) {
+  if (!value) return "Sin fecha";
+  return new Intl.DateTimeFormat("es", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
+}
+
 function MetricsChart({ metrics, isAdmin, ageRange, onAgeChange }: { metrics: EvaluationMetrics | null; isAdmin: boolean; ageRange: string; onAgeChange: (value: string) => void }) {
   const chartData = [
-    { name: "Pretest", score: metrics?.inicial ?? 0, label: "Punto de partida" },
-    { name: "Postest", score: metrics?.final ?? 0, label: "Resultado final" },
+    { name: "Pretest", score: metrics?.inicial ?? 0, date: formatMetricDate(metrics?.fechaInicial), label: "Punto de partida" },
+    { name: "Postest", score: metrics?.final ?? 0, date: formatMetricDate(metrics?.fechaFinal), label: "Resultado final" },
   ];
   const hasData = metrics?.inicial != null || metrics?.final != null;
   const change = metrics?.mejoraPorcentual;
@@ -58,7 +63,7 @@ function MetricsChart({ metrics, isAdmin, ageRange, onAgeChange }: { metrics: Ev
         {isAdmin && <label className="dashboard-age-filter"><span>Filtrar por edad</span><select value={ageRange} onChange={(event) => onAgeChange(event.target.value)}><option value="all">Todas las edades</option><option value="5-7">5 a 7 años</option><option value="8-10">8 a 10 años</option><option value="11-13">11 a 13 años</option><option value="14-17">14 a 17 años</option><option value="18-120">18 años o más</option></select></label>}
         <div className={`dashboard-growth ${changePositive ? "positive" : ""}`}><BarChart3 size={20} /><strong>{change == null ? "--" : `${changePositive ? "+" : ""}${change.toFixed(1)}%`}</strong><span>variación relativa</span></div>
       </div>
-      <div className="dashboard-chart-summary"><div><span>INICIAL</span><strong>{formatScore(metrics?.inicial)}</strong><small>Pretest</small></div><div className="dashboard-summary-arrow">→</div><div><span>FINAL</span><strong className="dashboard-final-score">{formatScore(metrics?.final)}</strong><small>Postest</small></div><div className="dashboard-sample">{(metrics?.muestraPretest ?? 0) + (metrics?.muestraPostest ?? 0)} registros analizados</div></div>
+      <div className="dashboard-chart-summary"><div><span>INICIAL</span><strong>{formatScore(metrics?.inicial)}</strong><small>Pretest · {formatMetricDate(metrics?.fechaInicial)}</small></div><div className="dashboard-summary-arrow">→</div><div><span>FINAL</span><strong className="dashboard-final-score">{formatScore(metrics?.final)}</strong><small>Postest · {formatMetricDate(metrics?.fechaFinal)}</small></div><div className="dashboard-sample">{(metrics?.muestraPretest ?? 0) + (metrics?.muestraPostest ?? 0)} registros analizados</div></div>
       <div className="dashboard-recharts-wrap">
         {hasData ? <ResponsiveContainer width="100%" height="100%"><AreaChart data={chartData} margin={{ top: 18, right: 22, left: 0, bottom: 5 }}>
           <defs><linearGradient id="metricsAreaFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#6366f1" stopOpacity={0.34} /><stop offset="100%" stopColor="#818cf8" stopOpacity={0.03} /></linearGradient></defs>
@@ -66,7 +71,7 @@ function MetricsChart({ metrics, isAdmin, ageRange, onAgeChange }: { metrics: Ev
           <XAxis dataKey="name" tick={{ fill: "#7b879b", fontSize: 12, fontWeight: 700 }} axisLine={false} tickLine={false} dy={12} />
           <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(value) => `${value}%`} tick={{ fill: "#9aa4b5", fontSize: 11 }} axisLine={false} tickLine={false} width={42} />
           <ReferenceLine y={50} stroke="#d9deed" strokeDasharray="3 5" />
-          <Tooltip cursor={{ stroke: "#a5b4fc", strokeWidth: 1 }} contentStyle={{ border: "1px solid #e1e5f2", borderRadius: 14, boxShadow: "0 14px 35px rgba(15,23,42,.14)", background: "rgba(255,255,255,.96)" }} formatter={(value) => [`${Number(value).toFixed(1)}%`, "Puntuación"]} labelFormatter={(label) => String(label)} />
+          <Tooltip cursor={{ stroke: "#a5b4fc", strokeWidth: 1 }} contentStyle={{ border: "1px solid #e1e5f2", borderRadius: 14, boxShadow: "0 14px 35px rgba(15,23,42,.14)", background: "rgba(255,255,255,.96)" }} formatter={(value) => [`${Number(value).toFixed(1)}%`, "Puntuación"]} labelFormatter={(label, payload) => `${String(label)} · ${String(payload?.[0]?.payload?.date ?? "Sin fecha")}`} />
           <Area type="monotone" dataKey="score" stroke="#5b5ee8" strokeWidth={4} fill="url(#metricsAreaFill)" dot={{ r: 7, fill: "#fff", stroke: "#5b5ee8", strokeWidth: 4 }} activeDot={{ r: 9, fill: "#5b5ee8", stroke: "#fff", strokeWidth: 3 }} />
         </AreaChart></ResponsiveContainer> : <div className="dashboard-chart-empty"><BarChart3 size={28} /><strong>Aún no hay datos suficientes</strong><span>Registra una evaluación inicial y otra final para ver la evolución.</span></div>}
       </div>

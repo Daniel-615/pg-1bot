@@ -10,6 +10,8 @@ export type EvaluationMetrics = {
   mejoraPorcentual: number | null;
   muestraPretest: number;
   muestraPostest: number;
+  fechaInicial: string | null;
+  fechaFinal: string | null;
 };
 
 export type EvaluationRecord = EvaluationPayload & {
