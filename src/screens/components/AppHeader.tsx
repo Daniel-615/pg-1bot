@@ -79,7 +79,7 @@ export const AppHeader = memo(function AppHeader({
             <span className="nav-text">{t("examples")}</span>
           </button>
           <button className="nav-btn" onClick={onProgress}>
-            <span className="nav-text">Mi progreso</span>
+            <span className="nav-text">{t("myProgress")}</span>
           </button>
           {canAccessDashboard && (
             <button className="nav-btn" onClick={onDashboard}>
@@ -167,7 +167,7 @@ export const AppHeader = memo(function AppHeader({
           <button type="button" onClick={() => runMobileAction(onFile)}><FileText size={17} aria-hidden="true" />{t("navFile")}</button>
           <button type="button" onClick={() => runMobileAction(onEdit)}><Pencil size={17} aria-hidden="true" />{t("navEdit")}</button>
            <button type="button" onClick={() => runMobileAction(onExamples)}><LayoutDashboard size={17} aria-hidden="true" />{t("examples")}</button>
-           <button type="button" onClick={() => runMobileAction(onProgress)}><TrendingUp size={17} aria-hidden="true" />Mi progreso</button>
+            <button type="button" onClick={() => runMobileAction(onProgress)}><TrendingUp size={17} aria-hidden="true" />{t("myProgress")}</button>
            <button type="button" onClick={() => runMobileAction(onExtensions)}><Puzzle size={17} aria-hidden="true" />{t("extensions")}</button>
            {canAccessDashboard && <button type="button" onClick={() => runMobileAction(onDashboard)}><LayoutDashboard size={17} aria-hidden="true" />Dashboard</button>}
           <div className="mobile-menu-divider" />

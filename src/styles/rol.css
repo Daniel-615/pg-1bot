@@ -414,6 +414,41 @@
 
 .rol-header { margin-bottom: 22px; }
 
+.rol-refresh {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    margin-left: auto;
+    padding: 0 14px;
+    border: 1px solid #dbe3ef;
+    border-radius: 12px;
+    color: #475569;
+    background: #fff;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 800;
+    transition: .2s ease;
+}
+
+.rol-refresh:hover:not(:disabled) {
+    color: #4338ca;
+    border-color: #a5b4fc;
+    background: #eef2ff;
+}
+
+.rol-refresh:disabled {
+    cursor: wait;
+    opacity: .65;
+}
+
+.rol-refresh-icon.is-spinning { animation: rol-refresh-spin .8s linear infinite; }
+
+@keyframes rol-refresh-spin {
+    to { transform: rotate(360deg); }
+}
+
 .rol-back {
     border-radius: 16px;
     background: #111827;

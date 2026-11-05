@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import type { Rol } from "../../services/rol.service";
 import { useCreateRol, useDeleteRol, useRoles, useUpdateRol } from "../../hooks/roles/rolesHook";
-import { ArrowLeft, Edit2, GraduationCap, Layers3, Plus, Search, ShieldCheck, Trash2, UserRound } from "lucide-react";
+    import { ArrowLeft, Edit2, GraduationCap, Layers3, Plus, RefreshCw, Search, ShieldCheck, Trash2, UserRound } from "lucide-react";
 import { toast } from "react-toastify";
 import { getPaginationRange, normalizePagination, paginateRows } from "../pagination";
 import { QueryFreshness } from "../components/QueryFreshness";
@@ -57,6 +57,12 @@ function RolScreen() {
     const total = pagination.total;
     const totalPages = pagination.totalPages;
     const serverPaginated = pagination.serverPaginated;
+
+    const isRefreshing = rolesQuery.isFetching || rolesCatalogQuery.isFetching;
+
+    const handleRefresh = async () => {
+        await Promise.all([rolesQuery.refetch(), rolesCatalogQuery.refetch()]);
+    };
 
     const handleEliminar = async (id: string | number) => {
         if (!window.confirm(t("confirmDeleteRole"))) return;
@@ -155,6 +161,10 @@ function RolScreen() {
                             <p>{t("rolesDescription")}</p>
                         <QueryFreshness updatedAt={rolesQuery.dataUpdatedAt} isFetching={rolesQuery.isFetching} />
                     </div>
+                    <button type="button" className="rol-refresh" onClick={() => void handleRefresh()} disabled={isRefreshing}>
+                        <RefreshCw size={17} className={isRefreshing ? "rol-refresh-icon is-spinning" : "rol-refresh-icon"} />
+                        <span>{t("refresh")}</span>
+                    </button>
                 </header>
 
                 <section className="rol-stats" aria-label={t("roles")}>

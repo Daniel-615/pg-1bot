@@ -42,6 +42,24 @@ const exampleIcons: Array<{ value: string; label: string; Icon: LucideIcon }> = 
 
 const iconByValue = new Map(exampleIcons.map((option) => [option.value, option.Icon]));
 
+const exampleTitleKeys: Record<string, string> = {
+  "sin titulo": "exampleUntitled",
+  "esp32 wifi y oled": "exampleEsp32WifiOledTitle",
+  "led parpadeante": "exampleBlinkingLedTitle",
+  "wifi + display oled": "exampleWifiDisplayOledTitle",
+};
+
+const exampleDescriptionKeys: Record<string, string> = {
+  "ejemplo creado desde el playground.": "exampleCreatedDescription",
+  "conecta la esp32 a una red wifi y muestra el estado en una pantalla oled.": "exampleEsp32WifiOledDesc",
+  "enciende una salida digital.": "exampleBlinkingLedDesc",
+  "conecta wifi y muestra un mensaje en pantalla.": "exampleWifiDisplayOledDesc",
+};
+
+function normalizeExampleText(value: string) {
+  return value.trim().toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
 function renderExampleIcon(value: string) {
   const Icon = iconByValue.get(value);
   return Icon ? <Icon size={28} strokeWidth={1.8} aria-hidden="true" /> : value;
@@ -92,6 +110,15 @@ export const ExamplesPanel = memo(function ExamplesPanel({
   const filteredExamples = examples.filter((example) => filter === "all" || example.placa === filter);
   const blockLabel = (type: string) => type.replace(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
   const difficultyLabel = (difficulty: StoredExample["dificultad"]) => t(`exampleDifficulty${difficulty[0].toUpperCase()}${difficulty.slice(1)}`);
+  const exampleTitle = (name: string) => {
+    const key = exampleTitleKeys[normalizeExampleText(name)];
+    return key ? t(key) : name;
+  };
+  const exampleDescription = (description: string | null | undefined) => {
+    if (!description) return t("examplesNoDescription");
+    const key = exampleDescriptionKeys[normalizeExampleText(description)];
+    return key ? t(key) : description;
+  };
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -175,8 +202,8 @@ export const ExamplesPanel = memo(function ExamplesPanel({
           {loading ? <div className="examples-state"><LoaderCircle className="spin" />{t("examplesLoading")}</div> : filteredExamples.map((example) => (
             <button key={example.id} className="example-card" onClick={() => onSelectExample(example)}>
               <span className="example-icon">{renderExampleIcon(example.icono || "book-open")}</span>
-              <h3>{example.nombre}</h3>
-              <p>{example.descripcion || t("examplesNoDescription")}</p>
+               <h3>{exampleTitle(example.nombre)}</h3>
+               <p>{exampleDescription(example.descripcion)}</p>
               <div className="example-tags"><span className={`example-board board-${example.placa}`}>{t(boardLabels[example.placa] || example.placa)}</span><span className={`example-difficulty ${example.dificultad}`}>{difficultyLabel(example.dificultad)}</span></div>
             </button>
           ))}

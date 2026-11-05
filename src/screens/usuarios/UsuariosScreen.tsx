@@ -160,7 +160,7 @@ function UsuariosScreen() {
     const [newUser, setNewUser] = useState({ nombre: "", apellido: "", email: "", password: "", edad: "", rolId: "" });
     const [isCreating, setIsCreating] = useState(false);
     const usuariosPayload = usuariosQuery.data;
-    const isLoading = usuariosQuery.isLoading || usuariosQuery.isFetching;
+    const isLoading = usuariosQuery.isLoading || usuariosQuery.isFetching || rolesQuery.isFetching;
     const usuarios = usuariosPayload && (!Array.isArray(usuariosPayload) && usuariosPayload.ok === false)
         ? []
         : usuariosPayload
@@ -187,6 +187,10 @@ function UsuariosScreen() {
     const totalInactivos = usuarios.filter((usuario) => getUsuarioActivo(usuario) === false).length;
     const rolesData = rolesQuery.data?.data;
     const roles = Array.isArray(rolesData) ? rolesData : rolesData?.rows ?? [];
+
+    const handleRefresh = async () => {
+        await Promise.all([usuariosQuery.refetch(), rolesQuery.refetch()]);
+    };
 
     const handleCreateUser = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -294,7 +298,7 @@ function UsuariosScreen() {
                                 variant="secondary"
                                 className="usuarios-refresh"
                                 isDisabled={isLoading}
-                                onPress={() => void usuariosQuery.refetch()}
+                                onPress={() => void handleRefresh()}
                             >
                                 {isLoading ? <Spinner size="sm" /> : <RefreshCw size={18} />}
                                 <span>{t("refresh")}</span>

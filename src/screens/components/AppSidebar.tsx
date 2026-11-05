@@ -1,5 +1,6 @@
 import { memo, useState } from "react";
 import type * as Blockly from "blockly";
+import { ChevronRight, Usb } from "lucide-react";
 import type { DeviceOption, SerialPortOption } from "../types";
 import { BackgroundPanel, BackgroundStage } from "../../screens/background/BackgroundPanel";
 import { initialBackgroundState, type BackgroundActorState } from "../../backgrounds/runtime";
@@ -185,10 +186,27 @@ export const AppSidebar = memo(function AppSidebar({
 
                {compileMode === "cloud" ? (
                  <>
-                   <label>Puerto Web Serial</label>
-                   <button type="button" onClick={onRequestSerialDevice}>
-                     {webSerialDeviceLabel || "Seleccionar puerto USB"}
-                   </button>
+                    <label htmlFor="web-serial-port">Puerto Web Serial</label>
+                    <button
+                      id="web-serial-port"
+                      type="button"
+                      className={`web-serial-button${webSerialDeviceLabel ? " is-connected" : ""}`}
+                      onClick={onRequestSerialDevice}
+                      aria-label={webSerialDeviceLabel ? `Cambiar puerto ${webSerialDeviceLabel}` : "Seleccionar puerto USB"}
+                    >
+                      <span className="web-serial-icon" aria-hidden="true">
+                        <Usb size={16} strokeWidth={2.2} />
+                      </span>
+                      <span className="web-serial-copy">
+                        <span className="web-serial-title">
+                          {webSerialDeviceLabel || "Seleccionar puerto USB"}
+                        </span>
+                        <span className="web-serial-status">
+                          {webSerialDeviceLabel ? "Puerto conectado" : "Conecta tu placa por USB"}
+                        </span>
+                      </span>
+                      <ChevronRight className="web-serial-arrow" size={17} aria-hidden="true" />
+                    </button>
                  </>
                ) : (
                  <>

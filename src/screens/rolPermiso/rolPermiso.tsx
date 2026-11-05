@@ -11,7 +11,7 @@ import {
 } from "../../hooks/rolPermisos/rolPermisosHook";
 import { useRoles } from "../../hooks/roles/rolesHook";
 import { usePermisos } from "../../hooks/permisos/permisosHook";
-import { ArrowLeft, Plus, Search, Trash2 } from "lucide-react";
+    import { ArrowLeft, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { getPaginationRange, normalizePagination, paginateRows } from "../pagination";
@@ -95,6 +95,15 @@ function RolPermisoScreen() {
     const permisosNoAsignados = permisosNoAsignadosQuery.data?.ok
         ? permisosNoAsignadosQuery.data.data ?? []
         : [];
+
+    const isRefreshing = relacionesQuery.isFetching || rolesQuery.isFetching || permisosQuery.isFetching;
+
+    const handleRefresh = async () => {
+        const requests: Promise<unknown>[] = [relacionesQuery.refetch(), rolesQuery.refetch(), permisosQuery.refetch()];
+        if (rolIdNuevo) requests.push(permisosNoAsignadosQuery.refetch());
+        if (idsRelacionBuscada) requests.push(relacionBuscadaQuery.refetch());
+        await Promise.all(requests);
+    };
 
     const handleCrearRelacion = async () => {
         const rolId = Number(rolIdNuevo);
@@ -222,6 +231,10 @@ function RolPermisoScreen() {
                         <p>{t("relationshipDescription")}</p>
                         <QueryFreshness updatedAt={relacionesQuery.dataUpdatedAt} isFetching={relacionesQuery.isFetching} />
                     </div>
+                    <button type="button" className="rol-refresh" onClick={() => void handleRefresh()} disabled={isRefreshing}>
+                        <RefreshCw size={17} className={isRefreshing ? "rol-refresh-icon is-spinning" : "rol-refresh-icon"} />
+                        <span>{t("refresh")}</span>
+                    </button>
                 </header>
 
                 <section className="rol-card">

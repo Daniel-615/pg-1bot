@@ -9,7 +9,7 @@ import {
     useDeleteUsuarioRol,
     useUsuarioRoles,
 } from "../../hooks/usuarioRoles/usuarioRolesHook";
-import { ArrowLeft, Plus, Search, Trash2 } from "lucide-react";
+    import { ArrowLeft, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { getPaginationRange, normalizePagination, paginateRows } from "../pagination";
 import { QueryFreshness } from "../components/QueryFreshness";
@@ -92,6 +92,12 @@ function UsuarioRolScreen() {
     const rolesData = rolesQuery.data?.ok ? rolesQuery.data.data : undefined;
     const roles = Array.isArray(rolesData) ? rolesData : rolesData?.rows ?? [];
 
+    const isRefreshing = relacionesQuery.isFetching || usuariosQuery.isFetching || rolesQuery.isFetching;
+
+    const handleRefresh = async () => {
+        await Promise.all([relacionesQuery.refetch(), usuariosQuery.refetch(), rolesQuery.refetch()]);
+    };
+
     const handleCrearRelacion = async () => {
         const rolId = Number(rolIdNuevo);
 
@@ -168,6 +174,10 @@ function UsuarioRolScreen() {
                         <p>{t("userRoleDescription")}</p>
                         <QueryFreshness updatedAt={relacionesQuery.dataUpdatedAt} isFetching={relacionesQuery.isFetching} />
                     </div>
+                    <button type="button" className="rol-refresh" onClick={() => void handleRefresh()} disabled={isRefreshing}>
+                        <RefreshCw size={17} className={isRefreshing ? "rol-refresh-icon is-spinning" : "rol-refresh-icon"} />
+                        <span>{t("refresh")}</span>
+                    </button>
                 </header>
 
                 <section className="rol-card">

@@ -141,6 +141,92 @@
   font-size: 12px;
 }
 
+.web-serial-button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 54px;
+  padding: 8px 10px;
+  gap: 10px;
+  background: var(--bg-white);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--transition-normal), box-shadow var(--transition-normal), background var(--transition-normal), transform var(--transition-fast);
+}
+
+.web-serial-button:hover {
+  background: var(--primary-bg);
+  border-color: var(--primary-light);
+  box-shadow: var(--shadow-sm);
+}
+
+.web-serial-button:active {
+  transform: translateY(1px);
+}
+
+.web-serial-button:focus-visible {
+  outline: 3px solid rgba(0, 184, 212, 0.24);
+  outline-offset: 2px;
+}
+
+.web-serial-icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: var(--primary-bg);
+  border-radius: var(--radius-sm);
+  color: var(--primary-dark);
+}
+
+.web-serial-button.is-connected .web-serial-icon {
+  background: rgba(34, 197, 94, 0.12);
+  color: #16803c;
+}
+
+.web-serial-copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.web-serial-title,
+.web-serial-status {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.web-serial-title {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.web-serial-status {
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.web-serial-arrow {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  transition: transform var(--transition-fast), color var(--transition-fast);
+}
+
+.web-serial-button:hover .web-serial-arrow {
+  color: var(--primary-dark);
+  transform: translateX(2px);
+}
+
 .device-native-select {
   display: none;
 }
