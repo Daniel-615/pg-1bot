@@ -24,9 +24,11 @@ type AppSidebarProps = {
   ports: SerialPortOption[];
   selectedPort: string;
   setSelectedPort: (port: string) => void;
-  fetchPorts: () => void;
+  fetchPorts: (showFeedback?: boolean) => void;
   compileMode: "cloud" | "local";
   onCompileModeChange: (mode: "cloud" | "local") => void;
+  agentDownloadUrl: string;
+  onCheckLocalAgent: () => Promise<boolean>;
   localAgentStatus: LocalAgentStatus;
   onRequestSerialDevice: () => void;
   webSerialDeviceLabel: string;
@@ -56,6 +58,8 @@ export const AppSidebar = memo(function AppSidebar({
   fetchPorts,
   compileMode,
   onCompileModeChange,
+  agentDownloadUrl,
+  onCheckLocalAgent,
   localAgentStatus,
   onRequestSerialDevice,
   webSerialDeviceLabel,
@@ -218,6 +222,19 @@ export const AppSidebar = memo(function AppSidebar({
                       <span className="local-agent-status-dot" aria-hidden="true" />
                       <span>{t(`arduinoAgentStatus${localAgentStatus[0].toUpperCase()}${localAgentStatus.slice(1)}`)}</span>
                     </div>
+                    {localAgentStatus === "offline" && (
+                      <div className="local-agent-help">
+                        <p>{t("arduinoAgentRequired")}</p>
+                        <div className="local-agent-actions">
+                          <a href={agentDownloadUrl} target="_blank" rel="noreferrer" className="local-agent-download">
+                            {t("downloadArduinoAgent")}
+                          </a>
+                          <button type="button" className="local-agent-retry" onClick={() => void onCheckLocalAgent()}>
+                            {t("retryArduinoAgent")}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <select
                      value={selectedPort}
                      onChange={(event) => setSelectedPort(event.target.value)}
@@ -231,7 +248,7 @@ export const AppSidebar = memo(function AppSidebar({
                      ))}
                    </select>
                    <div className="port-actions">
-                     <button onClick={fetchPorts}>Actualizar puertos</button>
+                      <button onClick={() => void fetchPorts()}>Actualizar puertos</button>
                    </div>
                  </>
                )}

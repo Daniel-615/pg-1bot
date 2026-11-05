@@ -21,6 +21,7 @@ type AppHeaderProps = {
   onLogout: () => void;
   canAccessDashboard: boolean;
   isUploading: boolean;
+  isCompileBlocked: boolean;
   userName: string;
   userRole: "admin" | "student" | "staff" | "user";
   t: (key: string, options?: Record<string, string | number>) => string;
@@ -44,6 +45,7 @@ export const AppHeader = memo(function AppHeader({
   onLogout,
   canAccessDashboard,
   isUploading,
+  isCompileBlocked,
   userName,
   userRole,
   t,
@@ -135,7 +137,7 @@ export const AppHeader = memo(function AppHeader({
       </div>
 
       <div className="header-right">
-        <button className="action-btn run-btn" onClick={onRun} disabled={isUploading}>
+        <button className="action-btn run-btn" onClick={onRun} disabled={isUploading || isCompileBlocked} title={isCompileBlocked ? t("arduinoAgentRequired") : undefined}>
           <span className={`action-icon ${isUploading ? "robot-walk" : ""}`}>
             {isUploading ? <img src="logo.webp" alt="1bot" /> : "▶"}
           </span>
@@ -171,7 +173,7 @@ export const AppHeader = memo(function AppHeader({
            <button type="button" onClick={() => runMobileAction(onExtensions)}><Puzzle size={17} aria-hidden="true" />{t("extensions")}</button>
            {canAccessDashboard && <button type="button" onClick={() => runMobileAction(onDashboard)}><LayoutDashboard size={17} aria-hidden="true" />Dashboard</button>}
           <div className="mobile-menu-divider" />
-          <button type="button" className="mobile-menu-run" disabled={isUploading} onClick={() => runMobileAction(onRun)}><Play size={17} fill="currentColor" aria-hidden="true" />{isUploading ? t("uploading") : t("run")}</button>
+           <button type="button" className="mobile-menu-run" disabled={isUploading || isCompileBlocked} onClick={() => runMobileAction(onRun)}><Play size={17} fill="currentColor" aria-hidden="true" />{isUploading ? t("uploading") : t("run")}</button>
           <button type="button" className="mobile-menu-debug" onClick={() => runMobileAction(onToggleDebug)}>{debugMode ? <BugOff size={17} aria-hidden="true" /> : <Bug size={17} aria-hidden="true" />}{debugMode ? t("exitDebug") : t("debug")}</button>
         </div>
       )}

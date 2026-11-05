@@ -133,7 +133,14 @@ function App({ authUser }: AppProps) {
   const [backgroundWorkspaceBlocks, setBackgroundWorkspaceBlocks] = useState<unknown | null>(null);
   const [editorMode, setEditorMode] = useState<EditorMode>("device");
   const [board, setBoard] = useState(initialWorkspace.board);
-  const [compileMode, setCompileMode] = useState<CompileMode>("cloud");
+  const [compileMode, setCompileMode] = useState<CompileMode>(() => {
+    try {
+      const savedMode = window.localStorage.getItem("1bot-compile-mode");
+      return savedMode === "local" || savedMode === "cloud" ? savedMode : "cloud";
+    } catch {
+      return "cloud";
+    }
+  });
   const [projectName, setProjectName] = useState(initialWorkspace.projectName);
 
   useEffect(() => {
@@ -274,37 +281,43 @@ function App({ authUser }: AppProps) {
   const [localAgentStatus, setLocalAgentStatus] = useState<LocalAgentStatus>("offline");
 
   useEffect(() => {
+    window.localStorage.setItem("1bot-compile-mode", compileMode);
+  }, [compileMode]);
+
+  const checkArduinoAgent = useCallback(async () => {
+    if (compileTarget.transport !== "local") return false;
+
+    setLocalAgentStatus("checking");
+    try {
+      const response = await fetch(`${compileTarget.apiUrl}/health`, { cache: "no-store" });
+      const isOnline = response.ok;
+      setLocalAgentStatus(isOnline ? "online" : "offline");
+      return isOnline;
+    } catch {
+      setLocalAgentStatus("offline");
+      return false;
+    }
+  }, [compileTarget.apiUrl, compileTarget.transport]);
+
+  useEffect(() => {
     if (compileTarget.transport !== "local") {
       setLocalAgentStatus("offline");
       return;
     }
 
     let cancelled = false;
-    setLocalAgentStatus("checking");
-
-    const checkArduinoAgent = async () => {
-      try {
-        const response = await fetch(`${compileTarget.apiUrl}/health`, {
-          cache: "no-store",
-        });
-        if (!cancelled) {
-          setLocalAgentStatus(response.ok ? "online" : "offline");
-        }
-      } catch {
-        if (!cancelled) {
-          setLocalAgentStatus("offline");
-        }
-      }
+    const check = async () => {
+      if (!cancelled) await checkArduinoAgent();
     };
 
-    void checkArduinoAgent();
-    const intervalId = window.setInterval(checkArduinoAgent, 5000);
+    void check();
+    const intervalId = window.setInterval(check, 5000);
 
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [compileTarget.apiUrl, compileTarget.transport]);
+  }, [checkArduinoAgent, compileTarget.transport]);
 
   const compileTargetLabel = useMemo(
     () => localAgentStatus === "online" ? t("arduinoServiceOnline") : "",
@@ -401,7 +414,7 @@ function App({ authUser }: AppProps) {
       );
   }, []);
 
-  const fetchPorts = useCallback(async () => {
+  const fetchPorts = useCallback(async (showFeedback = true) => {
     if (compileTarget.transport !== "local") return;
 
     try {
@@ -414,24 +427,24 @@ function App({ authUser }: AppProps) {
 
       if (data.ok) {
         setPorts(data.ports);
-        toast.success("Puertos COM actualizados correctamente.");
+        if (showFeedback) toast.success("Puertos COM actualizados correctamente.");
         return;
       }
 
-      toast.error(getArduinoUserErrorMessage(data.error, "No se pudieron cargar los puertos de la placa."));
+      if (showFeedback) toast.error(getArduinoUserErrorMessage(data.error, "No se pudieron cargar los puertos de la placa."));
     } catch (err) {
-      toast.error(getArduinoUserErrorMessage(err, "No se pudo conectar con el agente Arduino."));
+      if (showFeedback) toast.error(getArduinoUserErrorMessage(err, "No se pudo conectar con el agente Arduino."));
     }
   }, [arduinoApiUrl, compileTarget.transport]);
 
   useEffect(() => {
-    if (compileTarget.transport !== "local") return;
+    if (compileTarget.transport !== "local" || localAgentStatus !== "online") return;
     const timeoutId = window.setTimeout(() => {
-      void fetchPorts();
+      void fetchPorts(false);
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [compileTarget.transport, fetchPorts]);
+  }, [compileTarget.transport, fetchPorts, localAgentStatus]);
 
   const requestBrowserSerialDevice = useCallback(async (): Promise<DetectedDevice | null> => {
     if (!flashOrchestratorRef.current) flashOrchestratorRef.current = new FlashOrchestrator(compileTarget);
@@ -581,6 +594,11 @@ function App({ authUser }: AppProps) {
 
   const compileAndUpload = useCallback(async () => {
 
+    if (compileTarget.transport === "local" && localAgentStatus !== "online") {
+      toast.error(t("arduinoAgentRequired"));
+      return;
+    }
+
     if (!code.trim()) {
       toast.error(
         "No hay código generado para compilar."
@@ -672,7 +690,7 @@ function App({ authUser }: AppProps) {
       setIsUploading(false);
       compileInFlightRef.current = false;
     }
-  }, [authUser?.edad, authUser?.id, authUser?.userId, board, code, compileTarget, projectName, selectedPort, semanticErrors, serialOpen, stopSerialMonitor]);
+  }, [authUser?.edad, authUser?.id, authUser?.userId, board, code, compileTarget, localAgentStatus, projectName, selectedPort, semanticErrors, serialOpen, stopSerialMonitor, t]);
 
   const handleRun = useCallback(() => {
     void compileAndUpload();
@@ -1113,6 +1131,7 @@ function App({ authUser }: AppProps) {
         onDashboard={handleDashboard}
         onProgress={handleProgress}
         isUploading={isUploading}
+        isCompileBlocked={compileTarget.transport === "local" && localAgentStatus !== "online"}
         userName={authUser?.nombre ?? authUser?.email ?? "Usuario"}
         userRole={getUserRole(authUser)}
         onLogout={handleLogout}
@@ -1165,6 +1184,8 @@ function App({ authUser }: AppProps) {
             fetchPorts={fetchPorts}
             compileMode={compileMode}
             onCompileModeChange={setCompileMode}
+            agentDownloadUrl={agentDownloadUrl}
+            onCheckLocalAgent={checkArduinoAgent}
             localAgentStatus={localAgentStatus}
             onRequestSerialDevice={requestBrowserSerialDevice}
             webSerialDeviceLabel={webSerialDeviceLabel}
