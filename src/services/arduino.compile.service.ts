@@ -157,7 +157,7 @@ function normalizeLocalAgentUrl(value: string) {
   return value.replace(/^http:\/\/localhost(?=[:/]|$)/i, "http://127.0.0.1");
 }
 
-export function resolveCompileTarget(platform: ClientPlatform, mode: CompileMode = platform === "desktop" ? "local" : "cloud"): CompileTarget {
+export function resolveCompileTarget(platform: ClientPlatform, mode: CompileMode = "cloud"): CompileTarget {
   if (mode === "local") {
     return {
       apiUrl: normalizeLocalAgentUrl(normalizeApiUrl(LOCAL_AGENT_API_URL)),

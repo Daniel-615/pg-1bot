@@ -131,7 +131,7 @@ function App({ authUser }: AppProps) {
   const [backgroundWorkspaceBlocks, setBackgroundWorkspaceBlocks] = useState<unknown | null>(null);
   const [editorMode, setEditorMode] = useState<EditorMode>("device");
   const [board, setBoard] = useState(initialWorkspace.board);
-  const [compileMode, setCompileMode] = useState<CompileMode>(() => detectClientPlatform() === "desktop" ? "local" : "cloud");
+  const [compileMode, setCompileMode] = useState<CompileMode>("cloud");
   const [projectName, setProjectName] = useState(initialWorkspace.projectName);
 
   useEffect(() => {
