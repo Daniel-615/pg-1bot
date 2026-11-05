@@ -7,6 +7,7 @@ import { initialBackgroundState, type BackgroundActorState } from "../../backgro
 import "../../styles/AppSidebar.css";
 
 type SidebarTab = "devices" | "ports" | "background";
+type LocalAgentStatus = "checking" | "online" | "offline";
 
 type AppSidebarProps = {
   board: string;
@@ -26,6 +27,7 @@ type AppSidebarProps = {
   fetchPorts: () => void;
   compileMode: "cloud" | "local";
   onCompileModeChange: (mode: "cloud" | "local") => void;
+  localAgentStatus: LocalAgentStatus;
   onRequestSerialDevice: () => void;
   webSerialDeviceLabel: string;
   serialOpen: boolean;
@@ -54,6 +56,7 @@ export const AppSidebar = memo(function AppSidebar({
   fetchPorts,
   compileMode,
   onCompileModeChange,
+  localAgentStatus,
   onRequestSerialDevice,
   webSerialDeviceLabel,
   serialOpen,
@@ -208,10 +211,14 @@ export const AppSidebar = memo(function AppSidebar({
                       <ChevronRight className="web-serial-arrow" size={17} aria-hidden="true" />
                     </button>
                  </>
-               ) : (
-                 <>
-                   <label>Puerto COM del agente local</label>
-                   <select
+                ) : (
+                  <>
+                    <label>Puerto COM del agente local</label>
+                    <div className={`local-agent-status is-${localAgentStatus}`} role="status" aria-live="polite">
+                      <span className="local-agent-status-dot" aria-hidden="true" />
+                      <span>{t(`arduinoAgentStatus${localAgentStatus[0].toUpperCase()}${localAgentStatus.slice(1)}`)}</span>
+                    </div>
+                    <select
                      value={selectedPort}
                      onChange={(event) => setSelectedPort(event.target.value)}
                      aria-label="Puerto COM del agente local"

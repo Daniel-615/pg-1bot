@@ -51,6 +51,8 @@ import { FlashOrchestrator } from "./services/flashing";
 import { Onboarding } from "./screens/components/Onboarding";
 import { GuidedTutorial } from "./screens/components/GuidedTutorial";
 
+type LocalAgentStatus = "checking" | "online" | "offline";
+
 function sanitizeFilename(value: string) {
   return value.replace(/[<>:"/\\|?*]/g, "_");
 }
@@ -269,15 +271,16 @@ function App({ authUser }: AppProps) {
     (import.meta.env.VITE_ARDUINO_AGENT_DOWNLOAD_URL as string | undefined) ||
     "https://github.com/Daniel-615/pg-1bot-arduino/releases/download/v1/1bot-arduino-agent-setup.exe";
 
-  const [isArduinoServiceOnline, setIsArduinoServiceOnline] = useState(false);
+  const [localAgentStatus, setLocalAgentStatus] = useState<LocalAgentStatus>("offline");
 
   useEffect(() => {
     if (compileTarget.transport !== "local") {
-      setIsArduinoServiceOnline(false);
+      setLocalAgentStatus("offline");
       return;
     }
 
     let cancelled = false;
+    setLocalAgentStatus("checking");
 
     const checkArduinoAgent = async () => {
       try {
@@ -285,11 +288,11 @@ function App({ authUser }: AppProps) {
           cache: "no-store",
         });
         if (!cancelled) {
-          setIsArduinoServiceOnline(response.ok);
+          setLocalAgentStatus(response.ok ? "online" : "offline");
         }
       } catch {
         if (!cancelled) {
-          setIsArduinoServiceOnline(false);
+          setLocalAgentStatus("offline");
         }
       }
     };
@@ -304,8 +307,8 @@ function App({ authUser }: AppProps) {
   }, [compileTarget.apiUrl, compileTarget.transport]);
 
   const compileTargetLabel = useMemo(
-    () => isArduinoServiceOnline ? t("arduinoServiceOnline") : "",
-    [isArduinoServiceOnline, t]
+    () => localAgentStatus === "online" ? t("arduinoServiceOnline") : "",
+    [localAgentStatus, t]
   );
 
   const currentDevice = useMemo(
@@ -1162,6 +1165,7 @@ function App({ authUser }: AppProps) {
             fetchPorts={fetchPorts}
             compileMode={compileMode}
             onCompileModeChange={setCompileMode}
+            localAgentStatus={localAgentStatus}
             onRequestSerialDevice={requestBrowserSerialDevice}
             webSerialDeviceLabel={webSerialDeviceLabel}
             serialOpen={serialOpen}
@@ -1202,7 +1206,7 @@ function App({ authUser }: AppProps) {
           connectionType={connectionType}
           isConnected={isConnected}
           agentDownloadUrl={agentDownloadUrl}
-          agentOffline={compileTarget.transport === "local" && !isArduinoServiceOnline}
+           agentOffline={compileTarget.transport === "local" && localAgentStatus === "offline"}
           compileTargetLabel={
             isConnected
               ? "Arduino conectado"
