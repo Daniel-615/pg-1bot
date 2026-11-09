@@ -34,12 +34,12 @@ export class FlashOrchestrator {
       const bytes = new Uint8Array(compiled.bytes); let segments: Array<{ address: number; data: Uint8Array }> = [];
       if (profile.artifact === "intel-hex") segments = parseIntelHex(new TextDecoder().decode(bytes));
       else {
-        const configured = (options.compileOptions?.flashImages as EspImage[] | undefined);
-        if (!configured?.length) throw new Error("ESP32 requiere artefactos con offsets explícitos; no se asumirá 0x10000.");
-        segments = configured;
+        const compiledImages = compiled.images as EspImage[] | undefined;
+        if (!compiledImages?.length) throw new Error("La compilacion ESP32 no devolvio los binarios con offsets.");
+        segments = compiledImages;
       }
       const expectedFormat = profile.artifact === "intel-hex" ? "intel-hex" : "binary";
-      validateArtifact({ format: expectedFormat, segments, bytes: profile.artifact === "binary" ? bytes.buffer : undefined }, expectedFormat, profile.id.includes("mega") ? 253952 : profile.id.includes("uno") || profile.id.includes("nano") ? 32768 : 16 * 1024 * 1024);
+      validateArtifact({ format: expectedFormat, segments, bytes: profile.artifact === "binary" && !compiled.images ? bytes.buffer : undefined }, expectedFormat, profile.id.includes("mega") ? 253952 : profile.id.includes("uno") || profile.id.includes("nano") ? 32768 : 16 * 1024 * 1024);
       if (options.confirm && !(await options.confirm())) throw new Error("El usuario canceló la confirmación de escritura.");
       this.emit("connecting-bootloader", 0, "Conectando con el bootloader."); await this.devices.open(this.selected, profile.baudRate);
       this.emit("flashing", 0, "Escribiendo firmware.");

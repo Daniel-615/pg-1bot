@@ -52,6 +52,7 @@ export type CompiledArtifact = {
   fileName: string;
   fqbn?: string;
   compileLog?: string;
+  images?: Array<{ address: number; data: Uint8Array }>;
 };
 
 // Send both the JWT header and the auth cookie when the browser has one.
@@ -144,10 +145,25 @@ export class ArduinoApi {
     const fqbn = BOARD_FQBN_MAP[board];
     if (!fqbn) throw new Error(`La placa "${board}" no tiene un FQBN compilable configurado.`);
     formData.append("fqbn", fqbn);
+    const isEsp32 = fqbn.startsWith("esp32:");
     const response = await arduinoApi.post(`${this.apiUrl}/api/arduino/compile/artifact`, formData, {
-      responseType: "arraybuffer",
+      responseType: isEsp32 ? "json" : "arraybuffer",
       timeout: 300000,
     });
+    if (isEsp32) {
+      const payload = response.data as { format: "binary"; fileName: string; fqbn?: string; compileLog?: string; images: Array<{ address: number; data: string }> };
+      return {
+        bytes: new ArrayBuffer(0),
+        format: "binary",
+        fileName: payload.fileName,
+        fqbn: payload.fqbn || fqbn,
+        compileLog: payload.compileLog,
+        images: payload.images.map((image) => ({
+          address: image.address,
+          data: Uint8Array.from(atob(image.data), (character) => character.charCodeAt(0)),
+        })),
+      };
+    }
     const responseFileName = /filename="?([^";]+)"?/i.exec(String(response.headers["content-disposition"] || ""))?.[1] || "firmware.bin";
     const format = String(response.headers["x-firmware-format"] || responseFileName.split(".").pop() || "bin").toLowerCase() === "hex" ? "intel-hex" : "binary";
     return { bytes: response.data as ArrayBuffer, format, fileName: responseFileName, fqbn: String(response.headers["x-firmware-fqbn"] || fqbn), compileLog: String(response.headers["x-firmware-compile-log"] || "") };
@@ -155,7 +171,8 @@ export class ArduinoApi {
 }
 
 function normalizeLocalAgentUrl(value: string) {
-  return value.replace(/^http:\/\/localhost(?=[:/]|$)/i, "http://127.0.0.1");
+  // Prefer localhost so HTTPS deployments can pass Chrome's loopback checks.
+  return value.replace(/^http:\/\/127\.0\.0\.1(?=[:/]|$)/i, "http://localhost");
 }
 
 export function resolveCompileTarget(platform: ClientPlatform, mode: CompileMode = "cloud"): CompileTarget {
