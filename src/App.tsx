@@ -136,9 +136,9 @@ function App({ authUser }: AppProps) {
   const [compileMode, setCompileMode] = useState<CompileMode>(() => {
     try {
       const savedMode = window.localStorage.getItem("1bot-compile-mode");
-      return savedMode === "local" || savedMode === "cloud" ? savedMode : "cloud";
+      return savedMode === "local" || savedMode === "cloud" ? savedMode : "local";
     } catch {
-      return "cloud";
+      return "local";
     }
   });
   const [projectName, setProjectName] = useState(initialWorkspace.projectName);
