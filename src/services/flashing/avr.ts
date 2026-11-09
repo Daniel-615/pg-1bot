@@ -43,7 +43,11 @@ export class AVRStk500v1Flasher {
   async flash(segments: Array<{ address: number; data: Uint8Array }>, verify = true): Promise<number> {
     const channel = new SerialByteChannel(this.port);
     try {
-      await this.port.setSignals?.({ dataTerminalReady: false, requestToSend: false }); await sleep(60);
+      // Toggle DTR to reset the board and let its bootloader start before syncing.
+      await this.port.setSignals?.({ dataTerminalReady: false, requestToSend: false });
+      await sleep(60);
+      await this.port.setSignals?.({ dataTerminalReady: true, requestToSend: false });
+      await sleep(350);
       for (let attempt = 0; attempt < 3; attempt += 1) { try { await this.command(channel, [0x30]); break; } catch (error) { if (attempt === 2) throw error; await sleep(100); } }
       await this.command(channel, [0x50]);
       const total = segments.reduce((sum, segment) => sum + segment.data.length, 0); let written = 0;
