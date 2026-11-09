@@ -34,11 +34,14 @@ export class AVRStk500v1Flasher {
   private readonly cancelled: () => boolean;
   private readonly progress: (value: number) => void;
   constructor(port: SerialPortLike, profile: BoardProfile, cancelled: () => boolean, progress: (value: number) => void) { this.port = port; this.profile = profile; this.cancelled = cancelled; this.progress = progress; }
-  private async command(channel: SerialByteChannel, bytes: number[], response = 1): Promise<Uint8Array> {
+  private async command(channel: SerialByteChannel, bytes: number[], payloadLength = 0): Promise<Uint8Array> {
     await channel.write(Uint8Array.from([...bytes, EOP]));
-    const result = await channel.read(response);
+    const result = await channel.read(payloadLength + 2);
     if (result[0] !== 0x14) throw new Error(`STK500v1 rechazó el comando (0x${result[0].toString(16)}).`);
-    return result;
+    if (result[result.length - 1] !== 0x10) {
+      throw new Error(`STK500v1 finalizó con una respuesta inválida (0x${result[result.length - 1].toString(16)}).`);
+    }
+    return result.slice(1, -1);
   }
   async flash(segments: Array<{ address: number; data: Uint8Array }>, verify = true): Promise<number> {
     const channel = new SerialByteChannel(this.port);
@@ -60,8 +63,8 @@ export class AVRStk500v1Flasher {
           await this.command(channel, [0x64, (data.length >>> 8) & 0xff, data.length & 0xff, 0x46, ...data]);
           if (verify) {
             await this.command(channel, [0x55, word & 0xff, word >>> 8]);
-            const read = await this.command(channel, [0x74, (data.length >>> 8) & 0xff, data.length & 0xff, 0x46], data.length + 1);
-            if (!read.slice(1).every((byte, index) => byte === data[index])) throw new Error("Verificación AVR fallida.");
+            const read = await this.command(channel, [0x74, (data.length >>> 8) & 0xff, data.length & 0xff, 0x46], data.length);
+            if (!read.every((byte, index) => byte === data[index])) throw new Error("Verificación AVR fallida.");
           }
           written += data.length; this.progress(written / total * 100);
         }
