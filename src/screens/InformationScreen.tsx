@@ -5,7 +5,7 @@ import "../styles/InformationScreen.css";
 
 const AGENT_DOWNLOAD_URL =
   (import.meta.env.VITE_ARDUINO_AGENT_DOWNLOAD_URL as string | undefined) ||
-  "https://github.com/Daniel-615/pg-1bot-arduino/releases/download/v1/1bot-arduino-agent-setup.exe";
+  "https://github.com/Daniel-615/pg-1bot-arduino/releases/download/v2/1bot-arduino-agent-setup.exe";
 const INFORMATION_SEEN_KEY = "1bot-information-seen";
 
 const workflows = [

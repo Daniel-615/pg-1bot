@@ -8,6 +8,7 @@ const CLOUD_API_URL =
 const LOCAL_AGENT_API_URL =
   import.meta.env.VITE_ARDUINO_API ||
   import.meta.env.VITE_ARDUINO_LOCAL_API_URL ||
+  import.meta.env.VITE_ARDUINO_API_URL ||
   "http://127.0.0.1:3000";
 type CompileSketchParams = {
   code: string;
